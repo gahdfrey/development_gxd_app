@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserByEmail, verifyPassword } from '@/lib/auth';
 import { SignJWT } from 'jose';
-import { cookies } from 'next/headers';
-
-const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'default-secret-key-change-in-production'
-);
+import { JWT_SECRET } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { email, password } = body;
+        const { email, password, rememberMe } = body;
 
-        // Validate input
         if (!email || !password) {
             return NextResponse.json(
                 { error: 'Email and password are required' },
@@ -20,7 +15,6 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Find user by email
         const user = await getUserByEmail(email);
         if (!user) {
             return NextResponse.json(
@@ -29,16 +23,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Verify password
-        const isPasswordValid = await verifyPassword(password, user.password);
-        if (!isPasswordValid) {
+        const valid = await verifyPassword(password, user.password);
+        if (!valid) {
             return NextResponse.json(
                 { error: 'Invalid email or password' },
                 { status: 401 }
             );
         }
 
-        // Create session token
+        // SIGN JWT
         const token = await new SignJWT({
             userId: user.id,
             email: user.email,
@@ -49,18 +42,12 @@ export async function POST(request: NextRequest) {
             .setExpirationTime('7d')
             .sign(JWT_SECRET);
 
-        // Set cookie
-        const cookieStore = await cookies();
-        cookieStore.set('session', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            path: '/',
-        });
+        const maxAge = rememberMe
+            ? 60 * 60 * 24 * 30
+            : 60 * 60 * 24 * 7;
 
-        // Return success
-        return NextResponse.json(
+        // Create response
+        const res = NextResponse.json(
             {
                 message: 'Login successful',
                 user: {
@@ -71,6 +58,19 @@ export async function POST(request: NextRequest) {
             },
             { status: 200 }
         );
+
+        // SET COOKIE EXPLICITLY
+        res.cookies.set({
+            name: 'session',
+            value: token,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge,
+            path: '/',
+        });
+
+        return res;
     } catch (error) {
         console.error('Login error:', error);
         return NextResponse.json(
@@ -79,3 +79,4 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+

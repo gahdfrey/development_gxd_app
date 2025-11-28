@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 
@@ -8,13 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-    const session = await auth();
+    const user = await getSession();
 
-    if (!session?.user) {
+    if (!user) {
         redirect('/login');
     }
-
-    const { user } = session;
 
     return (
         <main className="flex-1 p-8 overflow-auto">

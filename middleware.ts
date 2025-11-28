@@ -1,36 +1,36 @@
-import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
+import { JWT_SECRET } from '@/lib/jwt';
 
 export async function middleware(request: NextRequest) {
-    const session = await auth();
 
-    // Protected routes that require authentication
-    const protectedRoutes = ['/dashboard', '/home'];
+    if (
+        request.nextUrl.pathname.startsWith('/login') ||
+        request.nextUrl.pathname.startsWith('/signup')
+    ) {
+        return NextResponse.next();
+    }
 
-    // Check if the current path is protected
-    const isProtectedRoute = protectedRoutes.some((route) =>
-        request.nextUrl.pathname.startsWith(route)
-    );
+    const token = request.cookies.get('session')?.value;
 
-    // Redirect unauthenticated users to login
-    if (isProtectedRoute && !session) {
+    if (!token) {
+        const callbackUrl = request.nextUrl.pathname + request.nextUrl.search;
         const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
+        loginUrl.searchParams.set('callbackUrl', callbackUrl);
         return NextResponse.redirect(loginUrl);
     }
 
-    // Redirect authenticated users away from auth pages
-    const authPages = ['/login', '/signup'];
-    const isAuthPage = authPages.some((page) => request.nextUrl.pathname === page);
-
-    if (isAuthPage && session) {
-        return NextResponse.redirect(new URL('/home', request.url));
+    try {
+        await jwtVerify(token, JWT_SECRET);
+        return NextResponse.next();
+    } catch (err) {
+        const res = NextResponse.redirect(new URL('/login', request.url));
+        res.cookies.delete('session');
+        return res;
     }
-
-    return NextResponse.next();
 }
 
 export const config = {
-    matcher: ['/dashboard/:path*', '/home/:path*', '/login', '/signup'],
+    matcher: ['/dashboard/:path*', '/home/:path*', '/employees/:path*'],
 };
