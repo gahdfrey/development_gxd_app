@@ -1,0 +1,12 @@
+# Environment Variables Template for GXD App
+# Copy contents to .env.local file
+
+NEXTAUTH_SECRET=your-super-secret-key-change-this-in-production-min-32-chars
+NEXTAUTH_URL=http://localhost:3000
+DATABASE_URL=postgresql://postgres:password@localhost:5432/gxd_app
+
+# Instructions:
+# 1. Copy this file's contents to .env.local
+# 2. Generate NEXTAUTH_SECRET: openssl rand -base64 32
+# 3. Update DATABASE_URL with your PostgreSQL credentials
+# 4. For production, update NEXTAUTH_URL to your domain

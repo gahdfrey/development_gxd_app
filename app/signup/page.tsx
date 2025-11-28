@@ -1,0 +1,18 @@
+import SignUpForm from '../components/SignUpForm';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Create Account - GXD App',
+    description: 'Join GXD today! Create your free account and start exploring amazing features.',
+};
+
+export default function SignUpPage() {
+    return (
+        <main className="min-h-screen flex items-center justify-center p-4 ">
+            {/* <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxIDEuNzktNCAzLjk5OS00QzQyLjIwOSAzMCA0NCAzMS43OSA0NCAzNGMwIDIuMjEtMS43OTEgNC00LjAwMSA0QzM3Ljc5IDM4IDM2IDM2LjIxIDM2IDM0em0wLTMwYzAtMi4yMSAxLjc5LTQgMy45OTktNEM0Mi4yMDkgMCA0NCAxLjc5IDQ0IDRjMCAyLjIxLTEuNzkxIDQtNC4wMDEgNEMzNy43OSA4IDM2IDYuMjEgMzYgNHptLTMwIDBjMC0yLjIxIDEuNzktNCAzLjk5OS00QzEyLjIwOSAwIDE0IDEuNzkgMTQgNGMwIDIuMjEtMS43OTEgNC00LjAwMSA0QzcuNzkgOCA2IDYuMjEgNiA0em0tMy42IDMwYzAtMi4yMSAxLjc5LTQgMy45OTktNEMxMi4yMDkgMzAgMTQgMzEuNzkgMTQgMzRjMCAyLjIxLTEuNzkxIDQtNC4wMDEgNEM3Ljc5IDM4IDYgMzYuMjEgNiAzNHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20"></div> */}
+
+            {/* <div className="relative z-10"> */}
+            <SignUpForm />
+        </main>
+    );
+}
