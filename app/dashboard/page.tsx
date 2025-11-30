@@ -1,6 +1,8 @@
 import { getSession, logout } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
+import SideMenu from '../components/SideMenu';
+import NavigationBar from '../components/NavigationBar';
 
 export const metadata: Metadata = {
     title: 'Dashboard - EMS',
@@ -36,7 +38,14 @@ export default async function DashboardPage() {
         <main className="min-h-screen bg-gradient-to-br from-[var(--gradient-accent-start)] via-[var(--gradient-primary-start)] to-[var(--gradient-accent-end)] animate-gradient p-8">
             <div className="max-w-4xl mx-auto">
                 <div className="glass rounded-3xl p-8 md:p-12 animate-fade-in">
+
+                    {/* <div>
+                        <NavigationBar />
+                    </div> */}
                     {/* Header */}
+                    <div>
+                        <SideMenu />
+                    </div>
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h1 className="text-4xl font-bold bg-gradient-to-r from-[var(--gradient-primary-start)] to-[var(--gradient-primary-end)] bg-clip-text text-transparent mb-2">
