@@ -17,7 +17,7 @@ async function SignOutButton() {
         >
             <button
                 type="submit"
-                className="px-6 py-2 bg-gradient-to-r from-[var(--gradient-secondary-start)] to-[var(--gradient-secondary-end)] text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+                className="px-6 py-2 bg-linear-to-r from-(--gradient-secondary-start) to-(--gradient-secondary-end) text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
             >
                 Sign Out
             </button>
@@ -33,7 +33,7 @@ export default async function DashboardPage() {
     }
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-[var(--gradient-accent-start)] via-[var(--gradient-primary-start)] to-[var(--gradient-accent-end)] animate-gradient p-8">
+        <main className="min-h-screen bg-linear-to-br from-(--gradient-accent-start) via-(--gradient-primary-start) to-(--gradient-accent-end) animate-gradient p-8">
             <div className="max-w-4xl mx-auto">
                 <div className="glass rounded-3xl p-8 md:p-12 animate-fade-in">
 
@@ -43,7 +43,7 @@ export default async function DashboardPage() {
                     </div>
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-[var(--gradient-primary-start)] to-[var(--gradient-primary-end)] bg-clip-text text-transparent mb-2">
+                            <h1 className="text-4xl font-bold bg-linear-to-r from-(--gradient-primary-start) to-(--gradient-primary-end) bg-clip-text text-transparent mb-2">
                                 EMS Dashboard
                             </h1>
                             <p className="text-gray-600 dark:text-gray-300">
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
 
                     {/* EMS Info Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
+                        <div className="bg-linear-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
                             <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
                                 👥 Employee Management
                             </h3>
@@ -96,7 +96,7 @@ export default async function DashboardPage() {
                                 View, add, and update employee records with secure access.
                             </p>
                         </div>
-                        <div className="bg-gradient-to-br from-pink-50 to-red-50 dark:from-pink-900/20 dark:to-red-900/20 rounded-2xl p-6 border border-pink-200 dark:border-pink-800">
+                        <div className="bg-linear-to-br from-pink-50 to-red-50 dark:from-pink-900/20 dark:to-red-900/20 rounded-2xl p-6 border border-pink-200 dark:border-pink-800">
                             <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
                                 📊 Attendance Tracking
                             </h3>
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
                                 Monitor attendance and generate reports for your team.
                             </p>
                         </div>
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
+                        <div className="bg-linear-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
                             <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
                                 💼 Payroll Processing
                             </h3>
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
                                 Handle salaries, deductions, and compliance effortlessly.
                             </p>
                         </div>
-                        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 border border-yellow-200 dark:border-yellow-800">
+                        <div className="bg-linear-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 border border-yellow-200 dark:border-yellow-800">
                             <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
                                 📈 Performance Analytics
                             </h3>
