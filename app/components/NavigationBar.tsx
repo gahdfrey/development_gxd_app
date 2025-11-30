@@ -3,29 +3,37 @@
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+import { NavigationToggle } from './NavigationToggle';
+import { useSidebar } from '@/app/contexts/SidebarContext';
 
 export default function NavigationBar() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const { data: session } = useSession();
+    const { isLocked, toggleLock } = useSidebar();
 
     const handleSignOut = async () => {
         await signOut({ callbackUrl: '/login' });
     };
 
     return (
-
         <header className='fixed inset-x-0 z-50 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 py-1 shadow-sm h-[4rem] transition-colors duration-300'>
             <div className='flex items-center justify-between px-6 h-full'>
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
-                        G
+                <div className='flex items-center gap-4'>
+                    <NavigationToggle
+                        isExpanded={isLocked}
+                        onToggle={toggleLock}
+                    />
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
+                            G
+                        </div>
+                        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
+                            GXD App
+                        </span>
                     </div>
-                    <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
-                        GXD App
-                    </span>
                 </div>
 
-                <div>Client Logo</div>
+                <div className='flex items-center gap-4'>Client Logo</div>
 
                 <div className="flex items-center gap-4">
                     <div className="relative">
@@ -81,7 +89,7 @@ export default function NavigationBar() {
                         )}
                     </div>
                 </div>
-            </div >
-        </header >
+            </div>
+        </header>
     );
 }
