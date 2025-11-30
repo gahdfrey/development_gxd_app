@@ -36,7 +36,11 @@ export default async function DashboardPage() {
         <main className="min-h-screen bg-gradient-to-br from-[var(--gradient-accent-start)] via-[var(--gradient-primary-start)] to-[var(--gradient-accent-end)] animate-gradient p-8">
             <div className="max-w-4xl mx-auto">
                 <div className="glass rounded-3xl p-8 md:p-12 animate-fade-in">
+
                     {/* Header */}
+                    <div>
+                        {/* SideMenu is now in layout */}
+                    </div>
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h1 className="text-4xl font-bold bg-gradient-to-r from-[var(--gradient-primary-start)] to-[var(--gradient-primary-end)] bg-clip-text text-transparent mb-2">
