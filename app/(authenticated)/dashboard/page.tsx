@@ -1,8 +1,6 @@
 import { getSession, logout } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import SideMenu from '../components/SideMenu';
-import NavigationBar from '../components/NavigationBar';
 
 export const metadata: Metadata = {
     title: 'Dashboard - EMS',
@@ -39,12 +37,9 @@ export default async function DashboardPage() {
             <div className="max-w-4xl mx-auto">
                 <div className="glass rounded-3xl p-8 md:p-12 animate-fade-in">
 
-                    {/* <div>
-                        <NavigationBar />
-                    </div> */}
                     {/* Header */}
                     <div>
-                        <SideMenu />
+                        {/* SideMenu is now in layout */}
                     </div>
                     <div className="flex items-center justify-between mb-8">
                         <div>

@@ -42,23 +42,17 @@ export default function CustomLoginForm() {
         setIsLoading(true);
 
         try {
-            const body = { email, password, ...(rememberMe && { rememberMe: true }) };
+            const result = await import('next-auth/react').then(mod => mod.signIn('credentials', {
+                email,
+                password,
+                redirect: false,
+            }));
 
-
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(body),
-            });
-
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setApiError(data.error || 'Invalid email or password. Please try again.');
+            if (result?.error) {
+                setApiError('Invalid email or password. Please try again.');
             } else {
                 router.push('/dashboard');
+                router.refresh();
             }
         } catch (error) {
             console.error('Login error:', error);
