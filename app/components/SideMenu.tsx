@@ -104,7 +104,7 @@ export default function SideMenu() {
         <aside
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className={`fixed left-0 top-24 bottom-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-r-lg border-gray-200 dark:border-gray-700 transition-all duration-500 ease-out shadow-lg  ${isExpanded ? 'w-64' : 'w-16'
+            className={`fixed left-0 top-24 bottom-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-r-lg border-gray-200 dark:border-gray-700 transition-all duration-400 ease-out shadow-lg  ${isExpanded ? 'w-50' : 'w-16'
                 }`}
         >
             <div className="flex flex-col h-full py-4 px-2 ">
