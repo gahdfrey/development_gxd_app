@@ -7,6 +7,7 @@ import Table from '@/app/components/ui/Table';
 import Modal from '@/app/components/ui/Modal';
 import UserForm from './components/UserForm';
 import { PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useToast } from '@/app/contexts/ToastContext';
 
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
@@ -16,6 +17,7 @@ export default function UsersPage() {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const { showToast } = useToast();
 
     const fetchUsers = async () => {
         try {
@@ -26,6 +28,7 @@ export default function UsersPage() {
             }
         } catch (error) {
             console.error('Failed to fetch users:', error);
+            showToast('Failed to fetch users', 'error');
         } finally {
             setLoading(false);
         }
@@ -44,11 +47,13 @@ export default function UsersPage() {
 
         if (!response.ok) {
             const error = await response.json();
+            showToast(error.error || 'Failed to create user', 'error');
             throw new Error(error.error || 'Failed to create user');
         }
 
         await fetchUsers();
         setIsCreateModalOpen(false);
+        showToast('User created successfully', 'success');
     };
 
     const handleUpdateUser = async (data: any) => {
@@ -62,12 +67,14 @@ export default function UsersPage() {
 
         if (!response.ok) {
             const error = await response.json();
+            showToast(error.error || 'Failed to update user', 'error');
             throw new Error(error.error || 'Failed to update user');
         }
 
         await fetchUsers();
         setIsEditModalOpen(false);
         setSelectedUser(null);
+        showToast('User updated successfully', 'success');
     };
 
     const handleDeleteUser = async () => {
@@ -79,12 +86,14 @@ export default function UsersPage() {
 
         if (!response.ok) {
             console.error('Failed to delete user');
+            showToast('Failed to delete user', 'error');
             return;
         }
 
         await fetchUsers();
         setIsDeleteModalOpen(false);
         setSelectedUser(null);
+        showToast('User deleted successfully', 'success');
     };
 
     const columnHelper = createColumnHelper<User>();

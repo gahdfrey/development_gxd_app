@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/app/contexts/ToastContext';
 
 export default function CustomLoginForm() {
     const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ export default function CustomLoginForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [apiError, setApiError] = useState('');
     const router = useRouter();
+    const { showToast } = useToast();
 
     const validateForm = () => {
         const newErrors: { email?: string; password?: string } = {};
@@ -50,13 +52,16 @@ export default function CustomLoginForm() {
 
             if (result?.error) {
                 setApiError('Invalid email or password. Please try again.');
+                showToast('Invalid email or password. Please try again.', 'error');
             } else {
+                showToast('Login successful! Redirecting...', 'success');
                 router.push('/dashboard');
                 router.refresh();
             }
         } catch (error) {
-            console.error('Login error:', error);
+            // console.error('Login error:', error);
             setApiError('Network error. Please check your connection and try again.');
+            showToast('Network error. Please check your connection and try again.', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -171,5 +176,3 @@ export default function CustomLoginForm() {
         </div>
     );
 }
-
-
