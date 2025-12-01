@@ -1,7 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { User } from '@/lib/db/schema';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+
+const userSchema = z.object({
+    firstname: z.string().min(1, 'First name is required'),
+    lastname: z.string().min(1, 'Last name is required'),
+    username: z.string().min(1, 'Username is required').min(3, 'Username must be at least 3 characters'),
+    email: z.string().min(1, 'Email is required').email('Invalid email address'),
+    password: z.string().optional(),
+});
+
+type UserFormData = z.infer<typeof userSchema>;
 
 interface UserFormProps {
     initialData?: Partial<User>;
@@ -11,55 +25,60 @@ interface UserFormProps {
 }
 
 export default function UserForm({ initialData, onSubmit, onCancel, isViewMode = false }: UserFormProps) {
-    const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        firstname: '',
-        lastname: '',
-        password: '',
+    const [showPassword, setShowPassword] = useState(false);
+    const {
+        register,
+        handleSubmit,
+        reset,
+        setError,
+        formState: { errors, isSubmitting },
+    } = useForm<UserFormData>({
+        resolver: zodResolver(userSchema),
+        defaultValues: {
+            firstname: '',
+            lastname: '',
+            username: '',
+            email: '',
+            password: '',
+        },
     });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
     useEffect(() => {
         if (initialData) {
-            setFormData({
-                username: initialData.username || '',
-                email: initialData.email || '',
+            reset({
                 firstname: initialData.firstname || '',
                 lastname: initialData.lastname || '',
+                username: initialData.username || '',
+                email: initialData.email || '',
                 password: '', // Password is never pre-filled
             });
         }
-    }, [initialData]);
+    }, [initialData, reset]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
+    const onFormSubmit = async (data: UserFormData) => {
+        // Password validation logic
+        if (!initialData && !data.password) {
+            setError('password', { type: 'manual', message: 'Password is required for new users' });
+            return;
+        }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
+        if (data.password && data.password.length < 8) {
+            setError('password', { type: 'manual', message: 'Password must be at least 8 characters' });
+            return;
+        }
 
         try {
-            await onSubmit(formData);
+            await onSubmit(data);
         } catch (err: any) {
-            setError(err.message || 'An error occurred');
-        } finally {
-            setLoading(false);
+            // Error handling is done in the parent component via toast, 
+            // but we can also set a generic form error if needed.
+            // For now, we rely on the parent's toast.
+            console.error(err);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-                <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
-                    {error}
-                </div>
-            )}
-
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -67,13 +86,12 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                     </label>
                     <input
                         type="text"
-                        name="firstname"
-                        value={formData.firstname}
-                        onChange={handleChange}
+                        {...register('firstname')}
                         disabled={isViewMode}
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60"
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60 ${errors.firstname ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                            }`}
                     />
+                    {errors.firstname && <p className="mt-1 text-xs text-red-500">{errors.firstname.message}</p>}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -81,13 +99,12 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                     </label>
                     <input
                         type="text"
-                        name="lastname"
-                        value={formData.lastname}
-                        onChange={handleChange}
+                        {...register('lastname')}
                         disabled={isViewMode}
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60"
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60 ${errors.lastname ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                            }`}
                     />
+                    {errors.lastname && <p className="mt-1 text-xs text-red-500">{errors.lastname.message}</p>}
                 </div>
             </div>
 
@@ -97,13 +114,12 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                 </label>
                 <input
                     type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
+                    {...register('username')}
                     disabled={isViewMode}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60 ${errors.username ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
                 />
+                {errors.username && <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>}
             </div>
 
             <div>
@@ -112,13 +128,12 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                 </label>
                 <input
                     type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                    {...register('email')}
                     disabled={isViewMode}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60 ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
                 />
+                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
             </div>
 
             {!isViewMode && (
@@ -126,14 +141,26 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         {initialData ? 'New Password (leave blank to keep current)' : 'Password'}
                     </label>
-                    <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required={!initialData}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
+                    <div className="relative">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            {...register('password')}
+                            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white pr-10 ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                                }`}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                            {showPassword ? (
+                                <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
+                            ) : (
+                                <EyeIcon className="h-5 w-5" aria-hidden="true" />
+                            )}
+                        </button>
+                    </div>
+                    {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
                 </div>
             )}
 
@@ -148,10 +175,10 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                 {!isViewMode && (
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={isSubmitting}
                         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                     >
-                        {loading ? 'Saving...' : initialData ? 'Update User' : 'Create User'}
+                        {isSubmitting ? 'Saving...' : initialData ? 'Update User' : 'Create User'}
                     </button>
                 )}
             </div>

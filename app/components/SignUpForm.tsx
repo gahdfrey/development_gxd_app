@@ -2,6 +2,8 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+
 
 export default function CustomSignUpForm() {
     const [formData, setFormData] = useState({
@@ -24,6 +26,9 @@ export default function CustomSignUpForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [apiError, setApiError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
     const router = useRouter();
 
     const validateForm = () => {
@@ -230,15 +235,28 @@ export default function CustomSignUpForm() {
                         <label htmlFor="password" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                             Password *
                         </label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={formData.password}
-                            onChange={handleInputChange('password')}
-                            className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-gray-600'
-                                } dark:bg-gray-800`}
-                            placeholder="At least 8 characters"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                id="password"
+                                value={formData.password}
+                                onChange={handleInputChange('password')}
+                                className={`w-full px-3 py-2 pr-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-gray-600'
+                                    } dark:bg-gray-800`}
+                                placeholder="At least 8 characters"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                                {showPassword ? (
+                                    <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
+                                ) : (
+                                    <EyeIcon className="h-5 w-5" aria-hidden="true" />
+                                )}
+                            </button>
+                        </div>
                         {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
                     </div>
 
@@ -246,15 +264,28 @@ export default function CustomSignUpForm() {
                         <label htmlFor="confirmPassword" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                             Confirm Password *
                         </label>
-                        <input
-                            type="password"
-                            id="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleInputChange('confirmPassword')}
-                            className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.confirmPassword ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-gray-600'
-                                } dark:bg-gray-800`}
-                            placeholder="Match password above"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                id="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleInputChange('confirmPassword')}
+                                className={`w-full px-3 py-2 pr-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.confirmPassword ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-gray-600'
+                                    } dark:bg-gray-800`}
+                                placeholder="Match password"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                                {showConfirmPassword ? (
+                                    <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
+                                ) : (
+                                    <EyeIcon className="h-5 w-5" aria-hidden="true" />
+                                )}
+                            </button>
+                        </div>
                         {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>}
                     </div>
                 </div>

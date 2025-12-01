@@ -1,57 +1,52 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useToast } from '@/app/contexts/ToastContext';
+import { signIn } from 'next-auth/react';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
-export default function CustomLoginForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
-    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+const loginSchema = z.object({
+    email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+    password: z.string().min(1, 'Password is required').min(6, 'Password must be at least 6 characters'),
+    rememberMe: z.boolean(),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+export default function LoginForm() {
     const [isLoading, setIsLoading] = useState(false);
-    const [apiError, setApiError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
     const { showToast } = useToast();
 
-    const validateForm = () => {
-        const newErrors: { email?: string; password?: string } = {};
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<LoginFormData>({
+        resolver: zodResolver(loginSchema),
+        defaultValues: {
+            email: '',
+            password: '',
+            rememberMe: false,
+        },
+    });
 
-        if (!email.trim()) {
-            newErrors.email = 'Email is required';
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = 'Please enter a valid email address';
-        }
-
-        if (!password) {
-            newErrors.password = 'Password is required';
-        } else if (password.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setApiError('');
-
-        if (!validateForm()) {
-            return;
-        }
-
+    const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true);
 
         try {
-            const result = await import('next-auth/react').then(mod => mod.signIn('credentials', {
-                email,
-                password,
+            const result = await signIn('credentials', {
+                email: data.email,
+                password: data.password,
                 redirect: false,
-            }));
+            });
 
             if (result?.error) {
-                setApiError('Invalid email or password. Please try again.');
                 showToast('Invalid email or password. Please try again.', 'error');
             } else {
                 showToast('Login successful! Redirecting...', 'success');
@@ -60,23 +55,9 @@ export default function CustomLoginForm() {
             }
         } catch (error) {
             // console.error('Login error:', error);
-            setApiError('Network error. Please check your connection and try again.');
             showToast('Network error. Please check your connection and try again.', 'error');
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleInputChange = (field: 'email' | 'password') => (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        if (field === 'email') {
-            setEmail(value);
-        } else {
-            setPassword(value);
-        }
-
-        if (errors[field]) {
-            setErrors(prev => ({ ...prev, [field]: undefined }));
         }
     };
 
@@ -89,14 +70,7 @@ export default function CustomLoginForm() {
                 <p className="text-gray-500 dark:text-gray-400">Sign in to your EMS account</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-
-                {apiError && (
-                    <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
-                        <p className="text-sm text-red-700 dark:text-red-300">{apiError}</p>
-                    </div>
-                )}
-
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
                     <label htmlFor="email" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                         Email Address *
@@ -104,29 +78,40 @@ export default function CustomLoginForm() {
                     <input
                         type="email"
                         id="email"
-                        value={email}
-                        onChange={handleInputChange('email')}
+                        {...register('email')}
                         className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-gray-600'
                             } dark:bg-gray-800`}
                         placeholder="e.g., alex@company.com"
                     />
-                    {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+                    {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
                 </div>
 
                 <div>
                     <label htmlFor="password" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                         Password *
                     </label>
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={handleInputChange('password')}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-gray-600'
-                            } dark:bg-gray-800`}
-                        placeholder="At least 6 characters"
-                    />
-                    {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+                    <div className="relative">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            id="password"
+                            {...register('password')}
+                            className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors pr-10 ${errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-gray-600'
+                                } dark:bg-gray-800`}
+                            placeholder="At least 6 characters"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                            {showPassword ? (
+                                <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
+                            ) : (
+                                <EyeIcon className="h-5 w-5" aria-hidden="true" />
+                            )}
+                        </button>
+                    </div>
+                    {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
@@ -134,8 +119,7 @@ export default function CustomLoginForm() {
                         <input
                             type="checkbox"
                             id="rememberMe"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
+                            {...register('rememberMe')}
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700"
                         />
                         <span>Remember me</span>
