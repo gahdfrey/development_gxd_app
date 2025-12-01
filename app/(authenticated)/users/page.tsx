@@ -12,34 +12,17 @@ import UserForm from './components/UserForm';
 import { PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useToast } from '@/app/contexts/ToastContext';
 
+import useSWR, { mutate } from 'swr';
+import { fetcher } from '@/lib/fetcher';
+
 export default function UsersPage() {
-    const [users, setUsers] = useState<UserWithRole[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: users = [], error, isLoading } = useSWR<UserWithRole[]>('/api/users', fetcher);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
     const { showToast } = useToast();
-
-    const fetchUsers = async () => {
-        try {
-            const response = await fetch('/api/users');
-            if (response.ok) {
-                const data = await response.json();
-                setUsers(data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch users:', error);
-            showToast('Failed to fetch users', 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchUsers();
-    }, []);
 
     const handleCreateUser = async (data: any) => {
         const response = await fetch('/api/users', {
@@ -54,7 +37,7 @@ export default function UsersPage() {
             throw new Error(error.error || 'Failed to create user');
         }
 
-        await fetchUsers();
+        mutate('/api/users');
         setIsCreateModalOpen(false);
         showToast('User created successfully', 'success');
     };
@@ -74,7 +57,7 @@ export default function UsersPage() {
             throw new Error(error.error || 'Failed to update user');
         }
 
-        await fetchUsers();
+        mutate('/api/users');
         setIsEditModalOpen(false);
         setSelectedUser(null);
         showToast('User updated successfully', 'success');
@@ -93,7 +76,7 @@ export default function UsersPage() {
             return;
         }
 
-        await fetchUsers();
+        mutate('/api/users');
         setIsDeleteModalOpen(false);
         setSelectedUser(null);
         showToast('User deleted successfully', 'success');
@@ -178,7 +161,7 @@ export default function UsersPage() {
                 </button>
             </div>
 
-            {loading ? (
+            {isLoading ? (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>

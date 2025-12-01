@@ -66,7 +66,7 @@ export default function Table<T>({ data, columns }: TableProps<T>) {
                                 {row.getVisibleCells().map((cell) => (
                                     <td
                                         key={cell.id}
-                                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
+                                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 capitalize"
                                     >
                                         {flexRender(
                                             cell.column.columnDef.cell,

@@ -7,6 +7,9 @@ import * as z from 'zod';
 import { User } from '@/lib/db/schema';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
+
 const userSchema = z.object({
     firstname: z.string().min(1, 'First name is required'),
     lastname: z.string().min(1, 'Last name is required'),
@@ -45,22 +48,7 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
         },
     });
 
-    const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
-
-    useEffect(() => {
-        const fetchRoles = async () => {
-            try {
-                const response = await fetch('/api/roles');
-                if (response.ok) {
-                    const data = await response.json();
-                    setRoles(data);
-                }
-            } catch (error) {
-                console.error('Failed to fetch roles:', error);
-            }
-        };
-        fetchRoles();
-    }, []);
+    const { data: roles = [] } = useSWR<{ id: string; name: string }[]>('/api/roles', fetcher);
 
     useEffect(() => {
         if (initialData) {
