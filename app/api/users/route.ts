@@ -1,15 +1,27 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, roles } from '@/lib/db/schema';
 import bcrypt from 'bcryptjs';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 
 export async function GET() {
     try {
-        const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
-        // Remove password from response
-        const safeUsers = allUsers.map(({ password, ...user }) => user);
-        return NextResponse.json(safeUsers);
+        const allUsers = await db.select({
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            firstname: users.firstname,
+            lastname: users.lastname,
+            roleId: users.roleId,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+            roleName: roles.name,
+        })
+            .from(users)
+            .leftJoin(roles, eq(users.roleId, roles.id))
+            .orderBy(desc(users.createdAt));
+
+        return NextResponse.json(allUsers);
     } catch (error) {
         console.error('Error fetching users:', error);
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
@@ -19,7 +31,7 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { username, email, firstname, lastname, password } = body;
+        const { username, email, firstname, lastname, password, roleId } = body;
 
         if (!username || !email || !firstname || !lastname || !password) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -33,6 +45,7 @@ export async function POST(request: Request) {
             firstname,
             lastname,
             password: hashedPassword,
+            roleId: roleId || null,
         }).returning();
 
         const { password: _, ...safeUser } = newUser[0];

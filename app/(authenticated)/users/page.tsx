@@ -3,6 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { User } from '@/lib/db/schema';
+
+// Extend User type to include roleName from API response
+type UserWithRole = User & { roleName: string | null };
 import Table from '@/app/components/ui/Table';
 import Modal from '@/app/components/ui/Modal';
 import UserForm from './components/UserForm';
@@ -10,7 +13,7 @@ import { PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react
 import { useToast } from '@/app/contexts/ToastContext';
 
 export default function UsersPage() {
-    const [users, setUsers] = useState<User[]>([]);
+    const [users, setUsers] = useState<UserWithRole[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -96,7 +99,7 @@ export default function UsersPage() {
         showToast('User deleted successfully', 'success');
     };
 
-    const columnHelper = createColumnHelper<User>();
+    const columnHelper = createColumnHelper<UserWithRole>();
 
     const columns = useMemo(
         () => [
@@ -115,6 +118,10 @@ export default function UsersPage() {
             columnHelper.accessor('email', {
                 header: 'Email',
                 cell: (info) => info.getValue(),
+            }),
+            columnHelper.accessor('roleName', {
+                header: 'Role',
+                cell: (info) => info.getValue() || 'N/A',
             }),
             columnHelper.display({
                 id: 'actions',

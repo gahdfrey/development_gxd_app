@@ -13,6 +13,7 @@ const userSchema = z.object({
     username: z.string().min(1, 'Username is required').min(3, 'Username must be at least 3 characters'),
     email: z.string().min(1, 'Email is required').email('Invalid email address'),
     password: z.string().optional(),
+    roleId: z.string().optional(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -40,8 +41,26 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
             username: '',
             email: '',
             password: '',
+            roleId: '',
         },
     });
+
+    const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
+
+    useEffect(() => {
+        const fetchRoles = async () => {
+            try {
+                const response = await fetch('/api/roles');
+                if (response.ok) {
+                    const data = await response.json();
+                    setRoles(data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch roles:', error);
+            }
+        };
+        fetchRoles();
+    }, []);
 
     useEffect(() => {
         if (initialData) {
@@ -51,6 +70,7 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                 username: initialData.username || '',
                 email: initialData.email || '',
                 password: '', // Password is never pre-filled
+                roleId: initialData.roleId || '',
             });
         }
     }, [initialData, reset]);
@@ -134,6 +154,26 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                         }`}
                 />
                 {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Role
+                </label>
+                <select
+                    {...register('roleId')}
+                    disabled={isViewMode}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-60 ${errors.roleId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                >
+                    <option value="">Select a role</option>
+                    {roles.map((role) => (
+                        <option key={role.id} value={role.id}>
+                            {role.name}
+                        </option>
+                    ))}
+                </select>
+                {errors.roleId && <p className="mt-1 text-xs text-red-500">{errors.roleId.message}</p>}
             </div>
 
             {!isViewMode && (
