@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, json } from 'drizzle-orm/pg-core';
 
 /**
  * Users table schema
@@ -20,6 +20,7 @@ export const roles = pgTable('roles', {
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull().unique(),
     description: text('description'),
+    permissions: json('permissions'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -44,3 +45,5 @@ export type NewRole = typeof roles.$inferInsert;
 
 export type Patient = typeof patients.$inferSelect;
 export type NewPatient = typeof patients.$inferInsert;
+
+

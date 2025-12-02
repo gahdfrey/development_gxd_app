@@ -31,13 +31,14 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { username, email, firstname, lastname, password } = body;
+        const { username, email, firstname, lastname, password, roleId } = body;
 
         const updateData: any = {
             username,
             email,
             firstname,
             lastname,
+            roleId,
             updatedAt: new Date(),
         };
 

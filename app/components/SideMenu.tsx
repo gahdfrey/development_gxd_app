@@ -1,40 +1,24 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/app/contexts/SidebarContext';
 
-interface MenuItem {
-    name: string;
-    icon: React.JSX.Element;
-    href: string;
-}
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 export default function SideMenu() {
     const { isExpanded, isLocked, setIsExpanded } = useSidebar();
     const pathname = usePathname();
 
-    const menuItems: MenuItem[] = useMemo(() => [
-        {
-            name: 'Dashboard',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-            ),
-            href: '/dashboard',
-        },
-        {
-            name: 'Users',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            ),
-            href: '/users',
-        }
-    ], []);
+    const { data: user } = useSWR('/api/wai', fetcher);
+
+    const hasPermission = useCallback((resource: string, action: string) => {
+        if (!user || !user.permissions) return false;
+        const resourcePermissions = user.permissions[resource];
+        return Array.isArray(resourcePermissions) && resourcePermissions.includes(action);
+    }, [user]);
 
     const handleMouseEnter = useCallback(() => {
         if (!isLocked) {
@@ -62,35 +46,63 @@ export default function SideMenu() {
             <div className="flex flex-col h-full py-4 px-2 ">
                 {/* Menu Items */}
                 <nav className="flex-1 space-y-1">
-                    {menuItems.map((item) => {
-                        const active = isActive(item.href);
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${active
-                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
-                                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent'
+                    {/* Dashboard Link */}
+                    {hasPermission('dashboard', 'view') && (
+                        <Link
+                            href="/dashboard"
+                            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${isActive('/dashboard')
+                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
+                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent'
+                                }`}
+                            aria-current={isActive('/dashboard') ? 'page' : undefined}
+                        >
+                            <div className="shrink-0 relative p-1">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                            </div>
+                            <span
+                                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isExpanded ? 'max-w-48 opacity-100' : 'max-w-0 opacity-0'
                                     }`}
-                                aria-current={active ? 'page' : undefined}
                             >
-                                <div className="shrink-0 relative p-1">
-                                    {item.icon}
+                                Dashboard
+                            </span>
+                            {!isExpanded && (
+                                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                    Dashboard
                                 </div>
-                                <span
-                                    className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isExpanded ? 'max-w-48 opacity-100' : 'max-w-0 opacity-0'
-                                        }`}
-                                >
-                                    {item.name}
-                                </span>
-                                {!isExpanded && (
-                                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
-                                        {item.name}
-                                    </div>
-                                )}
-                            </Link>
-                        );
-                    })}
+                            )}
+                        </Link>
+                    )}
+
+                    {/* Users Link */}
+                    {hasPermission('users', 'view') && (
+                        <Link
+                            href="/users"
+                            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${isActive('/users')
+                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
+                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent'
+                                }`}
+                            aria-current={isActive('/users') ? 'page' : undefined}
+                        >
+                            <div className="shrink-0 relative p-1">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            </div>
+                            <span
+                                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isExpanded ? 'max-w-48 opacity-100' : 'max-w-0 opacity-0'
+                                    }`}
+                            >
+                                Users
+                            </span>
+                            {!isExpanded && (
+                                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                    Users
+                                </div>
+                            )}
+                        </Link>
+                    )}
                 </nav>
 
                 {/* Bottom Section */}
