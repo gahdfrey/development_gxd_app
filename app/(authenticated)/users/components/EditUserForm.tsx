@@ -3,32 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { User } from '@/lib/db/schema';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import { User } from '@/lib/db/schema';
+import { userSchema, UserFormData } from './schema';
 
-const userSchema = z.object({
-    firstname: z.string().min(1, 'First name is required'),
-    lastname: z.string().min(1, 'Last name is required'),
-    username: z.string().min(1, 'Username is required').min(3, 'Username must be at least 3 characters'),
-    email: z.string().min(1, 'Email is required').email('Invalid email address'),
-    password: z.string().optional(),
-    roleId: z.string().optional(),
-});
-
-type UserFormData = z.infer<typeof userSchema>;
-
-interface UserFormProps {
-    initialData?: Partial<User>;
+interface EditUserFormProps {
+    userId: string;
     onSubmit: (data: any) => Promise<void>;
     onCancel: () => void;
     isViewMode?: boolean;
 }
 
-export default function UserForm({ initialData, onSubmit, onCancel, isViewMode = false }: UserFormProps) {
+export default function EditUserForm({ userId, onSubmit, onCancel, isViewMode = false }: EditUserFormProps) {
     const [showPassword, setShowPassword] = useState(false);
     const {
         register,
@@ -49,27 +37,25 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
     });
 
     const { data: roles = [] } = useSWR<{ id: string; name: string }[]>('/api/roles', fetcher);
+    const { data: userData, isLoading: isUserLoading } = useSWR<User>(
+        userId ? `/api/users/${userId}` : null,
+        fetcher
+    );
 
     useEffect(() => {
-        if (initialData) {
+        if (userData) {
             reset({
-                firstname: initialData.firstname || '',
-                lastname: initialData.lastname || '',
-                username: initialData.username || '',
-                email: initialData.email || '',
+                firstname: userData.firstname || '',
+                lastname: userData.lastname || '',
+                username: userData.username || '',
+                email: userData.email || '',
                 password: '', // Password is never pre-filled
-                roleId: initialData.roleId || '',
+                roleId: userData.roleId || '',
             });
         }
-    }, [initialData, reset]);
+    }, [userData, reset]);
 
     const onFormSubmit = async (data: UserFormData) => {
-        // Password validation logic
-        if (!initialData && !data.password) {
-            setError('password', { type: 'manual', message: 'Password is required for new users' });
-            return;
-        }
-
         if (data.password && data.password.length < 8) {
             setError('password', { type: 'manual', message: 'Password must be at least 8 characters' });
             return;
@@ -78,12 +64,17 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
         try {
             await onSubmit(data);
         } catch (err: any) {
-            // Error handling is done in the parent component via toast, 
-            // but we can also set a generic form error if needed.
-            // For now, we rely on the parent's toast.
             console.error(err);
         }
     };
+
+    if (isUserLoading) {
+        return (
+            <div className="flex justify-center items-center h-48">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
@@ -167,7 +158,7 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
             {!isViewMode && (
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {initialData ? 'New Password (leave blank to keep current)' : 'Password'}
+                        New Password (leave blank to keep current)
                     </label>
                     <div className="relative">
                         <input
@@ -206,7 +197,7 @@ export default function UserForm({ initialData, onSubmit, onCancel, isViewMode =
                         disabled={isSubmitting}
                         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                     >
-                        {isSubmitting ? 'Saving...' : initialData ? 'Update User' : 'Create User'}
+                        {isSubmitting ? 'Saving...' : 'Update User'}
                     </button>
                 )}
             </div>

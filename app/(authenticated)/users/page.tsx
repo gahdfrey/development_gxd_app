@@ -8,7 +8,8 @@ import { User } from '@/lib/db/schema';
 type UserWithRole = User & { roleName: string | null };
 import Table from '@/app/components/ui/Table';
 import Modal from '@/app/components/ui/Modal';
-import UserForm from './components/UserForm';
+import CreateUserForm from './components/CreateUserForm';
+import EditUserForm from './components/EditUserForm';
 import { PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useToast } from '@/app/contexts/ToastContext';
 
@@ -175,7 +176,7 @@ export default function UsersPage() {
                 onClose={() => setIsCreateModalOpen(false)}
                 title="Create New User"
             >
-                <UserForm
+                <CreateUserForm
                     onSubmit={handleCreateUser}
                     onCancel={() => setIsCreateModalOpen(false)}
                 />
@@ -190,14 +191,16 @@ export default function UsersPage() {
                 }}
                 title="Edit User"
             >
-                <UserForm
-                    initialData={selectedUser || {}}
-                    onSubmit={handleUpdateUser}
-                    onCancel={() => {
-                        setIsEditModalOpen(false);
-                        setSelectedUser(null);
-                    }}
-                />
+                {selectedUser && (
+                    <EditUserForm
+                        userId={selectedUser.id}
+                        onSubmit={handleUpdateUser}
+                        onCancel={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedUser(null);
+                        }}
+                    />
+                )}
             </Modal>
 
             {/* View Modal */}
@@ -209,15 +212,17 @@ export default function UsersPage() {
                 }}
                 title="View User"
             >
-                <UserForm
-                    initialData={selectedUser || {}}
-                    onSubmit={async () => { }}
-                    onCancel={() => {
-                        setIsViewModalOpen(false);
-                        setSelectedUser(null);
-                    }}
-                    isViewMode={true}
-                />
+                {selectedUser && (
+                    <EditUserForm
+                        userId={selectedUser.id}
+                        onSubmit={async () => { }}
+                        onCancel={() => {
+                            setIsViewModalOpen(false);
+                            setSelectedUser(null);
+                        }}
+                        isViewMode={true}
+                    />
+                )}
             </Modal>
 
             {/* Delete Confirmation Modal */}
