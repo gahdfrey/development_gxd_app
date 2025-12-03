@@ -32,7 +32,7 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
         },
     });
 
-    const { data: roles = [] } = useSWR<{ id: string; name: string }[]>('/api/roles', fetcher);
+    const { data: roles = [] } = useSWR<{ id: number; name: string }[]>('/api/roles', fetcher);
 
     const onFormSubmit = async (data: UserFormData) => {
         if (!data.password) {
@@ -46,7 +46,11 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
         }
 
         try {
-            await onSubmit(data);
+            const formattedData = {
+                ...data,
+                roleId: data.roleId ? parseInt(data.roleId) : null,
+            };
+            await onSubmit(formattedData);
         } catch (err: any) {
             console.error(err);
         }

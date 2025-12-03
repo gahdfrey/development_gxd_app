@@ -34,7 +34,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
                 // Return user object without password
                 return {
-                    id: user.id,
+                    id: String(user.id),
                     email: user.email,
                     username: user.username,
                     firstname: user.firstname,

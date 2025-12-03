@@ -10,7 +10,8 @@ export async function GET(
 ) {
     try {
         const { id } = await params;
-        const user = await db.select().from(users).where(eq(users.id, id));
+        const userId = parseInt(id);
+        const user = await db.select().from(users).where(eq(users.id, userId));
 
         if (!user.length) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -30,6 +31,7 @@ export async function PUT(
 ) {
     try {
         const { id } = await params;
+        const userId = parseInt(id);
         const body = await request.json();
         const { username, email, firstname, lastname, password, roleId } = body;
 
@@ -49,7 +51,7 @@ export async function PUT(
         const updatedUser = await db
             .update(users)
             .set(updateData)
-            .where(eq(users.id, id))
+            .where(eq(users.id, userId))
             .returning();
 
         if (!updatedUser.length) {
@@ -70,7 +72,8 @@ export async function DELETE(
 ) {
     try {
         const { id } = await params;
-        const deletedUser = await db.delete(users).where(eq(users.id, id)).returning();
+        const userId = parseInt(id);
+        const deletedUser = await db.delete(users).where(eq(users.id, userId)).returning();
 
         if (!deletedUser.length) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });

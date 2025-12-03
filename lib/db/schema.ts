@@ -1,23 +1,23 @@
-import { pgTable, text, timestamp, uuid, json } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, json, serial, integer } from 'drizzle-orm/pg-core';
 
 /**
  * Users table schema
  * Stores user authentication and profile information
  */
 export const users = pgTable('users', {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: serial('id').primaryKey(),
     username: text('username').notNull().unique(),
     email: text('email').notNull().unique(),
     firstname: text('firstname').notNull(),
     lastname: text('lastname').notNull(),
     password: text('password').notNull(), // Hashed with bcrypt
-    roleId: uuid('role_id').references(() => roles.id),
+    roleId: integer('role_id').references(() => roles.id),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 export const roles = pgTable('roles', {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: serial('id').primaryKey(),
     name: text('name').notNull().unique(),
     description: text('description'),
     permissions: json('permissions'),
@@ -26,7 +26,7 @@ export const roles = pgTable('roles', {
 });
 
 export const patients = pgTable('patients', {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: serial('id').primaryKey(),
     firstname: text('firstname').notNull(),
     lastname: text('lastname').notNull(),
     gender: text('gender').notNull(),

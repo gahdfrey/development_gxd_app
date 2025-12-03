@@ -10,7 +10,7 @@ import { User } from '@/lib/db/schema';
 import { userSchema, UserFormData } from './schema';
 
 interface EditUserFormProps {
-    userId: string;
+    userId: number;
     onSubmit: (data: any) => Promise<void>;
     onCancel: () => void;
     isViewMode?: boolean;
@@ -36,7 +36,7 @@ export default function EditUserForm({ userId, onSubmit, onCancel, isViewMode = 
         },
     });
 
-    const { data: roles = [] } = useSWR<{ id: string; name: string }[]>('/api/roles', fetcher);
+    const { data: roles = [] } = useSWR<{ id: number; name: string }[]>('/api/roles', fetcher);
     const { data: userData, isLoading: isUserLoading } = useSWR<User>(
         userId ? `/api/users/${userId}` : null,
         fetcher
@@ -50,7 +50,7 @@ export default function EditUserForm({ userId, onSubmit, onCancel, isViewMode = 
                 username: userData.username || '',
                 email: userData.email || '',
                 password: '', // Password is never pre-filled
-                roleId: userData.roleId || '',
+                roleId: userData.roleId ? String(userData.roleId) : '',
             });
         }
     }, [userData, reset]);
@@ -62,7 +62,11 @@ export default function EditUserForm({ userId, onSubmit, onCancel, isViewMode = 
         }
 
         try {
-            await onSubmit(data);
+            const formattedData = {
+                ...data,
+                roleId: data.roleId ? parseInt(data.roleId) : null,
+            };
+            await onSubmit(formattedData);
         } catch (err: any) {
             console.error(err);
         }
