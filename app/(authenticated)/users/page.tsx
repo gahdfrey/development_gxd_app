@@ -10,6 +10,7 @@ import Table from '@/app/components/ui/Table';
 import Modal from '@/app/components/ui/Modal';
 import CreateUserForm from './components/CreateUserForm';
 import EditUserForm from './components/EditUserForm';
+import ViewUserModal from './components/ViewUserModal';
 import { PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useToast } from '@/app/contexts/ToastContext';
 
@@ -213,14 +214,12 @@ export default function UsersPage() {
                 title="View User"
             >
                 {selectedUser && (
-                    <EditUserForm
+                    <ViewUserModal
                         userId={selectedUser.id}
-                        onSubmit={async () => { }}
-                        onCancel={() => {
+                        onClose={() => {
                             setIsViewModalOpen(false);
                             setSelectedUser(null);
                         }}
-                        isViewMode={true}
                     />
                 )}
             </Modal>

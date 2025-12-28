@@ -22,6 +22,7 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
+    "libphonenumber-js": "^1.12.33",
     "next": "16.0.4",
     "next-auth": "^5.0.0-beta.30",
     "postgres": "^3.4.7",

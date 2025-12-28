@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, roles } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
@@ -11,14 +11,26 @@ export async function GET(
     try {
         const { id } = await params;
         const userId = parseInt(id);
-        const user = await db.select().from(users).where(eq(users.id, userId));
+        const user = await db.select({
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            firstname: users.firstname,
+            lastname: users.lastname,
+            roleId: users.roleId,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+            roleName: roles.name,
+        })
+            .from(users)
+            .leftJoin(roles, eq(users.roleId, roles.id))
+            .where(eq(users.id, userId));
 
         if (!user.length) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        const { password, ...safeUser } = user[0];
-        return NextResponse.json(safeUser);
+        return NextResponse.json(user[0]);
     } catch (error) {
         console.error('Error fetching user:', error);
         return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
