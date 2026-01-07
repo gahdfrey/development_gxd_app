@@ -15,6 +15,13 @@
       "when": 1764749493394,
       "tag": "0001_serious_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767773504058,
+      "tag": "0002_flowery_harpoon",
+      "breakpoints": true
     }
   ]
 }
