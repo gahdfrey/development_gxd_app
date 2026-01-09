@@ -141,9 +141,7 @@ export default function CustomSignUpForm() {
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
           Get Started
         </h1>
-        <p className="text-gray-500">
-          Create your EMS account in moments
-        </p>
+        <p className="text-gray-500">Create your EMS account in moments</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -155,9 +153,7 @@ export default function CustomSignUpForm() {
         )}
         {successMessage && (
           <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
-            <p className="text-sm text-emerald-700">
-              {successMessage}
-            </p>
+            <p className="text-sm text-emerald-700">{successMessage}</p>
           </div>
         )}
 
@@ -185,7 +181,7 @@ export default function CustomSignUpForm() {
                 errors.firstname
                   ? "border-red-500 bg-red-50"
                   : "border-gray-300"
-              }
+              }`}
               placeholder="e.g., Alex"
             />
             {errors.firstname && (
@@ -214,10 +210,8 @@ export default function CustomSignUpForm() {
               type="text"
               id="lastname"
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-                errors.lastname
-                  ? "border-red-500 bg-red-50"
-                  : "border-gray-300"
-              }
+                errors.lastname ? "border-red-500 bg-red-50" : "border-gray-300"
+              }`}
               placeholder="e.g., Rivera"
             />
             {errors.lastname && (
@@ -248,10 +242,8 @@ export default function CustomSignUpForm() {
             type="text"
             id="username"
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-              errors.username
-                ? "border-red-500 bg-red-50"
-                : "border-gray-300"
-            }
+              errors.username ? "border-red-500 bg-red-50" : "border-gray-300"
+            }`}
             placeholder="e.g., alexriv"
           />
           {errors.username && (
@@ -281,10 +273,8 @@ export default function CustomSignUpForm() {
             type="email"
             id="email"
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-              errors.email
-                ? "border-red-500 bg-red-50"
-                : "border-gray-300"
-            }
+              errors.email ? "border-red-500 bg-red-50" : "border-gray-300"
+            }`}
             placeholder="e.g., alex@company.com"
           />
           {errors.email && (
@@ -308,9 +298,7 @@ export default function CustomSignUpForm() {
             id="roleId"
             disabled={rolesLoading}
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-              errors.roleId
-                ? "border-red-500 bg-red-50"
-                : "border-gray-300"
+              errors.roleId ? "border-red-500 bg-red-50" : "border-gray-300"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <option value="">Select a role</option>
@@ -355,7 +343,7 @@ export default function CustomSignUpForm() {
                   errors.password
                     ? "border-red-500 bg-red-50"
                     : "border-gray-300"
-                }
+                }`}
                 placeholder="At least 8 characters"
               />
               <button
@@ -398,7 +386,7 @@ export default function CustomSignUpForm() {
                   errors.confirmPassword
                     ? "border-red-500 bg-red-50"
                     : "border-gray-300"
-                }
+                }`}
                 placeholder="Match password"
               />
               <button

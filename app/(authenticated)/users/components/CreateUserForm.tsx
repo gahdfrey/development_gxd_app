@@ -66,7 +66,7 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
                     <input
                         type="text"
                         {...register('firstname')}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.firstname ? 'border-red-500' : 'border-gray-300
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.firstname ? 'border-red-500' : 'border-gray-300'}
                             }`}
                     />
                     {errors.firstname && <p className="mt-1 text-xs text-red-500">{errors.firstname.message}</p>}
@@ -78,7 +78,7 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
                     <input
                         type="text"
                         {...register('lastname')}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.lastname ? 'border-red-500' : 'border-gray-300
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.lastname ? 'border-red-500' : 'border-gray-300'}
                             }`}
                     />
                     {errors.lastname && <p className="mt-1 text-xs text-red-500">{errors.lastname.message}</p>}
@@ -92,7 +92,7 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
                 <input
                     type="text"
                     {...register('username')}
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.username ? 'border-red-500' : 'border-gray-300
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.username ? 'border-red-500' : 'border-gray-300'}
                         }`}
                 />
                 {errors.username && <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>}
@@ -105,7 +105,7 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
                 <input
                     type="email"
                     {...register('email')}
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'}
                         }`}
                 />
                 {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
@@ -117,7 +117,7 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
                 </label>
                 <select
                     {...register('roleId')}
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.roleId ? 'border-red-500' : 'border-gray-300
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.roleId ? 'border-red-500' : 'border-gray-300'}
                         }`}
                 >
                     <option value="">Select a role</option>
@@ -138,7 +138,7 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
                     <input
                         type={showPassword ? 'text' : 'password'}
                         {...register('password')}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${errors.password ? 'border-red-500' : 'border-gray-300
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${errors.password ? 'border-red-500' : 'border-gray-300'}
                             }`}
                     />
                     <button
