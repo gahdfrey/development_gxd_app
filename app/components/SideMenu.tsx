@@ -15,13 +15,28 @@ export default function SideMenu() {
   const { data: user } = useSWR("/api/wai", fetcher);
 
   const hasPermission = useCallback(
-    (resource: string, action: string) => {
-      if (!user || !user.permissions) return false;
-      const resourcePermissions = user.permissions[resource];
-      return (
-        Array.isArray(resourcePermissions) &&
-        resourcePermissions.includes(action)
-      );
+    (module: string, permission: string) => {
+      if (!user || !user.permissions) return true; // Default to true if no permissions set
+      const modulePermissions = user.permissions[module];
+
+      // Handle missing module permissions - default to true
+      if (!modulePermissions) return true;
+
+      // Handle NEW structure: { "dashboard": { "view": true, "add": false } }
+      if (
+        typeof modulePermissions === "object" &&
+        !Array.isArray(modulePermissions)
+      ) {
+        return modulePermissions[permission] === true;
+      }
+
+      // Handle OLD structure: { "dashboard": ["view", "add", "edit"] }
+      if (Array.isArray(modulePermissions)) {
+        return modulePermissions.includes(permission);
+      }
+
+      // Unknown structure - default to true for safety
+      return true;
     },
     [user]
   );
@@ -98,46 +113,48 @@ export default function SideMenu() {
           )}
 
           {/* Appointments Link */}
-          <Link
-            href="/appointments"
-            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
-              isActive("/appointments")
-                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent"
-            }`}
-            aria-current={isActive("/appointments") ? "page" : undefined}
-          >
-            <div className="shrink-0 relative p-1">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-            <span
-              className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
-                isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+          {hasPermission("appointments", "view") && (
+            <Link
+              href="/appointments"
+              className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
+                isActive("/appointments")
+                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400"
+                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent"
               }`}
+              aria-current={isActive("/appointments") ? "page" : undefined}
             >
-              Appointments
-            </span>
-            {!isExpanded && (
-              <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
-                Appointments
+              <div className="shrink-0 relative p-1">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
               </div>
-            )}
-          </Link>
+              <span
+                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+                }`}
+              >
+                Appointments
+              </span>
+              {!isExpanded && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                  Appointments
+                </div>
+              )}
+            </Link>
+          )}
 
-          {/* My Appointments Link (Doctors Only) */}
-          {user?.userrole === "doctor" && (
+          {/* My Appointments Link - Permission-based only */}
+          {hasPermission("my-appointments", "view") && (
             <Link
               href="/my-appointments"
               className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
