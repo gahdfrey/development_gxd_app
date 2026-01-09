@@ -64,7 +64,7 @@ export default function SideMenu() {
     <aside
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`fixed left-0 top-24 bottom-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-r-lg border-gray-200 dark:border-gray-700 transition-all duration-400 ease-out shadow-lg  ${
+      className={`fixed left-0 top-24 bottom-0 z-40 bg-white/80 backdrop-blur-md rounded-r-lg border-gray-200 transition-all duration-400 ease-out shadow-lg  ${
         isExpanded ? "w-50" : "w-16"
       }`}
     >
@@ -77,8 +77,8 @@ export default function SideMenu() {
               href="/dashboard"
               className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
                 isActive("/dashboard")
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400"
-                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent"
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
               }`}
               aria-current={isActive("/dashboard") ? "page" : undefined}
             >
@@ -118,8 +118,8 @@ export default function SideMenu() {
               href="/appointments"
               className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
                 isActive("/appointments")
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400"
-                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent"
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
               }`}
               aria-current={isActive("/appointments") ? "page" : undefined}
             >
@@ -159,8 +159,8 @@ export default function SideMenu() {
               href="/my-appointments"
               className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
                 isActive("/my-appointments")
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400"
-                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent"
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
               }`}
               aria-current={isActive("/my-appointments") ? "page" : undefined}
             >
@@ -200,8 +200,8 @@ export default function SideMenu() {
               href="/users"
               className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
                 isActive("/users")
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400"
-                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white border-l-4 border-transparent"
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
               }`}
               aria-current={isActive("/users") ? "page" : undefined}
             >
@@ -237,13 +237,13 @@ export default function SideMenu() {
         </nav>
 
         {/* Bottom Section */}
-        <div className="pt-6 border-t border-gray-200 dark:border-gray-700 space-y-1 mt-auto">
+        <div className="pt-6 border-t border-gray-200 space-y-1 mt-auto">
           <Link
             href="/settings"
             className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
               isActive("/settings")
-                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
             }`}
             aria-label="Settings"
             aria-current={isActive("/settings") ? "page" : undefined}
@@ -284,8 +284,8 @@ export default function SideMenu() {
             href="/help"
             className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
               isActive("/help")
-                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
             }`}
             aria-label="Help"
             aria-current={isActive("/help") ? "page" : undefined}

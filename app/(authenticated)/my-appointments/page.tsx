@@ -31,7 +31,7 @@ export default function MyAppointmentsPage() {
   } = useSWR<Appointment[]>("/api/my-appointments", fetcher);
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8">
+    <main className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -40,10 +40,10 @@ export default function MyAppointmentsPage() {
               <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+              <h1 className="text-3xl font-bold text-gray-800">
                 My Appointments
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
+              <p className="text-gray-600 text-sm">
                 View and manage your scheduled patient appointments
               </p>
             </div>
@@ -52,74 +52,74 @@ export default function MyAppointmentsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-4">
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-xs uppercase font-semibold">
+                <p className="text-gray-500 text-xs uppercase font-semibold">
                   Total
                 </p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">
+                <p className="text-2xl font-bold text-gray-800 mt-1">
                   {appointments.length}
                 </p>
               </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <div className="p-3 bg-blue-100 rounded-lg">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-4">
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-xs uppercase font-semibold">
+                <p className="text-gray-500 text-xs uppercase font-semibold">
                   Scheduled
                 </p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">
+                <p className="text-2xl font-bold text-gray-800 mt-1">
                   {
                     appointments.filter((apt) => apt.status === "scheduled")
                       .length
                   }
                 </p>
               </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <div className="p-3 bg-blue-100 rounded-lg">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-4">
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-xs uppercase font-semibold">
+                <p className="text-gray-500 text-xs uppercase font-semibold">
                   Completed
                 </p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">
+                <p className="text-2xl font-bold text-gray-800 mt-1">
                   {
                     appointments.filter((apt) => apt.status === "completed")
                       .length
                   }
                 </p>
               </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <div className="p-3 bg-green-100 rounded-lg">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-4">
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-xs uppercase font-semibold">
+                <p className="text-gray-500 text-xs uppercase font-semibold">
                   No-Show
                 </p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">
+                <p className="text-2xl font-bold text-gray-800 mt-1">
                   {
                     appointments.filter((apt) => apt.status === "no-show")
                       .length
                   }
                 </p>
               </div>
-              <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+              <div className="p-3 bg-yellow-100 rounded-lg">
                 <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
               </div>
             </div>
@@ -135,8 +135,8 @@ export default function MyAppointmentsPage() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
-            <p className="text-red-700 dark:text-red-300 text-center">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+            <p className="text-red-700 text-center">
               Failed to load appointments. Please try again.
             </p>
           </div>

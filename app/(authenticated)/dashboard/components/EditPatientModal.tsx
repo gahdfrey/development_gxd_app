@@ -144,22 +144,22 @@ export default function EditPatientModal({
       onClick={handleClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 animate-scale-in"
+        className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl">
               <PencilSquareIcon className="h-6 w-6 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            <h2 className="text-2xl font-bold text-gray-800">
               Edit Patient
             </h2>
           </div>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
           >
             <XMarkIcon className="h-6 w-6 text-gray-500" />
           </button>
@@ -169,8 +169,8 @@ export default function EditPatientModal({
           {/* Success Message */}
           {successMessage && (
             <div className="mb-6 animate-fade-in">
-              <div className="bg-linear-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4">
-                <p className="text-green-700 dark:text-green-300 text-center font-medium">
+              <div className="bg-linear-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4">
+                <p className="text-green-700 text-center font-medium">
                   ✓ {successMessage}
                 </p>
               </div>
@@ -180,8 +180,8 @@ export default function EditPatientModal({
           {/* Error Message */}
           {errorMessage && (
             <div className="mb-6 animate-fade-in">
-              <div className="bg-red-50 dark:from-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4">
-                <p className="text-red-700 dark:text-red-300 text-center font-medium">
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                <p className="text-red-700 text-center font-medium">
                   ✗ {errorMessage}
                 </p>
               </div>
@@ -194,7 +194,7 @@ export default function EditPatientModal({
               <div className="space-y-2">
                 <label
                   htmlFor="firstname"
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
                 >
                   <UserIcon className="h-4 w-4" />
                   First Name *
@@ -211,13 +211,13 @@ export default function EditPatientModal({
                   id="firstname"
                   className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                     errors.firstname
-                      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                      : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 bg-gray-50"
                   }`}
                   placeholder="John"
                 />
                 {errors.firstname && (
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs text-red-600">
                     {errors.firstname.message}
                   </p>
                 )}
@@ -226,7 +226,7 @@ export default function EditPatientModal({
               <div className="space-y-2">
                 <label
                   htmlFor="lastname"
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
                 >
                   <UserIcon className="h-4 w-4" />
                   Last Name *
@@ -243,13 +243,13 @@ export default function EditPatientModal({
                   id="lastname"
                   className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                     errors.lastname
-                      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                      : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 bg-gray-50"
                   }`}
                   placeholder="Doe"
                 />
                 {errors.lastname && (
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs text-red-600">
                     {errors.lastname.message}
                   </p>
                 )}
@@ -261,7 +261,7 @@ export default function EditPatientModal({
               <div className="space-y-2">
                 <label
                   htmlFor="gender"
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
                 >
                   <HeartIcon className="h-4 w-4" />
                   Gender *
@@ -272,10 +272,10 @@ export default function EditPatientModal({
                       required: "Please select a gender",
                     })}
                     id="gender"
-                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 dark:bg-gray-700 cursor-pointer ${
+                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
                       errors.gender
-                        ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                        : "border-gray-300 dark:border-gray-600"
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300"
                     }`}
                   >
                     <option value="">Select Gender</option>
@@ -300,7 +300,7 @@ export default function EditPatientModal({
                   </div>
                 </div>
                 {errors.gender && (
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs text-red-600">
                     {errors.gender.message}
                   </p>
                 )}
@@ -309,7 +309,7 @@ export default function EditPatientModal({
               <div className="space-y-2">
                 <label
                   htmlFor="dob"
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
                 >
                   <CalendarIcon className="h-4 w-4" />
                   Date of Birth *
@@ -322,12 +322,12 @@ export default function EditPatientModal({
                   id="dob"
                   className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                     errors.dob
-                      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                      : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 bg-gray-50"
                   }`}
                 />
                 {errors.dob && (
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs text-red-600">
                     {errors.dob.message}
                   </p>
                 )}
@@ -338,7 +338,7 @@ export default function EditPatientModal({
             <div className="space-y-2">
               <label
                 htmlFor="maidenName"
-                className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700"
               >
                 <IdentificationIcon className="h-4 w-4" />
                 Maiden Name
@@ -347,7 +347,7 @@ export default function EditPatientModal({
                 {...register("maidenName")}
                 type="text"
                 id="maidenName"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 transition-all"
                 placeholder="Optional"
               />
             </div>
@@ -356,7 +356,7 @@ export default function EditPatientModal({
             <div className="space-y-2">
               <label
                 htmlFor="phone"
-                className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700"
               >
                 <PhoneIcon className="h-4 w-4" />
                 Phone Number *
@@ -368,10 +368,10 @@ export default function EditPatientModal({
                       required: "Country code is required",
                     })}
                     id="countryCode"
-                    className={`w-full px-2 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 dark:bg-gray-700 cursor-pointer ${
+                    className={`w-full px-2 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
                       errors.countryCode
-                        ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                        : "border-gray-300 dark:border-gray-600"
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300"
                     }`}
                   >
                     {COUNTRY_CODES.map((country) => (
@@ -409,15 +409,15 @@ export default function EditPatientModal({
                     id="phone"
                     className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                       errors.phone
-                        ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                        : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300 bg-gray-50"
                     }`}
                     placeholder="8012345678"
                   />
                 </div>
               </div>
               {(errors.countryCode || errors.phone) && (
-                <p className="text-xs text-red-600 dark:text-red-400">
+                <p className="text-xs text-red-600">
                   {errors.countryCode?.message || errors.phone?.message}
                 </p>
               )}
@@ -427,7 +427,7 @@ export default function EditPatientModal({
             <div className="space-y-2">
               <label
                 htmlFor="insuranceType"
-                className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700"
               >
                 <ShieldCheckIcon className="h-4 w-4" />
                 Insurance Type *
@@ -438,10 +438,10 @@ export default function EditPatientModal({
                     required: "Please select an insurance type",
                   })}
                   id="insuranceType"
-                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 dark:bg-gray-700 cursor-pointer ${
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
                     errors.insuranceType
-                      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                      : "border-gray-300 dark:border-gray-600"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
                   }`}
                 >
                   <option value="">Select Insurance Type</option>
@@ -465,7 +465,7 @@ export default function EditPatientModal({
                 </div>
               </div>
               {errors.insuranceType && (
-                <p className="text-xs text-red-600 dark:text-red-400">
+                <p className="text-xs text-red-600">
                   {errors.insuranceType.message}
                 </p>
               )}
@@ -477,7 +477,7 @@ export default function EditPatientModal({
                 type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>

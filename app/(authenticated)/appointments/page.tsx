@@ -39,7 +39,7 @@ export default function AppointmentsPage() {
   } = useSWR<Appointment[]>("/api/appointments", fetcher);
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8">
+    <main className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -49,10 +49,10 @@ export default function AppointmentsPage() {
                 <CalendarDaysIcon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+                <h1 className="text-3xl font-bold text-gray-800">
                   Appointments
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                <p className="text-gray-600 text-sm">
                   Manage patient appointments and schedules
                 </p>
               </div>
@@ -60,7 +60,7 @@ export default function AppointmentsPage() {
 
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-300"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
             >
               <PlusIcon className="h-5 w-5" />
               Create Appointment
@@ -77,8 +77,8 @@ export default function AppointmentsPage() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
-            <p className="text-red-700 dark:text-red-300 text-center">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+            <p className="text-red-700 text-center">
               Failed to load appointments. Please try again.
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function AppointmentsPage() {
                 <div className="mt-4 text-center">
                   <button
                     onClick={() => setSelectedDate(undefined)}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    className="text-sm text-blue-600 hover:underline"
                   >
                     Clear date filter
                   </button>

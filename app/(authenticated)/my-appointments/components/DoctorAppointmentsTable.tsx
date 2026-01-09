@@ -34,15 +34,15 @@ export default function DoctorAppointmentsTable({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
-        return "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700";
+        return "bg-blue-100 text-blue-800 border-blue-300";
       case "completed":
-        return "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700";
+        return "bg-green-100 text-green-800 border-green-300";
       case "cancelled":
-        return "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700";
+        return "bg-red-100 text-red-800 border-red-300";
       case "no-show":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700";
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700";
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
@@ -119,9 +119,9 @@ export default function DoctorAppointmentsTable({
 
   if (appointments.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-12">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12">
         <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400 text-lg">
+          <p className="text-gray-500 text-lg">
             No appointments scheduled
           </p>
         </div>
@@ -130,59 +130,59 @@ export default function DoctorAppointmentsTable({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Date & Time
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Patient Name
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Gender
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Notes
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="bg-white divide-y divide-gray-200">
             {appointments.map((appointment) => (
               <tr
                 key={appointment.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                className="hover:bg-gray-50 transition-colors"
               >
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <div className="text-sm font-medium text-gray-900">
                     {formatDate(appointment.appointmentDate)}
                   </div>
-                  <div className="text-sm text-blue-600 dark:text-blue-400">
+                  <div className="text-sm text-blue-600">
                     {formatTime(appointment.appointmentTime)}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <div className="text-sm font-medium text-gray-900">
                     {appointment.patient
                       ? `${appointment.patient.firstname} ${appointment.patient.lastname}`
                       : "N/A"}
                   </div>
                   {appointment.patient && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="text-xs text-gray-500">
                       DOB: {appointment.patient.dob}
                     </div>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900 dark:text-gray-100 capitalize">
+                  <span className="text-sm text-gray-900 capitalize">
                     {appointment.patient?.gender || "N/A"}
                   </span>
                 </td>
@@ -197,7 +197,7 @@ export default function DoctorAppointmentsTable({
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                  <div className="text-sm text-gray-500 max-w-xs truncate">
                     {appointment.notes || "-"}
                   </div>
                 </td>
@@ -237,11 +237,11 @@ export default function DoctorAppointmentsTable({
                       </button>
                     </div>
                   ) : appointment.status !== "scheduled" ? (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    <span className="text-xs text-gray-500 font-medium">
                       Status finalized
                     </span>
                   ) : (
-                    <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                    <span className="text-xs text-gray-400 italic">
                       Available after appointment time
                     </span>
                   )}

@@ -136,12 +136,12 @@ export default function CustomSignUpForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 md:p-8 border border-gray-200 dark:border-gray-700">
+    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-200">
       <div className="text-center mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-1">
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
           Get Started
         </h1>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-gray-500">
           Create your EMS account in moments
         </p>
       </div>
@@ -149,13 +149,13 @@ export default function CustomSignUpForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Global Messages */}
         {apiError && (
-          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
-            <p className="text-sm text-red-700 dark:text-red-300">{apiError}</p>
+          <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+            <p className="text-sm text-red-700">{apiError}</p>
           </div>
         )}
         {successMessage && (
-          <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
-            <p className="text-sm text-emerald-700 dark:text-emerald-300">
+          <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+            <p className="text-sm text-emerald-700">
               {successMessage}
             </p>
           </div>
@@ -166,7 +166,7 @@ export default function CustomSignUpForm() {
           <div>
             <label
               htmlFor="firstname"
-              className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-xs font-semibold text-gray-700 mb-1"
             >
               First Name *
             </label>
@@ -184,8 +184,8 @@ export default function CustomSignUpForm() {
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                 errors.firstname
                   ? "border-red-500 bg-red-50"
-                  : "border-gray-300 dark:border-gray-600"
-              } dark:bg-gray-800`}
+                  : "border-gray-300"
+              }
               placeholder="e.g., Alex"
             />
             {errors.firstname && (
@@ -198,7 +198,7 @@ export default function CustomSignUpForm() {
           <div>
             <label
               htmlFor="lastname"
-              className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-xs font-semibold text-gray-700 mb-1"
             >
               Last Name *
             </label>
@@ -216,8 +216,8 @@ export default function CustomSignUpForm() {
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                 errors.lastname
                   ? "border-red-500 bg-red-50"
-                  : "border-gray-300 dark:border-gray-600"
-              } dark:bg-gray-800`}
+                  : "border-gray-300"
+              }
               placeholder="e.g., Rivera"
             />
             {errors.lastname && (
@@ -232,7 +232,7 @@ export default function CustomSignUpForm() {
         <div>
           <label
             htmlFor="username"
-            className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+            className="block text-xs font-semibold text-gray-700 mb-1"
           >
             Username *
           </label>
@@ -250,8 +250,8 @@ export default function CustomSignUpForm() {
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
               errors.username
                 ? "border-red-500 bg-red-50"
-                : "border-gray-300 dark:border-gray-600"
-            } dark:bg-gray-800`}
+                : "border-gray-300"
+            }
             placeholder="e.g., alexriv"
           />
           {errors.username && (
@@ -265,7 +265,7 @@ export default function CustomSignUpForm() {
         <div>
           <label
             htmlFor="email"
-            className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+            className="block text-xs font-semibold text-gray-700 mb-1"
           >
             Email Address *
           </label>
@@ -283,8 +283,8 @@ export default function CustomSignUpForm() {
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
               errors.email
                 ? "border-red-500 bg-red-50"
-                : "border-gray-300 dark:border-gray-600"
-            } dark:bg-gray-800`}
+                : "border-gray-300"
+            }
             placeholder="e.g., alex@company.com"
           />
           {errors.email && (
@@ -296,7 +296,7 @@ export default function CustomSignUpForm() {
         <div>
           <label
             htmlFor="roleId"
-            className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+            className="block text-xs font-semibold text-gray-700 mb-1"
           >
             Role *
           </label>
@@ -310,8 +310,8 @@ export default function CustomSignUpForm() {
             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
               errors.roleId
                 ? "border-red-500 bg-red-50"
-                : "border-gray-300 dark:border-gray-600"
-            } dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed`}
+                : "border-gray-300"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <option value="">Select a role</option>
             {roles.map((role) => (
@@ -330,7 +330,7 @@ export default function CustomSignUpForm() {
           <div>
             <label
               htmlFor="password"
-              className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-xs font-semibold text-gray-700 mb-1"
             >
               Password *
             </label>
@@ -354,14 +354,14 @@ export default function CustomSignUpForm() {
                 className={`w-full px-3 py-2 pr-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                   errors.password
                     ? "border-red-500 bg-red-50"
-                    : "border-gray-300 dark:border-gray-600"
-                } dark:bg-gray-800`}
+                    : "border-gray-300"
+                }
                 placeholder="At least 8 characters"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
               >
                 {showPassword ? (
                   <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
@@ -380,7 +380,7 @@ export default function CustomSignUpForm() {
           <div>
             <label
               htmlFor="confirmPassword"
-              className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-xs font-semibold text-gray-700 mb-1"
             >
               Confirm Password *
             </label>
@@ -397,14 +397,14 @@ export default function CustomSignUpForm() {
                 className={`w-full px-3 py-2 pr-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                   errors.confirmPassword
                     ? "border-red-500 bg-red-50"
-                    : "border-gray-300 dark:border-gray-600"
-                } dark:bg-gray-800`}
+                    : "border-gray-300"
+                }
                 placeholder="Match password"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
               >
                 {showConfirmPassword ? (
                   <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
@@ -423,26 +423,26 @@ export default function CustomSignUpForm() {
 
         {/* Terms Checkbox */}
         <div>
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-400 select-none">
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 select-none">
             <input
               {...register("termsAccepted", {
                 required: "You must accept the Terms and Conditions to proceed",
               })}
               type="checkbox"
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700"
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
             <span>
               I accept the{" "}
               <a
                 href="#"
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
               >
                 Terms of Service
               </a>{" "}
               and{" "}
               <a
                 href="#"
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
               >
                 Privacy Policy
               </a>
@@ -493,11 +493,11 @@ export default function CustomSignUpForm() {
         </button>
 
         {/* Footer Link */}
-        <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-center text-xs text-gray-500">
           Already registered?{" "}
           <a
             href="/login"
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold transition-colors"
+            className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
           >
             Log in here
           </a>

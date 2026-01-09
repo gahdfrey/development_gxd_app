@@ -42,7 +42,7 @@ export default function SearchableSelect({
 
   return (
     <div className="space-y-2">
-      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
         {Icon && <Icon className="h-4 w-4" />}
         {label}
       </label>
@@ -51,12 +51,12 @@ export default function SearchableSelect({
           <div
             className={`relative w-full cursor-default overflow-hidden rounded-xl border text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all ${
               error
-                ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                ? "border-red-500 bg-red-50"
+                : "border-gray-300 bg-gray-50"
             }`}
           >
             <Combobox.Input
-              className="w-full border-none py-3 pl-4 pr-10 text-sm leading-5 text-gray-900 dark:text-gray-100 bg-transparent focus:ring-0 focus:outline-none"
+              className="w-full border-none py-3 pl-4 pr-10 text-sm leading-5 text-gray-900 bg-transparent focus:ring-0 focus:outline-none"
               displayValue={(option: SearchableSelectOption | null) =>
                 option?.label || ""
               }
@@ -77,9 +77,9 @@ export default function SearchableSelect({
             leaveTo="opacity-0"
             afterLeave={() => setQuery("")}
           >
-            <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
+            <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
               {filteredOptions.length === 0 && query !== "" ? (
-                <div className="relative cursor-default select-none px-4 py-2 text-gray-700 dark:text-gray-300">
+                <div className="relative cursor-default select-none px-4 py-2 text-gray-700">
                   No results found.
                 </div>
               ) : (
@@ -90,7 +90,7 @@ export default function SearchableSelect({
                       `relative cursor-pointer select-none py-2 pl-10 pr-4 ${
                         active
                           ? "bg-blue-600 text-white"
-                          : "text-gray-900 dark:text-gray-100"
+                          : "text-gray-900"
                       }`
                     }
                     value={option}
@@ -110,7 +110,7 @@ export default function SearchableSelect({
                               className={`text-xs ${
                                 active
                                   ? "text-blue-200"
-                                  : "text-gray-500 dark:text-gray-400"
+                                  : "text-gray-500"
                               }`}
                             >
                               {option.sublabel}
@@ -136,7 +136,7 @@ export default function SearchableSelect({
         </div>
       </Combobox>
       {error && (
-        <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
     </div>
   );

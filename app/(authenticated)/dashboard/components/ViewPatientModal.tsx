@@ -44,14 +44,14 @@ export default function ViewPatientModal({
     value: string;
     icon: any;
   }) => (
-    <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600">
+    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
       <div className="flex items-center gap-2 mb-2">
-        <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+        <Icon className="h-4 w-4 text-blue-600" />
+        <p className="text-xs font-semibold text-gray-500 uppercase">
           {label}
         </p>
       </div>
-      <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+      <p className="text-base font-semibold text-gray-900">
         {value}
       </p>
     </div>
@@ -63,27 +63,27 @@ export default function ViewPatientModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 animate-scale-in"
+        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl">
               <UserIcon className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+              <h2 className="text-2xl font-bold text-gray-800">
                 {patient.firstname} {patient.lastname}
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500">
                 Patient ID: #{String(patient.id).padStart(4, "0")}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <XMarkIcon className="h-6 w-6 text-gray-500" />
           </button>
@@ -93,7 +93,7 @@ export default function ViewPatientModal({
         <div className="p-6 space-y-4">
           {/* Personal Information Section */}
           <div>
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">
+            <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
               Personal Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -136,7 +136,7 @@ export default function ViewPatientModal({
 
           {/* Contact Information Section */}
           <div>
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">
+            <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
               Contact Information
             </h3>
             <div className="grid grid-cols-1 gap-4">
@@ -150,7 +150,7 @@ export default function ViewPatientModal({
 
           {/* Insurance Information Section */}
           <div>
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">
+            <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
               Insurance Information
             </h3>
             <div className="grid grid-cols-1 gap-4">
@@ -163,8 +163,8 @@ export default function ViewPatientModal({
           </div>
 
           {/* Metadata */}
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+          <div className="pt-4 border-t border-gray-200">
+            <div className="flex justify-between text-xs text-gray-500">
               <span>
                 Created: {new Date(patient.createdAt).toLocaleDateString()}
               </span>
@@ -176,7 +176,7 @@ export default function ViewPatientModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-t border-gray-200">
           <button
             onClick={onClose}
             className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all"

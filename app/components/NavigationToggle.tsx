@@ -9,7 +9,7 @@ export const NavigationToggle = ({ isExpanded, onToggle }: NavigationToggleProps
     return (
         <button
             onClick={onToggle}
-            className='flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors'
+            className='flex items-center justify-center rounded-lg bg-gray-100 p-2 text-gray-600 hover:bg-gray-200 transition-colors'
             aria-label='Toggle Navigation'
             title={isExpanded ? 'Collapse menu' : 'Expand menu'}
         >

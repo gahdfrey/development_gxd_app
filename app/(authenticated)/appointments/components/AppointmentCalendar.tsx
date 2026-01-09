@@ -124,27 +124,27 @@ export default function AppointmentCalendar({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">
+        <h3 className="text-lg font-bold text-gray-800 mb-2">
           Appointment Calendar
         </h3>
         <div className="flex flex-wrap gap-3 text-xs">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-blue-500"></div>
-            <span className="text-gray-600 dark:text-gray-400">Scheduled</span>
+            <span className="text-gray-600">Scheduled</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-green-500"></div>
-            <span className="text-gray-600 dark:text-gray-400">Completed</span>
+            <span className="text-gray-600">Completed</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-red-500"></div>
-            <span className="text-gray-600 dark:text-gray-400">Cancelled</span>
+            <span className="text-gray-600">Cancelled</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-yellow-500"></div>
-            <span className="text-gray-600 dark:text-gray-400">No-Show</span>
+            <span className="text-gray-600">No-Show</span>
           </div>
         </div>
       </div>

@@ -178,9 +178,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Dashboard
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
@@ -254,7 +252,7 @@ export default function DashboardPage() {
         title="Delete Patient"
       >
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-gray-600">
             Are you sure you want to delete patient{" "}
             <strong>
               {selectedPatient?.firstname} {selectedPatient?.lastname}
@@ -267,7 +265,7 @@ export default function DashboardPage() {
                 setIsDeleteModalOpen(false);
                 setSelectedPatient(null);
               }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Cancel
             </button>

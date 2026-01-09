@@ -82,9 +82,9 @@ export default function AppointmentList({
 
   if (sortedAppointments.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
         <div className="text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500">
             {selectedDate
               ? `No appointments for ${format(selectedDate, "MMM d, yyyy")}`
               : "No appointments today"}
@@ -95,8 +95,8 @@ export default function AppointmentList({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4">
-      <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4">
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4">
+      <h3 className="text-base font-bold text-gray-800 mb-4">
         {selectedDate
           ? `${format(selectedDate, "MMM d, yyyy")}`
           : "Today's Appointments"}
@@ -106,7 +106,7 @@ export default function AppointmentList({
         {sortedAppointments.map((appointment) => (
           <div
             key={appointment.id}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-md transition-shadow bg-white dark:bg-gray-900"
+            className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow bg-white"
           >
             {/* Status Badge - Full Width at Top */}
             <div className="mb-2">
@@ -122,20 +122,20 @@ export default function AppointmentList({
 
             {/* Date and Time */}
             <div className="mb-2">
-              <div className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+              <div className="text-xs font-semibold text-gray-800">
                 {formatDate(appointment.appointmentDate)}
               </div>
-              <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+              <div className="text-sm font-medium text-blue-600">
                 {formatTime(appointment.appointmentTime)}
               </div>
             </div>
 
             {/* Patient Info */}
             <div className="mb-2">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-gray-500">
                 Patient:
               </div>
-              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+              <div className="text-sm font-medium text-gray-800 truncate">
                 {appointment.patient
                   ? `${appointment.patient.firstname} ${appointment.patient.lastname}`
                   : "N/A"}
@@ -144,10 +144,10 @@ export default function AppointmentList({
 
             {/* Doctor Info */}
             <div className="mb-2">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-gray-500">
                 Doctor:
               </div>
-              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+              <div className="text-sm font-medium text-gray-800 truncate">
                 {appointment.doctor
                   ? `Dr. ${appointment.doctor.firstname} ${appointment.doctor.lastname}`
                   : "N/A"}
@@ -156,11 +156,11 @@ export default function AppointmentList({
 
             {/* Notes */}
             {appointment.notes && (
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <div className="pt-2 border-t border-gray-100">
+                <div className="text-xs text-gray-500 mb-1">
                   Notes:
                 </div>
-                <div className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
+                <div className="text-xs text-gray-700 line-clamp-2">
                   {appointment.notes}
                 </div>
               </div>

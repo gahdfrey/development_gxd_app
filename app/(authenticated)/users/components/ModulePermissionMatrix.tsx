@@ -90,34 +90,34 @@ export default function ModulePermissionMatrix({
 
   return (
     <div className="mt-6">
-      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+      <label className="block text-sm font-semibold text-gray-700 mb-3">
         Module Permissions
       </label>
-      <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+      <div className="border border-gray-300 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Module
                 </th>
                 {PERMISSIONS.map((perm) => (
                   <th
                     key={perm.key}
-                    className="px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider"
+                    className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider"
                   >
                     {perm.label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white divide-y divide-gray-200">
               {MODULES.map((module) => (
                 <tr
                   key={module.key}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="hover:bg-gray-50 transition-colors"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {module.label}
                   </td>
                   {PERMISSIONS.map((perm) => (
@@ -143,7 +143,7 @@ export default function ModulePermissionMatrix({
           </table>
         </div>
       </div>
-      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+      <p className="mt-2 text-xs text-gray-500">
         By default, all modules have "View" permission enabled. Uncheck to
         restrict access.
       </p>

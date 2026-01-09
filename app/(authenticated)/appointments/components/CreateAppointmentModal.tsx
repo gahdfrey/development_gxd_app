@@ -187,22 +187,22 @@ export default function CreateAppointmentModal({
       onClick={handleClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 animate-scale-in"
+        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl">
               <CalendarIcon className="h-6 w-6 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            <h2 className="text-2xl font-bold text-gray-800">
               Create Appointment
             </h2>
           </div>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
           >
             <XMarkIcon className="h-6 w-6 text-gray-500" />
           </button>
@@ -212,8 +212,8 @@ export default function CreateAppointmentModal({
           {/* Success Message */}
           {successMessage && (
             <div className="mb-6 animate-fade-in">
-              <div className="bg-linear-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4">
-                <p className="text-green-700 dark:text-green-300 text-center font-medium">
+              <div className="bg-linear-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4">
+                <p className="text-green-700 text-center font-medium">
                   ✓ {successMessage}
                 </p>
               </div>
@@ -223,8 +223,8 @@ export default function CreateAppointmentModal({
           {/* Error Message */}
           {errorMessage && (
             <div className="mb-6 animate-fade-in">
-              <div className="bg-red-50 border border-red-200 dark:border-red-800 rounded-2xl p-4">
-                <p className="text-red-700 dark:text-red-300 text-center font-medium">
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                <p className="text-red-700 text-center font-medium">
                   ✗ {errorMessage}
                 </p>
               </div>
@@ -273,7 +273,7 @@ export default function CreateAppointmentModal({
               <div className="space-y-2">
                 <label
                   htmlFor="appointmentDate"
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
                 >
                   <CalendarIcon className="h-4 w-4" />
                   Appointment Date *
@@ -287,12 +287,12 @@ export default function CreateAppointmentModal({
                   min={today}
                   className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                     errors.appointmentDate
-                      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                      : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 bg-gray-50"
                   }`}
                 />
                 {errors.appointmentDate && (
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs text-red-600">
                     {errors.appointmentDate.message}
                   </p>
                 )}
@@ -301,7 +301,7 @@ export default function CreateAppointmentModal({
               <div className="space-y-2">
                 <label
                   htmlFor="appointmentTime"
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
                 >
                   <ClockIcon className="h-4 w-4" />
                   Appointment Time *
@@ -312,10 +312,10 @@ export default function CreateAppointmentModal({
                       required: "Time is required",
                     })}
                     id="appointmentTime"
-                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 dark:bg-gray-700 cursor-pointer ${
+                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
                       errors.appointmentTime
-                        ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                        : "border-gray-300 dark:border-gray-600"
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300"
                     }`}
                   >
                     <option value="">Select Time</option>
@@ -342,7 +342,7 @@ export default function CreateAppointmentModal({
                   </div>
                 </div>
                 {errors.appointmentTime && (
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs text-red-600">
                     {errors.appointmentTime.message}
                   </p>
                 )}
@@ -353,7 +353,7 @@ export default function CreateAppointmentModal({
             <div className="space-y-2">
               <label
                 htmlFor="status"
-                className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700"
               >
                 <CheckCircleIcon className="h-4 w-4" />
                 Status *
@@ -364,10 +364,10 @@ export default function CreateAppointmentModal({
                     required: "Status is required",
                   })}
                   id="status"
-                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 dark:bg-gray-700 cursor-pointer ${
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
                     errors.status
-                      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                      : "border-gray-300 dark:border-gray-600"
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
                   }`}
                 >
                   <option value="scheduled">Scheduled</option>
@@ -397,7 +397,7 @@ export default function CreateAppointmentModal({
             <div className="space-y-2">
               <label
                 htmlFor="notes"
-                className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700"
               >
                 <DocumentTextIcon className="h-4 w-4" />
                 Notes (Optional)
@@ -406,7 +406,7 @@ export default function CreateAppointmentModal({
                 {...register("notes")}
                 id="notes"
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 transition-all resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 transition-all resize-none"
                 placeholder="Add any additional notes..."
               />
             </div>
@@ -417,7 +417,7 @@ export default function CreateAppointmentModal({
                 type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>

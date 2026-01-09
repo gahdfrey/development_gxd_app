@@ -168,7 +168,7 @@ export default function UsersPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-gray-900">
           Users
         </h1>
         <button
@@ -251,7 +251,7 @@ export default function UsersPage() {
         title="Delete User"
       >
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-gray-600">
             Are you sure you want to delete user{" "}
             <strong>{selectedUser?.username}</strong>? This action cannot be
             undone.
@@ -262,7 +262,7 @@ export default function UsersPage() {
                 setIsDeleteModalOpen(false);
                 setSelectedUser(null);
               }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Cancel
             </button>

@@ -114,16 +114,16 @@ export default function EditUserForm({
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             First Name
           </label>
           <input
             type="text"
             {...register("firstname")}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
               errors.firstname
                 ? "border-red-500"
-                : "border-gray-300 dark:border-gray-600"
+                : "border-gray-300"
             }`}
           />
           {errors.firstname && (
@@ -133,16 +133,16 @@ export default function EditUserForm({
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Last Name
           </label>
           <input
             type="text"
             {...register("lastname")}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
               errors.lastname
                 ? "border-red-500"
-                : "border-gray-300 dark:border-gray-600"
+                : "border-gray-300"
             }`}
           />
           {errors.lastname && (
@@ -154,16 +154,16 @@ export default function EditUserForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Username
         </label>
         <input
           type="text"
           {...register("username")}
-          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
+          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
             errors.username
               ? "border-red-500"
-              : "border-gray-300 dark:border-gray-600"
+              : "border-gray-300"
           }`}
         />
         {errors.username && (
@@ -172,16 +172,16 @@ export default function EditUserForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Email
         </label>
         <input
           type="email"
           {...register("email")}
-          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
+          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
             errors.email
               ? "border-red-500"
-              : "border-gray-300 dark:border-gray-600"
+              : "border-gray-300"
           }`}
         />
         {errors.email && (
@@ -190,7 +190,7 @@ export default function EditUserForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Role
         </label>
         <select
@@ -199,10 +199,10 @@ export default function EditUserForm({
             const value = e.target.value;
             setSelectedRoleId(value);
           }}
-          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
+          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
             errors.roleId
               ? "border-red-500"
-              : "border-gray-300 dark:border-gray-600"
+              : "border-gray-300"
           }`}
         >
           <option value="">Select a role</option>
@@ -226,23 +226,23 @@ export default function EditUserForm({
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           New Password (leave blank to keep current)
         </label>
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
             {...register("password")}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white pr-10 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${
               errors.password
                 ? "border-red-500"
-                : "border-gray-300 dark:border-gray-600"
+                : "border-gray-300"
             }`}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
           >
             {showPassword ? (
               <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
@@ -260,7 +260,7 @@ export default function EditUserForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           Cancel
         </button>
