@@ -1,0 +1,144 @@
+/* React Big Calendar Custom Styles */
+
+.rbc-calendar {
+  font-family: inherit;
+  height: 600px;
+}
+
+.rbc-header {
+  padding: 12px 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #6b7280;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.dark .rbc-header {
+  color: #9ca3af;
+  border-bottom-color: #374151;
+}
+
+.rbc-today {
+  background-color: #eff6ff;
+}
+
+.dark .rbc-today {
+  background-color: #1e3a8a;
+}
+
+.rbc-off-range-bg {
+  background-color: #f9fafb;
+}
+
+.dark .rbc-off-range-bg {
+  background-color: #111827;
+}
+
+.rbc-date-cell {
+  padding: 8px;
+  text-align: right;
+}
+
+.rbc-button-link {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.dark .rbc-button-link {
+  color: #f3f4f6;
+}
+
+.rbc-event {
+  padding: 2px 5px;
+  font-size: 0.875rem;
+}
+
+.rbc-event-label {
+  font-size: 0.75rem;
+}
+
+.rbc-toolbar {
+  padding: 12px 0;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rbc-toolbar button {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  color: #374151;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dark .rbc-toolbar button {
+  background-color: #1f2937;
+  color: #f3f4f6;
+  border-color: #374151;
+}
+
+.rbc-toolbar button:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.dark .rbc-toolbar button:hover {
+  background-color: #374151;
+  border-color: #6b7280;
+}
+
+.rbc-toolbar button.rbc-active {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.dark .rbc-toolbar button.rbc-active {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.rbc-month-view,
+.rbc-time-view {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.dark .rbc-month-view,
+.dark .rbc-time-view {
+  border-color: #374151;
+}
+
+.rbc-day-bg,
+.rbc-time-slot {
+  border-color: #e5e7eb;
+}
+
+.dark .rbc-day-bg,
+.dark .rbc-time-slot {
+  border-color: #374151;
+}
+
+.rbc-time-content {
+  border-top: 1px solid #e5e7eb;
+}
+
+.dark .rbc-time-content {
+  border-top-color: #374151;
+}
+
+.rbc-selected-cell {
+  background-color: #dbeafe;
+}
+
+.dark .rbc-selected-cell {
+  background-color: #1e40af;
+}

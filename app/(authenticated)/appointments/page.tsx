@@ -86,9 +86,9 @@ export default function AppointmentsPage() {
 
         {/* Content */}
         {!isLoading && !error && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
             {/* Calendar Section */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-7">
               <AppointmentCalendar
                 appointments={appointments}
                 selectedDate={selectedDate}
@@ -108,7 +108,7 @@ export default function AppointmentsPage() {
             </div>
 
             {/* Appointments List Section */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <AppointmentList
                 appointments={appointments}
                 selectedDate={selectedDate}

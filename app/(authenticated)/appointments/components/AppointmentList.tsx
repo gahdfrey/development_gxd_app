@@ -31,12 +31,13 @@ export default function AppointmentList({
   appointments,
   selectedDate,
 }: AppointmentListProps) {
-  // Filter appointments by selected date if provided
+  // Filter appointments by selected date if provided, otherwise show today's appointments
+  const today = format(new Date(), "yyyy-MM-dd");
   const filteredAppointments = selectedDate
     ? appointments.filter(
         (apt) => apt.appointmentDate === format(selectedDate, "yyyy-MM-dd")
       )
-    : appointments;
+    : appointments.filter((apt) => apt.appointmentDate === today);
 
   // Sort by date and time
   const sortedAppointments = [...filteredAppointments].sort((a, b) => {
@@ -48,15 +49,15 @@ export default function AppointmentList({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
-        return "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700";
+        return "bg-blue-500 text-white";
       case "completed":
-        return "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700";
+        return "bg-green-500 text-white";
       case "cancelled":
-        return "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700";
+        return "bg-red-500 text-white";
       case "no-show":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700";
+        return "bg-yellow-500 text-white";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700";
+        return "bg-gray-500 text-white";
     }
   };
 
@@ -73,7 +74,7 @@ export default function AppointmentList({
 
   const formatDate = (dateStr: string) => {
     try {
-      return format(new Date(dateStr), "MMMM d, yyyy");
+      return format(new Date(dateStr), "MMM d, yyyy");
     } catch {
       return dateStr;
     }
@@ -81,15 +82,12 @@ export default function AppointmentList({
 
   if (sortedAppointments.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
         <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {selectedDate
-              ? `No appointments scheduled for ${format(
-                  selectedDate,
-                  "MMMM d, yyyy"
-                )}`
-              : "No appointments scheduled"}
+              ? `No appointments for ${format(selectedDate, "MMM d, yyyy")}`
+              : "No appointments today"}
           </p>
         </div>
       </div>
@@ -97,78 +95,76 @@ export default function AppointmentList({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-      <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4">
+      <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-4">
         {selectedDate
-          ? `Appointments for ${format(selectedDate, "MMMM d, yyyy")}`
-          : "All Appointments"}
+          ? `${format(selectedDate, "MMM d, yyyy")}`
+          : "Today's Appointments"}
       </h3>
 
-      <div className="space-y-3">
+      <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
         {sortedAppointments.map((appointment) => (
           <div
             key={appointment.id}
-            className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow"
+            className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-md transition-shadow bg-white dark:bg-gray-900"
           >
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-semibold text-gray-800 dark:text-gray-100">
-                    {formatDate(appointment.appointmentDate)}
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400">•</span>
-                  <span className="font-medium text-blue-600 dark:text-blue-400">
-                    {formatTime(appointment.appointmentTime)}
-                  </span>
-                </div>
+            {/* Status Badge - Full Width at Top */}
+            <div className="mb-2">
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${getStatusColor(
+                  appointment.status
+                )}`}
+              >
+                {appointment.status.charAt(0).toUpperCase() +
+                  appointment.status.slice(1)}
+              </span>
+            </div>
 
-                <div className="space-y-1 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500 dark:text-gray-400">
-                      Patient:
-                    </span>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {appointment.patient
-                        ? `${appointment.patient.firstname} ${appointment.patient.lastname}`
-                        : "N/A"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500 dark:text-gray-400">
-                      Doctor:
-                    </span>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {appointment.doctor
-                        ? `Dr. ${appointment.doctor.firstname} ${appointment.doctor.lastname}`
-                        : "N/A"}
-                    </span>
-                  </div>
-
-                  {appointment.notes && (
-                    <div className="flex items-start gap-2 mt-2">
-                      <span className="text-gray-500 dark:text-gray-400">
-                        Notes:
-                      </span>
-                      <span className="text-gray-700 dark:text-gray-300">
-                        {appointment.notes}
-                      </span>
-                    </div>
-                  )}
-                </div>
+            {/* Date and Time */}
+            <div className="mb-2">
+              <div className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                {formatDate(appointment.appointmentDate)}
               </div>
-
-              <div>
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                    appointment.status
-                  )}`}
-                >
-                  {appointment.status.charAt(0).toUpperCase() +
-                    appointment.status.slice(1)}
-                </span>
+              <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                {formatTime(appointment.appointmentTime)}
               </div>
             </div>
+
+            {/* Patient Info */}
+            <div className="mb-2">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Patient:
+              </div>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                {appointment.patient
+                  ? `${appointment.patient.firstname} ${appointment.patient.lastname}`
+                  : "N/A"}
+              </div>
+            </div>
+
+            {/* Doctor Info */}
+            <div className="mb-2">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Doctor:
+              </div>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                {appointment.doctor
+                  ? `Dr. ${appointment.doctor.firstname} ${appointment.doctor.lastname}`
+                  : "N/A"}
+              </div>
+            </div>
+
+            {/* Notes */}
+            {appointment.notes && (
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Notes:
+                </div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
+                  {appointment.notes}
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
