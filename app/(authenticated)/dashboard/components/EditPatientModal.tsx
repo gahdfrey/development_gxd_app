@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { mutate } from "swr";
 import { COUNTRY_CODES } from "@/lib/constants/countryCodes";
 import {
-  UserPlusIcon,
+  PencilSquareIcon,
   UserIcon,
   CalendarIcon,
   IdentificationIcon,
@@ -26,17 +26,31 @@ interface PatientFormData {
   insuranceType: string;
 }
 
-interface CreatePatientModalProps {
+interface Patient {
+  id: number;
+  firstname: string;
+  lastname: string;
+  gender: string;
+  dob: string;
+  maidenName: string;
+  countryCode: string;
+  phone: string;
+  insuranceType: string;
+}
+
+interface EditPatientModalProps {
   isOpen: boolean;
   onClose: () => void;
+  patient: Patient | null;
   onSuccess?: () => void;
 }
 
-export default function CreatePatientModal({
+export default function EditPatientModal({
   isOpen,
   onClose,
+  patient,
   onSuccess,
-}: CreatePatientModalProps) {
+}: EditPatientModalProps) {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,14 +74,32 @@ export default function CreatePatientModal({
     mode: "onChange",
   });
 
+  // Update form values when patient changes
+  useEffect(() => {
+    if (patient) {
+      reset({
+        firstname: patient.firstname,
+        lastname: patient.lastname,
+        gender: patient.gender,
+        dob: patient.dob.split("T")[0], // Convert to YYYY-MM-DD format
+        maidenName: patient.maidenName,
+        countryCode: patient.countryCode,
+        phone: patient.phone,
+        insuranceType: patient.insuranceType,
+      });
+    }
+  }, [patient, reset]);
+
   const onSubmit = async (data: PatientFormData) => {
+    if (!patient) return;
+
     setIsSubmitting(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
-      const response = await fetch("/api/patients", {
-        method: "POST",
+      const response = await fetch(`/api/patients/${patient.id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
@@ -76,12 +108,11 @@ export default function CreatePatientModal({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create patient");
+        throw new Error(errorData.error || "Failed to update patient");
       }
 
       await mutate("/api/patients");
-      setSuccessMessage("Patient created successfully!");
-      reset();
+      setSuccessMessage("Patient updated successfully!");
 
       setTimeout(() => {
         setSuccessMessage("");
@@ -90,7 +121,7 @@ export default function CreatePatientModal({
       }, 1500);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Failed to create patient"
+        error instanceof Error ? error.message : "Failed to update patient"
       );
     } finally {
       setIsSubmitting(false);
@@ -99,14 +130,13 @@ export default function CreatePatientModal({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      reset();
       setSuccessMessage("");
       setErrorMessage("");
       onClose();
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !patient) return null;
 
   return (
     <div
@@ -120,10 +150,10 @@ export default function CreatePatientModal({
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl">
-              <UserPlusIcon className="h-6 w-6 text-white" />
+              <PencilSquareIcon className="h-6 w-6 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              Create New Patient
+              Edit Patient
             </h2>
           </div>
           <button
@@ -479,12 +509,12 @@ export default function CreatePatientModal({
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         ></path>
                       </svg>
-                      Creating...
+                      Updating...
                     </>
                   ) : (
                     <>
-                      <UserPlusIcon className="h-5 w-5" />
-                      Create Patient
+                      <PencilSquareIcon className="h-5 w-5" />
+                      Update Patient
                     </>
                   )}
                 </span>

@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import useSWR from "swr";
+import { useState, useEffect, useMemo } from "react";
+import { createColumnHelper } from "@tanstack/react-table";
+import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
+import Table from "@/app/components/ui/Table";
+import Modal from "@/app/components/ui/Modal";
 import CreatePatientModal from "./components/CreatePatientModal";
-import PatientTable from "./components/PatientTable";
+import EditPatientModal from "./components/EditPatientModal";
 import ViewPatientModal from "./components/ViewPatientModal";
-import { UserPlusIcon } from "@heroicons/react/24/outline";
+import {
+  PencilSquareIcon,
+  TrashIcon,
+  EyeIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
+import { useToast } from "@/app/contexts/ToastContext";
 
 interface Patient {
   id: number;
@@ -23,49 +32,254 @@ interface Patient {
 }
 
 export default function DashboardPage() {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-
   const {
     data: patients = [],
-    isLoading,
     error,
+    isLoading,
   } = useSWR<Patient[]>("/api/patients", fetcher);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const { showToast } = useToast();
+
+  const handleCreatePatient = async (data: any) => {
+    const response = await fetch("/api/patients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      showToast(error.error || "Failed to create patient", "error");
+      throw new Error(error.error || "Failed to create patient");
+    }
+
+    mutate("/api/patients");
+    setIsCreateModalOpen(false);
+    showToast("Patient created successfully", "success");
+  };
+
+  const handleUpdatePatient = async (data: any) => {
+    if (!selectedPatient) return;
+
+    const response = await fetch(`/api/patients/${selectedPatient.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      showToast(error.error || "Failed to update patient", "error");
+      throw new Error(error.error || "Failed to update patient");
+    }
+
+    mutate("/api/patients");
+    setIsEditModalOpen(false);
+    setSelectedPatient(null);
+    showToast("Patient updated successfully", "success");
+  };
+
+  const handleDeletePatient = async () => {
+    if (!selectedPatient) return;
+
+    const response = await fetch(`/api/patients/${selectedPatient.id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      console.error("Failed to delete patient");
+      showToast("Failed to delete patient", "error");
+      return;
+    }
+
+    mutate("/api/patients");
+    setIsDeleteModalOpen(false);
+    setSelectedPatient(null);
+    showToast("Patient deleted successfully", "success");
+  };
+
+  const columnHelper = createColumnHelper<Patient>();
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("firstname", {
+        header: "First Name",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.accessor("lastname", {
+        header: "Last Name",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.accessor("gender", {
+        header: "Gender",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.accessor("dob", {
+        header: "Date of Birth",
+        cell: (info) => new Date(info.getValue()).toLocaleDateString(),
+      }),
+      columnHelper.accessor("phone", {
+        header: "Phone",
+        cell: (info) => {
+          const patient = info.row.original;
+          return `${patient.countryCode} ${info.getValue()}`;
+        },
+      }),
+      columnHelper.accessor("insuranceType", {
+        header: "Insurance",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: (props) => (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setSelectedPatient(props.row.original);
+                setIsViewModalOpen(true);
+              }}
+              className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+              title="View"
+            >
+              <EyeIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setSelectedPatient(props.row.original);
+                setIsEditModalOpen(true);
+              }}
+              className="p-1 text-yellow-600 hover:text-yellow-800 transition-colors"
+              title="Edit"
+            >
+              <PencilSquareIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setSelectedPatient(props.row.original);
+                setIsDeleteModalOpen(true);
+              }}
+              className="p-1 text-red-600 hover:text-red-800 transition-colors"
+              title="Delete"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          </div>
+        ),
+      }),
+    ],
+    []
+  );
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto flex flex-col gap-4">
-        {/* Header */}
-        <div className="flex justify-end w-full">
-          {/* Create Patient Button */}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex  gap-2 px-6 py-3 bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-300"
-          >
-            <UserPlusIcon className="h-5 w-5" />
-            Create New Patient
-          </button>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Dashboard
+        </h1>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+        >
+          <PlusIcon className="w-5 h-5" />
+          Create Patient
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
+      ) : (
+        <Table data={patients} columns={columns} />
+      )}
 
-        {/* Patient Table */}
-        <PatientTable
-          patients={patients}
-          isLoading={isLoading}
-          error={error}
-          onViewDetails={setSelectedPatient}
-        />
-
-        {/* Modals */}
+      {/* Create Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create New Patient"
+      >
         <CreatePatientModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
         />
+      </Modal>
 
-        <ViewPatientModal
-          patient={selectedPatient}
-          onClose={() => setSelectedPatient(null)}
-        />
-      </div>
-    </main>
+      {/* Edit Modal */}
+      <EditPatientModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedPatient(null);
+        }}
+        patient={selectedPatient}
+        onSuccess={() => {
+          setIsEditModalOpen(false);
+          setSelectedPatient(null);
+        }}
+      />
+
+      {/* View Modal */}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setSelectedPatient(null);
+        }}
+        title="View Patient"
+      >
+        {selectedPatient && (
+          <ViewPatientModal
+            patient={selectedPatient}
+            onClose={() => {
+              setIsViewModalOpen(false);
+              setSelectedPatient(null);
+            }}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedPatient(null);
+        }}
+        title="Delete Patient"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-300">
+            Are you sure you want to delete patient{" "}
+            <strong>
+              {selectedPatient?.firstname} {selectedPatient?.lastname}
+            </strong>
+            ? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setSelectedPatient(null);
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeletePatient}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 }
