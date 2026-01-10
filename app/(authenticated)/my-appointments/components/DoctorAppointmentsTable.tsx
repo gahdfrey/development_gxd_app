@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { mutate } from "swr";
 import { format } from "date-fns";
+import { createColumnHelper } from "@tanstack/react-table";
+import Table from "@/app/components/ui/Table";
 
 interface Patient {
   id: number;
@@ -117,140 +119,140 @@ export default function DoctorAppointmentsTable({
     }
   };
 
+  const columnHelper = createColumnHelper<Appointment>();
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("appointmentDate", {
+        header: "Date & Time",
+        cell: (info) => {
+          const appointment = info.row.original;
+          return (
+            <div>
+              <div className="text-sm font-medium text-gray-900">
+                {formatDate(appointment.appointmentDate)}
+              </div>
+              <div className="text-sm text-blue-600">
+                {formatTime(appointment.appointmentTime)}
+              </div>
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("patient", {
+        header: "Patient Name",
+        cell: (info) => {
+          const patient = info.getValue();
+          return (
+            <div>
+              <div className="text-sm font-medium text-gray-900">
+                {patient ? `${patient.firstname} ${patient.lastname}` : "N/A"}
+              </div>
+              {patient && (
+                <div className="text-xs text-gray-500">DOB: {patient.dob}</div>
+              )}
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("patient.gender", {
+        header: "Gender",
+        cell: (info) => (
+          <span className="text-sm text-gray-900 capitalize">
+            {info.getValue() || "N/A"}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("status", {
+        header: "Status",
+        cell: (info) => {
+          const status = info.getValue();
+          return (
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(
+                status
+              )}`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>
+          );
+        },
+      }),
+      columnHelper.accessor("notes", {
+        header: "Notes",
+        cell: (info) => (
+          <div className="text-sm text-gray-500 max-w-xs truncate">
+            {info.getValue() || "-"}
+          </div>
+        ),
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: (props) => {
+          const appointment = props.row.original;
+          return (
+            <div>
+              {appointment.status === "scheduled" &&
+              hasAppointmentTimePassed(
+                appointment.appointmentDate,
+                appointment.appointmentTime
+              ) ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      handleStatusUpdate(appointment.id, "completed")
+                    }
+                    disabled={updatingId === appointment.id}
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+                  >
+                    {updatingId === appointment.id ? "..." : "Complete"}
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleStatusUpdate(appointment.id, "no-show")
+                    }
+                    disabled={updatingId === appointment.id}
+                    className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+                  >
+                    {updatingId === appointment.id ? "..." : "No-Show"}
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleStatusUpdate(appointment.id, "cancelled")
+                    }
+                    disabled={updatingId === appointment.id}
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+                  >
+                    {updatingId === appointment.id ? "..." : "Cancel"}
+                  </button>
+                </div>
+              ) : appointment.status !== "scheduled" ? (
+                <span className="text-xs text-gray-500 font-medium">
+                  Status finalized
+                </span>
+              ) : (
+                <span className="text-xs text-gray-400 italic">
+                  Available after appointment time
+                </span>
+              )}
+            </div>
+          );
+        },
+      }),
+    ],
+    [updatingId]
+  );
+
   if (appointments.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12">
         <div className="text-center">
-          <p className="text-gray-500 text-lg">
-            No appointments scheduled
-          </p>
+          <p className="text-gray-500 text-lg">No appointments scheduled</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Date & Time
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Patient Name
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Gender
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Notes
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {appointments.map((appointment) => (
-              <tr
-                key={appointment.id}
-                className="hover:bg-gray-50 transition-colors"
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {formatDate(appointment.appointmentDate)}
-                  </div>
-                  <div className="text-sm text-blue-600">
-                    {formatTime(appointment.appointmentTime)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {appointment.patient
-                      ? `${appointment.patient.firstname} ${appointment.patient.lastname}`
-                      : "N/A"}
-                  </div>
-                  {appointment.patient && (
-                    <div className="text-xs text-gray-500">
-                      DOB: {appointment.patient.dob}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900 capitalize">
-                    {appointment.patient?.gender || "N/A"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(
-                      appointment.status
-                    )}`}
-                  >
-                    {appointment.status.charAt(0).toUpperCase() +
-                      appointment.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-500 max-w-xs truncate">
-                    {appointment.notes || "-"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {appointment.status === "scheduled" &&
-                  hasAppointmentTimePassed(
-                    appointment.appointmentDate,
-                    appointment.appointmentTime
-                  ) ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          handleStatusUpdate(appointment.id, "completed")
-                        }
-                        disabled={updatingId === appointment.id}
-                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
-                      >
-                        {updatingId === appointment.id ? "..." : "Complete"}
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleStatusUpdate(appointment.id, "no-show")
-                        }
-                        disabled={updatingId === appointment.id}
-                        className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
-                      >
-                        {updatingId === appointment.id ? "..." : "No-Show"}
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleStatusUpdate(appointment.id, "cancelled")
-                        }
-                        disabled={updatingId === appointment.id}
-                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
-                      >
-                        {updatingId === appointment.id ? "..." : "Cancel"}
-                      </button>
-                    </div>
-                  ) : appointment.status !== "scheduled" ? (
-                    <span className="text-xs text-gray-500 font-medium">
-                      Status finalized
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-400 italic">
-                      Available after appointment time
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+  return <Table data={appointments} columns={columns} />;
 }
