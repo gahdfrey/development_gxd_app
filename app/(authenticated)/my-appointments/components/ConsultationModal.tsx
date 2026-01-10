@@ -39,6 +39,7 @@ export default function ConsultationModal({
   const [doctorNotes, setDoctorNotes] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDxGptModalOpen, setIsDxGptModalOpen] = useState(false);
   const startTimeRef = useRef<Date | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -115,92 +116,139 @@ export default function ConsultationModal({
   if (!appointment.patient) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Consultation in Progress"
-      size="large"
-    >
-      <div className="space-y-6">
-        {/* Timer and Patient Info Row */}
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex-1 bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Patient Information
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Name</p>
-                <p className="text-base font-medium text-gray-900">
-                  {appointment.patient.firstname} {appointment.patient.lastname}
-                </p>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Consultation in Progress"
+        size="large"
+      >
+        <div className="space-y-6">
+          {/* Timer and Patient Info Row */}
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1 bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Patient Information
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Name</p>
+                  <p className="text-base font-medium text-gray-900">
+                    {appointment.patient.firstname}{" "}
+                    {appointment.patient.lastname}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Gender</p>
+                  <p className="text-base font-medium text-gray-900 capitalize">
+                    {appointment.patient.gender}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Date of Birth</p>
+                  <p className="text-base font-medium text-gray-900">
+                    {appointment.patient.dob}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Phone</p>
+                  <p className="text-base font-medium text-gray-900">
+                    {appointment.patient.countryCode}{" "}
+                    {appointment.patient.phone}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Gender</p>
-                <p className="text-base font-medium text-gray-900 capitalize">
-                  {appointment.patient.gender}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Date of Birth</p>
-                <p className="text-base font-medium text-gray-900">
-                  {appointment.patient.dob}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Phone</p>
-                <p className="text-base font-medium text-gray-900">
-                  {appointment.patient.countryCode} {appointment.patient.phone}
-                </p>
-              </div>
+            </div>
+
+            {/* Timer */}
+            <div className="text-right">
+              <p className="text-xs text-gray-500 mb-1">Duration</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {formatTime(elapsedSeconds)}
+              </p>
             </div>
           </div>
 
-          {/* Timer */}
-          <div className="text-right">
-            <p className="text-xs text-gray-500 mb-1">Duration</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {formatTime(elapsedSeconds)}
+          {/* AI Medical Assistant */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">
+              AI Medical Assistant
+            </h3>
+            <div className="flex gap-3">
+              {/* <button
+                onClick={() => window.open("https://dxgpt.app/", "_blank")}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Open DxGPT in New Tab
+              </button> */}
+              <button
+                onClick={() => setIsDxGptModalOpen(true)}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Open AI Medical Assistant
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-gray-500 italic">
+              <strong>Disclaimer:</strong> This AI assistant is provided for
+              informational purposes only. The attending physician retains
+              ultimate clinical authority and responsibility for all diagnoses,
+              treatment decisions, and patient care determinations.
             </p>
           </div>
-        </div>
 
-        {/* Doctor's Notes */}
-        <div>
-          <label
-            htmlFor="doctorNotes"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Doctor's Notes
-          </label>
-          <textarea
-            id="doctorNotes"
-            value={doctorNotes}
-            onChange={(e) => setDoctorNotes(e.target.value)}
-            rows={8}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            placeholder="Enter consultation notes, diagnosis, prescriptions, recommendations, etc."
+          {/* Doctor's Notes */}
+          <div>
+            <label
+              htmlFor="doctorNotes"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Doctor's Notes
+            </label>
+            <textarea
+              id="doctorNotes"
+              value={doctorNotes}
+              onChange={(e) => setDoctorNotes(e.target.value)}
+              rows={8}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              placeholder="Enter consultation notes, diagnosis, prescriptions, recommendations, etc."
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEndConsultation}
+              disabled={isSubmitting}
+              className="px-6 py-2.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "Saving..." : "End Consultation"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* DxGPT Embedded Modal */}
+      <Modal
+        isOpen={isDxGptModalOpen}
+        onClose={() => setIsDxGptModalOpen(false)}
+        title="DxGPT - AI Medical Assistant"
+        size="large"
+      >
+        <div className="h-[600px]">
+          <iframe
+            src="https://dxgpt.app/"
+            className="w-full h-full border-0 rounded-lg"
+            title="DxGPT Medical Assistant"
           />
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleEndConsultation}
-            disabled={isSubmitting}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Saving..." : "End Consultation"}
-          </button>
-        </div>
-      </div>
-    </Modal>
+      </Modal>
+    </>
   );
 }
