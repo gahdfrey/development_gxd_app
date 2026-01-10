@@ -5,6 +5,7 @@ import { mutate } from "swr";
 import { format } from "date-fns";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
+import ConsultationModal from "./ConsultationModal";
 
 interface Patient {
   id: number;
@@ -13,6 +14,7 @@ interface Patient {
   gender: string;
   dob: string;
   phone: string;
+  countryCode: string;
 }
 
 interface Appointment {
@@ -32,6 +34,10 @@ export default function DoctorAppointmentsTable({
   appointments,
 }: DoctorAppointmentsTableProps) {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
+  const [activeConsultation, setActiveConsultation] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -198,21 +204,25 @@ export default function DoctorAppointmentsTable({
                 appointment.appointmentDate,
                 appointment.appointmentTime
               ) ? (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
-                    onClick={() =>
-                      handleStatusUpdate(appointment.id, "completed")
-                    }
-                    disabled={updatingId === appointment.id}
+                    onClick={() => {
+                      setSelectedAppointment(appointment);
+                      setIsConsultationModalOpen(true);
+                      setActiveConsultation(true);
+                    }}
+                    disabled={activeConsultation}
                     className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
                   >
-                    {updatingId === appointment.id ? "..." : "Complete"}
+                    Start Consultation
                   </button>
                   <button
                     onClick={() =>
                       handleStatusUpdate(appointment.id, "no-show")
                     }
-                    disabled={updatingId === appointment.id}
+                    disabled={
+                      updatingId === appointment.id || activeConsultation
+                    }
                     className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
                   >
                     {updatingId === appointment.id ? "..." : "No-Show"}
@@ -221,7 +231,9 @@ export default function DoctorAppointmentsTable({
                     onClick={() =>
                       handleStatusUpdate(appointment.id, "cancelled")
                     }
-                    disabled={updatingId === appointment.id}
+                    disabled={
+                      updatingId === appointment.id || activeConsultation
+                    }
                     className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white text-xs font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
                   >
                     {updatingId === appointment.id ? "..." : "Cancel"}
@@ -254,5 +266,21 @@ export default function DoctorAppointmentsTable({
     );
   }
 
-  return <Table data={appointments} columns={columns} />;
+  return (
+    <>
+      <Table data={appointments} columns={columns} />
+
+      {selectedAppointment && (
+        <ConsultationModal
+          isOpen={isConsultationModalOpen}
+          onClose={() => {
+            setIsConsultationModalOpen(false);
+            setSelectedAppointment(null);
+            setActiveConsultation(false);
+          }}
+          appointment={selectedAppointment}
+        />
+      )}
+    </>
+  );
 }

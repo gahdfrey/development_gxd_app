@@ -12,6 +12,7 @@ interface Patient {
   gender: string;
   dob: string;
   phone: string;
+  countryCode: string;
 }
 
 interface Appointment {

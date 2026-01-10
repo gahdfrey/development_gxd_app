@@ -9,6 +9,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  size?: "default" | "large";
 }
 
 export default function Modal({
@@ -16,7 +17,9 @@ export default function Modal({
   onClose,
   title,
   children,
+  size = "default",
 }: ModalProps) {
+  const maxWidthClass = size === "large" ? "max-w-5xl" : "max-w-3xl";
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -43,7 +46,9 @@ export default function Modal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel
+                className={`w-full ${maxWidthClass} transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all`}
+              >
                 <div className="flex justify-between items-center mb-4">
                   <Dialog.Title
                     as="h3"

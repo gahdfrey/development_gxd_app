@@ -66,6 +66,29 @@ export const appointments = pgTable("appointments", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+/**
+ * Visits table schema
+ * Stores consultation records with duration and doctor notes
+ */
+export const visits = pgTable("visits", {
+  id: serial("id").primaryKey(),
+  appointmentId: integer("appointment_id")
+    .notNull()
+    .references(() => appointments.id),
+  patientId: integer("patient_id")
+    .notNull()
+    .references(() => patients.id),
+  doctorId: integer("doctor_id")
+    .notNull()
+    .references(() => users.id),
+  doctorNotes: text("doctor_notes"),
+  durationMinutes: integer("duration_minutes").notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Type inference for TypeScript
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -78,6 +101,9 @@ export type NewPatient = typeof patients.$inferInsert;
 
 export type Appointment = typeof appointments.$inferSelect;
 export type NewAppointment = typeof appointments.$inferInsert;
+
+export type Visit = typeof visits.$inferSelect;
+export type NewVisit = typeof visits.$inferInsert;
 
 // User with role name joined
 export type UserWithRole = User & { roleName: string | null };
