@@ -122,67 +122,46 @@ export default function ConsultationModal({
       size="large"
     >
       <div className="space-y-6">
-        {/* Timer in top right corner */}
-        <div className="absolute top-6 right-6">
+        {/* Timer and Patient Info Row */}
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1 bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Patient Information
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Name</p>
+                <p className="text-base font-medium text-gray-900">
+                  {appointment.patient.firstname} {appointment.patient.lastname}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Gender</p>
+                <p className="text-base font-medium text-gray-900 capitalize">
+                  {appointment.patient.gender}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Date of Birth</p>
+                <p className="text-base font-medium text-gray-900">
+                  {appointment.patient.dob}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Phone</p>
+                <p className="text-base font-medium text-gray-900">
+                  {appointment.patient.countryCode} {appointment.patient.phone}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Timer */}
           <div className="text-right">
             <p className="text-xs text-gray-500 mb-1">Duration</p>
             <p className="text-2xl font-bold text-blue-600">
               {formatTime(elapsedSeconds)}
             </p>
-          </div>
-        </div>
-
-        {/* Patient Information */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            Patient Information
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Name</p>
-              <p className="text-base font-medium text-gray-900">
-                {appointment.patient.firstname} {appointment.patient.lastname}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Gender</p>
-              <p className="text-base font-medium text-gray-900 capitalize">
-                {appointment.patient.gender}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Date of Birth</p>
-              <p className="text-base font-medium text-gray-900">
-                {appointment.patient.dob}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Phone</p>
-              <p className="text-base font-medium text-gray-900">
-                {appointment.patient.countryCode} {appointment.patient.phone}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Appointment Details */}
-        <div className="bg-blue-50 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            Appointment Details
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Date</p>
-              <p className="text-base font-medium text-gray-900">
-                {appointment.appointmentDate}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Time</p>
-              <p className="text-base font-medium text-gray-900">
-                {appointment.appointmentTime}
-              </p>
-            </div>
           </div>
         </div>
 

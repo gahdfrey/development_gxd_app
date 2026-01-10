@@ -1,25 +1,33 @@
 import "dotenv/config";
 import { db } from "./index";
 import { users, patients, appointments } from "./schema";
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 
 async function createTestAppointments() {
   try {
     console.log("Finding Shawn Murphy...");
 
-    // Find Shawn Murphy (doctor)
-    const [doctor] = await db
+    // Find Shawn Murphy (try different username patterns)
+    let doctor = await db
       .select()
       .from(users)
-      .where(eq(users.username, "smurphy"));
+      .where(like(users.firstname, "Shawn"))
+      .limit(1);
 
-    if (!doctor) {
-      console.error("Shawn Murphy not found!");
+    if (doctor.length === 0) {
+      // If Shawn Murphy not found, get first doctor
+      console.log("Shawn Murphy not found, getting first available doctor...");
+      doctor = await db.select().from(users).limit(1);
+    }
+
+    if (doctor.length === 0) {
+      console.error("No users found in database!");
       process.exit(1);
     }
 
+    const selectedDoctor = doctor[0];
     console.log(
-      `Found doctor: ${doctor.firstname} ${doctor.lastname} (ID: ${doctor.id})`
+      `Using doctor: ${selectedDoctor.firstname} ${selectedDoctor.lastname} (ID: ${selectedDoctor.id})`
     );
 
     // Get some patients
@@ -48,19 +56,25 @@ async function createTestAppointments() {
     ) {
       await db.insert(appointments).values({
         patientId: allPatients[i].id,
-        doctorId: doctor.id,
+        doctorId: selectedDoctor.id,
         appointmentDate: dateStr,
         appointmentTime: appointmentTimes[i],
         status: "scheduled",
-        notes: `Test appointment ${i + 1}`,
+        notes: `Test appointment at ${appointmentTimes[i]}`,
       });
 
       console.log(
-        `Created appointment at ${appointmentTimes[i]} for patient ${allPatients[i].firstname} ${allPatients[i].lastname}`
+        `✅ Created appointment at ${appointmentTimes[i]} for patient ${allPatients[i].firstname} ${allPatients[i].lastname}`
       );
     }
 
-    console.log("\n✅ Test appointments created successfully!");
+    console.log(
+      `\n✅ Successfully created ${appointmentTimes.length} test appointments for today (${dateStr})!`
+    );
+    console.log(
+      `   Doctor: ${selectedDoctor.firstname} ${selectedDoctor.lastname}`
+    );
+    console.log(`   Times: 9:30 AM - 10:30 AM (every 15 minutes)`);
     process.exit(0);
   } catch (error) {
     console.error("Error creating test appointments:", error);
