@@ -152,9 +152,7 @@ export default function EditPatientModal({
             <div className="p-3 bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl">
               <PencilSquareIcon className="h-6 w-6 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800">
-              Edit Patient
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800">Edit Patient</h2>
           </div>
           <button
             onClick={handleClose}
@@ -327,9 +325,7 @@ export default function EditPatientModal({
                   }`}
                 />
                 {errors.dob && (
-                  <p className="text-xs text-red-600">
-                    {errors.dob.message}
-                  </p>
+                  <p className="text-xs text-red-600">{errors.dob.message}</p>
                 )}
               </div>
             </div>

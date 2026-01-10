@@ -56,7 +56,26 @@ export default function LoginForm() {
         showToast("Invalid email or password. Please try again.", "error");
       } else {
         showToast("Login successful! Redirecting...", "success");
-        router.push("/dashboard");
+
+        // Fetch user permissions to determine redirect route
+        try {
+          const response = await fetch("/api/wai");
+          if (response.ok) {
+            const userData = await response.json();
+            const { getDefaultRoute } = await import(
+              "@/lib/utils/getDefaultRoute"
+            );
+            const defaultRoute = getDefaultRoute(userData.permissions);
+            router.push(defaultRoute);
+          } else {
+            // Fallback to dashboard if we can't fetch permissions
+            router.push("/dashboard");
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          router.push("/dashboard");
+        }
+
         router.refresh();
       }
     } catch (error) {

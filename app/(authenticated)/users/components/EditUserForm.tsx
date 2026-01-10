@@ -8,7 +8,6 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { User } from "@/lib/db/schema";
 import { userSchema, UserFormData } from "./schema";
-import ModulePermissionMatrix from "./ModulePermissionMatrix";
 
 interface EditUserFormProps {
   userId: number;
@@ -22,8 +21,6 @@ export default function EditUserForm({
   onCancel,
 }: EditUserFormProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
-  const [rolePermissions, setRolePermissions] = useState<any>({});
   const {
     register,
     handleSubmit,
@@ -42,9 +39,11 @@ export default function EditUserForm({
     },
   });
 
-  const { data: roles = [] } = useSWR<
-    { id: number; name: string; permissions?: any }[]
-  >("/api/roles", fetcher);
+  const { data: roles = [] } = useSWR<{ id: number; name: string }[]>(
+    "/api/roles",
+    fetcher
+  );
+
   const { data: userData, isLoading: isUserLoading } = useSWR<User>(
     userId ? `/api/users/${userId}` : null,
     fetcher
@@ -60,26 +59,8 @@ export default function EditUserForm({
         password: "", // Password is never pre-filled
         roleId: userData.roleId ? String(userData.roleId) : "",
       });
-      setSelectedRoleId(userData.roleId ? String(userData.roleId) : "");
     }
-
-    // Cleanup function to reset state when component unmounts (modal closes)
-    return () => {
-      setRolePermissions({});
-      setSelectedRoleId("");
-    };
   }, [userData, reset]);
-
-  // Fetch role permissions when role is selected
-  useEffect(() => {
-    if (selectedRoleId && roles.length > 0) {
-      const selectedRole = roles.find((r) => r.id === parseInt(selectedRoleId));
-      if (selectedRole && selectedRole.permissions) {
-        // Create a new object to ensure React detects the change
-        setRolePermissions({ ...selectedRole.permissions });
-      }
-    }
-  }, [selectedRoleId, roles]);
 
   const onFormSubmit = async (data: UserFormData) => {
     if (data.password && data.password.length < 8) {
@@ -94,7 +75,6 @@ export default function EditUserForm({
       const formattedData = {
         ...data,
         roleId: data.roleId ? parseInt(data.roleId) : null,
-        permissions: rolePermissions, // Include permissions
       };
       await onSubmit(formattedData);
     } catch (err: any) {
@@ -121,9 +101,7 @@ export default function EditUserForm({
             type="text"
             {...register("firstname")}
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-              errors.firstname
-                ? "border-red-500"
-                : "border-gray-300"
+              errors.firstname ? "border-red-500" : "border-gray-300"
             }`}
           />
           {errors.firstname && (
@@ -140,9 +118,7 @@ export default function EditUserForm({
             type="text"
             {...register("lastname")}
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-              errors.lastname
-                ? "border-red-500"
-                : "border-gray-300"
+              errors.lastname ? "border-red-500" : "border-gray-300"
             }`}
           />
           {errors.lastname && (
@@ -161,9 +137,7 @@ export default function EditUserForm({
           type="text"
           {...register("username")}
           className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-            errors.username
-              ? "border-red-500"
-              : "border-gray-300"
+            errors.username ? "border-red-500" : "border-gray-300"
           }`}
         />
         {errors.username && (
@@ -179,9 +153,7 @@ export default function EditUserForm({
           type="email"
           {...register("email")}
           className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-            errors.email
-              ? "border-red-500"
-              : "border-gray-300"
+            errors.email ? "border-red-500" : "border-gray-300"
           }`}
         />
         {errors.email && (
@@ -195,14 +167,8 @@ export default function EditUserForm({
         </label>
         <select
           {...register("roleId")}
-          onChange={(e) => {
-            const value = e.target.value;
-            setSelectedRoleId(value);
-          }}
           className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-            errors.roleId
-              ? "border-red-500"
-              : "border-gray-300"
+            errors.roleId ? "border-red-500" : "border-gray-300"
           }`}
         >
           <option value="">Select a role</option>
@@ -217,14 +183,6 @@ export default function EditUserForm({
         )}
       </div>
 
-      {/* Module Permission Matrix */}
-      {selectedRoleId && (
-        <ModulePermissionMatrix
-          permissions={rolePermissions}
-          onChange={setRolePermissions}
-        />
-      )}
-
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           New Password (leave blank to keep current)
@@ -234,9 +192,7 @@ export default function EditUserForm({
             type={showPassword ? "text" : "password"}
             {...register("password")}
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${
-              errors.password
-                ? "border-red-500"
-                : "border-gray-300"
+              errors.password ? "border-red-500" : "border-gray-300"
             }`}
           />
           <button

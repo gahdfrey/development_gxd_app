@@ -1,42 +1,35 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { User } from "@/lib/db/schema";
-
-// Extend User type to include roleName from API response
-type UserWithRole = User & { roleName: string | null };
+import useSWR, { mutate } from "swr";
+import { fetcher } from "@/lib/fetcher";
 import Table from "@/app/components/ui/Table";
 import Modal from "@/app/components/ui/Modal";
-import CreateUserForm from "./components/CreateUserForm";
-import EditUserForm from "./components/EditUserForm";
-import ViewUserModal from "./components/ViewUserModal";
+import CreateRoleForm from "./components/CreateRoleForm";
+import EditRoleForm from "./components/EditRoleForm";
 import {
   PencilSquareIcon,
   TrashIcon,
-  EyeIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "@/app/contexts/ToastContext";
+import { Role } from "@/lib/db/schema";
 
-import useSWR, { mutate } from "swr";
-import { fetcher } from "@/lib/fetcher";
-
-export default function UsersPage() {
+export default function RolesPage() {
   const {
-    data: users = [],
+    data: roles = [],
     error,
     isLoading,
-  } = useSWR<UserWithRole[]>("/api/users", fetcher);
+  } = useSWR<Role[]>("/api/roles", fetcher);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const { showToast } = useToast();
 
-  const handleCreateUser = async (data: any) => {
-    const response = await fetch("/api/users", {
+  const handleCreateRole = async (data: any) => {
+    const response = await fetch("/api/roles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -44,81 +37,69 @@ export default function UsersPage() {
 
     if (!response.ok) {
       const error = await response.json();
-      showToast(error.error || "Failed to create user", "error");
-      throw new Error(error.error || "Failed to create user");
+      showToast(error.error || "Failed to create role", "error");
+      throw new Error(error.error || "Failed to create role");
     }
 
-    mutate("/api/users");
+    mutate("/api/roles");
     setIsCreateModalOpen(false);
-    showToast("User created successfully", "success");
+    showToast("Role created successfully", "success");
   };
 
-  const handleUpdateUser = async (data: any) => {
-    if (!selectedUser) return;
+  const handleUpdateRole = async (data: any) => {
+    if (!selectedRole) return;
 
-    const response = await fetch(`/api/users/${selectedUser.id}`, {
-      method: "PUT",
+    const response = await fetch(`/api/roles/${selectedRole.id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      showToast(error.error || "Failed to update user", "error");
-      throw new Error(error.error || "Failed to update user");
+      showToast(error.error || "Failed to update role", "error");
+      throw new Error(error.error || "Failed to update role");
     }
 
-    // Refresh all relevant data
-    await mutate("/api/users");
-    await mutate("/api/roles"); // Refresh roles to get updated permissions
-    await mutate("/api/wai"); // Refresh current user session to update sidebar
+    // Refresh everything
+    await mutate("/api/roles");
+    await mutate(`/api/roles/${selectedRole.id}`); // Invalidate specific role cache
+    await mutate("/api/wai"); // Refresh session/sidebar permissions
 
     setIsEditModalOpen(false);
-    setSelectedUser(null);
-    showToast("User updated successfully", "success");
+    setSelectedRole(null);
+    showToast("Role updated successfully", "success");
   };
 
-  const handleDeleteUser = async () => {
-    if (!selectedUser) return;
+  const handleDeleteRole = async () => {
+    if (!selectedRole) return;
 
-    const response = await fetch(`/api/users/${selectedUser.id}`, {
+    const response = await fetch(`/api/roles/${selectedRole.id}`, {
       method: "DELETE",
     });
 
     if (!response.ok) {
-      console.error("Failed to delete user");
-      showToast("Failed to delete user", "error");
+      const error = await response.json();
+      showToast(error.error || "Failed to delete role", "error");
       return;
     }
 
-    mutate("/api/users");
+    mutate("/api/roles");
     setIsDeleteModalOpen(false);
-    setSelectedUser(null);
-    showToast("User deleted successfully", "success");
+    setSelectedRole(null);
+    showToast("Role deleted successfully", "success");
   };
 
-  const columnHelper = createColumnHelper<UserWithRole>();
+  const columnHelper = createColumnHelper<Role>();
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("firstname", {
-        header: "First Name",
+      columnHelper.accessor("name", {
+        header: "Role Name",
         cell: (info) => info.getValue(),
       }),
-      columnHelper.accessor("lastname", {
-        header: "Last Name",
-        cell: (info) => info.getValue(),
-      }),
-      columnHelper.accessor("username", {
-        header: "Username",
-        cell: (info) => info.getValue(),
-      }),
-      columnHelper.accessor("email", {
-        header: "Email",
-        cell: (info) => info.getValue(),
-      }),
-      columnHelper.accessor("roleName", {
-        header: "Role",
+      columnHelper.accessor("description", {
+        header: "Description",
         cell: (info) => info.getValue() || "N/A",
       }),
       columnHelper.accessor("createdAt", {
@@ -135,33 +116,21 @@ export default function UsersPage() {
           <div className="flex gap-2">
             <button
               onClick={() => {
-                setSelectedUser(props.row.original);
-                setIsViewModalOpen(true);
-              }}
-              className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-              title="View"
-            >
-              <EyeIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={async () => {
-                setSelectedUser(props.row.original);
-                // Force immediate revalidation of roles to get fresh permissions
-                await mutate("/api/roles", undefined, { revalidate: true });
+                setSelectedRole(props.row.original);
                 setIsEditModalOpen(true);
               }}
               className="p-1 text-yellow-600 hover:text-yellow-800 transition-colors"
-              title="Edit"
+              title="Edit Permissions"
             >
               <PencilSquareIcon className="w-5 h-5" />
             </button>
             <button
               onClick={() => {
-                setSelectedUser(props.row.original);
+                setSelectedRole(props.row.original);
                 setIsDeleteModalOpen(true);
               }}
               className="p-1 text-red-600 hover:text-red-800 transition-colors"
-              title="Delete"
+              title="Delete Role"
             >
               <TrashIcon className="w-5 h-5" />
             </button>
@@ -175,13 +144,18 @@ export default function UsersPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Roles</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage users roles and permissions
+          </p>
+        </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
         >
           <PlusIcon className="w-5 h-5" />
-          Create User
+          Create Role
         </button>
       </div>
 
@@ -190,17 +164,17 @@ export default function UsersPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       ) : (
-        <Table data={users} columns={columns} />
+        <Table data={roles} columns={columns} />
       )}
 
       {/* Create Modal */}
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create New User"
+        title="Create New Role"
       >
-        <CreateUserForm
-          onSubmit={handleCreateUser}
+        <CreateRoleForm
+          onSubmit={handleCreateRole}
           onCancel={() => setIsCreateModalOpen(false)}
         />
       </Modal>
@@ -210,37 +184,18 @@ export default function UsersPage() {
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false);
-          setSelectedUser(null);
+          setSelectedRole(null);
         }}
-        title="Edit User"
+        title="Edit Role & Permissions"
       >
-        {selectedUser && (
-          <EditUserForm
-            userId={selectedUser.id}
-            onSubmit={handleUpdateUser}
+        {selectedRole && (
+          <EditRoleForm
+            roleId={selectedRole.id}
+            initialData={selectedRole}
+            onSubmit={handleUpdateRole}
             onCancel={() => {
               setIsEditModalOpen(false);
-              setSelectedUser(null);
-            }}
-          />
-        )}
-      </Modal>
-
-      {/* View Modal */}
-      <Modal
-        isOpen={isViewModalOpen}
-        onClose={() => {
-          setIsViewModalOpen(false);
-          setSelectedUser(null);
-        }}
-        title="View User"
-      >
-        {selectedUser && (
-          <ViewUserModal
-            userId={selectedUser.id}
-            onClose={() => {
-              setIsViewModalOpen(false);
-              setSelectedUser(null);
+              setSelectedRole(null);
             }}
           />
         )}
@@ -251,28 +206,27 @@ export default function UsersPage() {
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false);
-          setSelectedUser(null);
+          setSelectedRole(null);
         }}
-        title="Delete User"
+        title="Delete Role"
       >
         <div className="space-y-4">
           <p className="text-gray-600">
-            Are you sure you want to delete user{" "}
-            <strong>{selectedUser?.username}</strong>? This action cannot be
-            undone.
+            Are you sure you want to delete role{" "}
+            <strong>{selectedRole?.name}</strong>? This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
             <button
               onClick={() => {
                 setIsDeleteModalOpen(false);
-                setSelectedUser(null);
+                setSelectedRole(null);
               }}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Cancel
             </button>
             <button
-              onClick={handleDeleteUser}
+              onClick={handleDeleteRole}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
               Delete
