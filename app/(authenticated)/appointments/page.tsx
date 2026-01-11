@@ -95,7 +95,7 @@ export default function AppointmentsPage() {
                 onDateSelect={setSelectedDate}
               />
 
-              {selectedDate && (
+              {/* {selectedDate && (
                 <div className="mt-4 text-center">
                   <button
                     onClick={() => setSelectedDate(undefined)}
@@ -104,11 +104,22 @@ export default function AppointmentsPage() {
                     Clear date filter
                   </button>
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* Appointments List Section */}
             <div className="lg:col-span-3">
+              {selectedDate && (
+                <div className="mt-4 text-center flex w-full justify-end">
+                  <button
+                    onClick={() => setSelectedDate(undefined)}
+                    // className="text-sm text-blue-600 hover:underline"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm mb-2"
+                  >
+                    Clear date filter
+                  </button>
+                </div>
+              )}
               <AppointmentList
                 appointments={appointments}
                 selectedDate={selectedDate}
