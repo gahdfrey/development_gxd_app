@@ -52,7 +52,7 @@ export default function MyAppointmentsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -122,6 +122,25 @@ export default function MyAppointmentsPage() {
               </div>
               <div className="p-3 bg-yellow-100 rounded-lg">
                 <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-xs uppercase font-semibold">
+                  Cancelled
+                </p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">
+                  {
+                    appointments.filter((apt) => apt.status === "cancelled")
+                      .length
+                  }
+                </p>
+              </div>
+              <div className="p-3 bg-red-100 rounded-lg">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
               </div>
             </div>
           </div>

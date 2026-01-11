@@ -7,6 +7,7 @@ declare module 'next-auth' {
         username: string;
         firstname: string;
         lastname: string;
+        role: string;
     }
 
     interface Session {
@@ -16,6 +17,7 @@ declare module 'next-auth' {
             username: string;
             firstname: string;
             lastname: string;
+            role: string;
         };
     }
 }
@@ -26,5 +28,6 @@ declare module 'next-auth/jwt' {
         username: string;
         firstname: string;
         lastname: string;
+        role: string;
     }
 }

@@ -3,6 +3,40 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: paramId } = await params;
+    const id = parseInt(paramId);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: "Invalid patient ID" },
+        { status: 400 }
+      );
+    }
+
+    const patient = await db
+      .select()
+      .from(patients)
+      .where(eq(patients.id, id))
+      .limit(1);
+
+    if (patient.length === 0) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(patient[0]);
+  } catch (error) {
+    console.error("Error fetching patient:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch patient" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

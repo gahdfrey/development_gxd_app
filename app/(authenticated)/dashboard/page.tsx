@@ -42,6 +42,9 @@ export default function DashboardPage() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
+    null
+  );
   const { showToast } = useToast();
 
   const handleCreatePatient = async (data: any) => {
@@ -140,7 +143,7 @@ export default function DashboardPage() {
           <div className="flex gap-2">
             <button
               onClick={() => {
-                setSelectedPatient(props.row.original);
+                setSelectedPatientId(props.row.original.id);
                 setIsViewModalOpen(true);
               }}
               className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
@@ -215,7 +218,7 @@ export default function DashboardPage() {
           setIsEditModalOpen(false);
           setSelectedPatient(null);
         }}
-        patient={selectedPatient}
+        patientId={selectedPatient?.id ?? null}
         onSuccess={() => {
           setIsEditModalOpen(false);
           setSelectedPatient(null);
@@ -223,24 +226,15 @@ export default function DashboardPage() {
       />
 
       {/* View Modal */}
-      <Modal
-        isOpen={isViewModalOpen}
-        onClose={() => {
-          setIsViewModalOpen(false);
-          setSelectedPatient(null);
-        }}
-        title="View Patient"
-      >
-        {selectedPatient && (
-          <ViewPatientModal
-            patient={selectedPatient}
-            onClose={() => {
-              setIsViewModalOpen(false);
-              setSelectedPatient(null);
-            }}
-          />
-        )}
-      </Modal>
+      {selectedPatientId && (
+        <ViewPatientModal
+          patientId={selectedPatientId}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setSelectedPatientId(null);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       <Modal

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { mutate } from "swr";
+import useSWR, { mutate } from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { COUNTRY_CODES } from "@/lib/constants/countryCodes";
 import {
   PencilSquareIcon,
@@ -41,19 +42,26 @@ interface Patient {
 interface EditPatientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  patient: Patient | null;
+  patientId: number | null;
   onSuccess?: () => void;
 }
 
 export default function EditPatientModal({
   isOpen,
   onClose,
-  patient,
+  patientId,
   onSuccess,
 }: EditPatientModalProps) {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch patient data by ID
+  const {
+    data: patient,
+    isLoading,
+    error,
+  } = useSWR<Patient>(patientId ? `/api/patients/${patientId}` : null, fetcher);
 
   const {
     register,
@@ -74,7 +82,7 @@ export default function EditPatientModal({
     mode: "onChange",
   });
 
-  // Update form values when patient changes
+  // Update form values when patient data is loaded
   useEffect(() => {
     if (patient) {
       reset({
@@ -136,7 +144,43 @@ export default function EditPatientModal({
     }
   };
 
-  if (!isOpen || !patient) return null;
+  if (!isOpen || !patientId) return null;
+
+  // Show loading state while fetching patient data
+  if (isLoading) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+        onClick={handleClose}
+      >
+        <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-12 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if patient data fails to load
+  if (error || !patient) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+        onClick={handleClose}
+      >
+        <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-12">
+          <p className="text-red-600 text-center mb-4">
+            Failed to load patient data
+          </p>
+          <button
+            onClick={handleClose}
+            className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
