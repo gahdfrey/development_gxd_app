@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import AppointmentCalendar from "./components/AppointmentCalendar";
 import AppointmentList from "./components/AppointmentList";
+import AppointmentFilters from "./components/AppointmentFilters";
 import CreateAppointmentModal from "./components/CreateAppointmentModal";
 import { CalendarDaysIcon, PlusIcon } from "@heroicons/react/24/outline";
 
@@ -31,12 +32,40 @@ interface Appointment {
 export default function AppointmentsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
+    null
+  );
 
   const {
     data: appointments = [],
     isLoading,
     error,
   } = useSWR<Appointment[]>("/api/appointments", fetcher);
+
+  // Filter appointments based on doctor and patient selections
+  const filteredAppointments = useMemo(() => {
+    let filtered = appointments;
+
+    // Apply doctor filter
+    if (selectedDoctorId !== null) {
+      filtered = filtered.filter((apt) => apt.doctor?.id === selectedDoctorId);
+    }
+
+    // Apply patient filter
+    if (selectedPatientId !== null) {
+      filtered = filtered.filter(
+        (apt) => apt.patient?.id === selectedPatientId
+      );
+    }
+
+    return filtered;
+  }, [appointments, selectedDoctorId, selectedPatientId]);
+
+  const handleClearFilters = () => {
+    setSelectedDoctorId(null);
+    setSelectedPatientId(null);
+  };
 
   return (
     <main className="min-h-screen p-4 md:p-8">
@@ -86,46 +115,57 @@ export default function AppointmentsPage() {
 
         {/* Content */}
         {!isLoading && !error && (
-          <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-            {/* Calendar Section */}
-            <div className="lg:col-span-7">
-              <AppointmentCalendar
-                appointments={appointments}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-              />
+          <>
+            {/* Filters */}
+            <AppointmentFilters
+              selectedDoctorId={selectedDoctorId}
+              selectedPatientId={selectedPatientId}
+              onDoctorChange={setSelectedDoctorId}
+              onPatientChange={setSelectedPatientId}
+              onClearFilters={handleClearFilters}
+            />
 
-              {/* {selectedDate && (
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={() => setSelectedDate(undefined)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Clear date filter
-                  </button>
-                </div>
-              )} */}
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+              {/* Calendar Section */}
+              <div className="lg:col-span-7">
+                <AppointmentCalendar
+                  appointments={filteredAppointments}
+                  selectedDate={selectedDate}
+                  onDateSelect={setSelectedDate}
+                />
 
-            {/* Appointments List Section */}
-            <div className="lg:col-span-3">
-              {selectedDate && (
-                <div className="mt-4 text-center flex w-full justify-end">
-                  <button
-                    onClick={() => setSelectedDate(undefined)}
-                    // className="text-sm text-blue-600 hover:underline"
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm mb-2"
-                  >
-                    Clear date filter
-                  </button>
-                </div>
-              )}
-              <AppointmentList
-                appointments={appointments}
-                selectedDate={selectedDate}
-              />
+                {/* {selectedDate && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => setSelectedDate(undefined)}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      Clear date filter
+                    </button>
+                  </div>
+                )} */}
+              </div>
+
+              {/* Appointments List Section */}
+              <div className="lg:col-span-3">
+                {selectedDate && (
+                  <div className="mt-4 text-center flex w-full justify-end">
+                    <button
+                      onClick={() => setSelectedDate(undefined)}
+                      // className="text-sm text-blue-600 hover:underline"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm mb-2"
+                    >
+                      Clear date filter
+                    </button>
+                  </div>
+                )}
+                <AppointmentList
+                  appointments={filteredAppointments}
+                  selectedDate={selectedDate}
+                />
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Create Appointment Modal */}
