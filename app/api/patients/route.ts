@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, asc } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const allPatients = await db
-      .select()
-      .from(patients)
-      .orderBy(desc(patients.createdAt));
+    // Get orderBy query parameter (optional)
+    const { searchParams } = new URL(request.url);
+    const orderBy = searchParams.get("orderBy"); // 'asc' or 'desc'
+
+    // Build query based on orderBy parameter
+    const allPatients =
+      orderBy === "asc"
+        ? await db.select().from(patients).orderBy(asc(patients.firstname))
+        : orderBy === "desc"
+        ? await db.select().from(patients).orderBy(desc(patients.firstname))
+        : await db.select().from(patients).orderBy(desc(patients.createdAt));
 
     return NextResponse.json(allPatients);
   } catch (error) {

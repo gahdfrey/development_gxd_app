@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { formatTime, formatDate } from "@/lib/appointmentUtils";
 
 interface Appointment {
   id: number;
@@ -58,25 +59,6 @@ export default function AppointmentList({
         return "bg-yellow-500 text-white";
       default:
         return "bg-gray-500 text-white";
-    }
-  };
-
-  const formatTime = (time: string) => {
-    try {
-      const [hours, minutes] = time.split(":");
-      const date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes));
-      return format(date, "h:mm a");
-    } catch {
-      return time;
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), "MMM d, yyyy");
-    } catch {
-      return dateStr;
     }
   };
 

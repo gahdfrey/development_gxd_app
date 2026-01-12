@@ -2,10 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { mutate } from "swr";
-import { format } from "date-fns";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
+import {
+  formatTime,
+  formatDate,
+  hasAppointmentDatePassed,
+} from "@/lib/appointmentUtils";
 
 interface Patient {
   id: number;
@@ -51,48 +55,6 @@ export default function DoctorAppointmentsTable({
         return "bg-yellow-100 text-yellow-800 border-yellow-300";
       default:
         return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
-
-  const formatTime = (time: string) => {
-    try {
-      const [hours, minutes] = time.split(":");
-      const date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes));
-      return format(date, "h:mm a");
-    } catch {
-      return time;
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), "MMM d, yyyy");
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const hasAppointmentTimePassed = (dateStr: string, timeStr: string) => {
-    try {
-      // Parse the appointment date and time
-      const [hours, minutes] = timeStr.split(":");
-      const appointmentDateTime = new Date(dateStr);
-      appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-      // Get current date and time
-      const now = new Date();
-
-      // Check if the appointment date is today
-      const isToday =
-        appointmentDateTime.getDate() === now.getDate() &&
-        appointmentDateTime.getMonth() === now.getMonth() &&
-        appointmentDateTime.getFullYear() === now.getFullYear();
-
-      // Only show buttons if it's today AND the time has passed
-      return isToday && now >= appointmentDateTime;
-    } catch {
-      return false;
     }
   };
 
@@ -200,11 +162,8 @@ export default function DoctorAppointmentsTable({
           return (
             <div>
               {appointment.status === "scheduled" &&
-              hasAppointmentTimePassed(
-                appointment.appointmentDate,
-                appointment.appointmentTime
-              ) ? (
-                <div className="flex gap-2 flex-wrap">
+              hasAppointmentDatePassed(appointment.appointmentDate) ? (
+                <div className="flex gap-2">
                   <button
                     onClick={() => {
                       setSelectedAppointment(appointment);

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { appointments, patients, users } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, asc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Get the logged-in user's session
     const session = await auth();
@@ -26,28 +26,61 @@ export async function GET() {
 
     const doctorId = currentUser[0].id;
 
-    // Fetch appointments for this doctor only
-    const doctorAppointments = await db
-      .select({
-        id: appointments.id,
-        appointmentDate: appointments.appointmentDate,
-        appointmentTime: appointments.appointmentTime,
-        status: appointments.status,
-        notes: appointments.notes,
-        createdAt: appointments.createdAt,
-        patient: {
-          id: patients.id,
-          firstname: patients.firstname,
-          lastname: patients.lastname,
-          gender: patients.gender,
-          dob: patients.dob,
-          phone: patients.phone,
-        },
-      })
-      .from(appointments)
-      .leftJoin(patients, eq(appointments.patientId, patients.id))
-      .where(eq(appointments.doctorId, doctorId))
-      .orderBy(appointments.appointmentDate, appointments.appointmentTime);
+    // Get orderBy query parameter (optional, default is 'desc' for latest to oldest)
+    const { searchParams } = new URL(request.url);
+    const orderBy = searchParams.get("orderBy") || "desc"; // 'asc' or 'desc'
+
+    // Fetch appointments for this doctor only with ordering
+    const doctorAppointments =
+      orderBy === "asc"
+        ? await db
+            .select({
+              id: appointments.id,
+              appointmentDate: appointments.appointmentDate,
+              appointmentTime: appointments.appointmentTime,
+              status: appointments.status,
+              notes: appointments.notes,
+              createdAt: appointments.createdAt,
+              patient: {
+                id: patients.id,
+                firstname: patients.firstname,
+                lastname: patients.lastname,
+                gender: patients.gender,
+                dob: patients.dob,
+                phone: patients.phone,
+              },
+            })
+            .from(appointments)
+            .leftJoin(patients, eq(appointments.patientId, patients.id))
+            .where(eq(appointments.doctorId, doctorId))
+            .orderBy(
+              asc(appointments.appointmentDate),
+              asc(appointments.appointmentTime)
+            )
+        : await db
+            .select({
+              id: appointments.id,
+              appointmentDate: appointments.appointmentDate,
+              appointmentTime: appointments.appointmentTime,
+              status: appointments.status,
+              notes: appointments.notes,
+              createdAt: appointments.createdAt,
+              patient: {
+                id: patients.id,
+                firstname: patients.firstname,
+                lastname: patients.lastname,
+                gender: patients.gender,
+                dob: patients.dob,
+                phone: patients.phone,
+              },
+            })
+            .from(appointments)
+            .leftJoin(patients, eq(appointments.patientId, patients.id))
+            .where(eq(appointments.doctorId, doctorId))
+            .orderBy(
+              desc(appointments.appointmentDate),
+              desc(appointments.appointmentTime)
+            );
 
     return NextResponse.json(doctorAppointments);
   } catch (error) {

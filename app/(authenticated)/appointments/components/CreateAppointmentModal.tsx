@@ -96,9 +96,9 @@ export default function CreateAppointmentModal({
     sublabel: doctor.email,
   }));
 
-  // Generate time slots (9:00 AM to 3:00 PM in 30-minute intervals)
+  // Generate time slots (9:00 AM to 12:00 AM in 30-minute intervals)
   const timeSlots = [];
-  for (let hour = 9; hour < 15; hour++) {
+  for (let hour = 9; hour <= 23; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       const timeString = `${hour.toString().padStart(2, "0")}:${minute
         .toString()
@@ -113,6 +113,8 @@ export default function CreateAppointmentModal({
       timeSlots.push({ value: timeString, label: displayTime });
     }
   }
+  // Add 12:00 AM (midnight) as the last slot
+  timeSlots.push({ value: "00:00", label: "12:00 AM" });
 
   const onSubmit = async (data: AppointmentFormData) => {
     if (!selectedPatient || !selectedDoctor) {
