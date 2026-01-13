@@ -78,7 +78,12 @@ export default function DoctorAppointmentsTable({
       }
 
       // Refresh the appointments list
-      await mutate("/api/my-appointments");
+      await mutate(
+        (key) =>
+          typeof key === "string" && key.startsWith("/api/my-appointments"),
+        undefined,
+        { revalidate: true }
+      );
     } catch (error) {
       console.error("Error updating appointment:", error);
       alert("Failed to update appointment status");

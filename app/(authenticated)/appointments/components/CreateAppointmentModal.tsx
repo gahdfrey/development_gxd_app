@@ -147,7 +147,11 @@ export default function CreateAppointmentModal({
         throw new Error(errorData.error || "Failed to create appointment");
       }
 
-      await mutate("/api/appointments");
+      await mutate(
+        (key) => typeof key === "string" && key.startsWith("/api/appointments"),
+        undefined,
+        { revalidate: true }
+      );
       setSuccessMessage("Appointment created successfully!");
       reset();
       setSelectedPatient(null);

@@ -64,7 +64,11 @@ export default function DashboardPage() {
       return;
     }
 
-    mutate("/api/patients");
+    mutate(
+      (key) => typeof key === "string" && key.startsWith("/api/patients"),
+      undefined,
+      { revalidate: true }
+    );
     setIsDeleteModalOpen(false);
     setSelectedPatient(null);
     showToast("Patient deleted successfully", "success");

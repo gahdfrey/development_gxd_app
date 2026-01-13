@@ -108,7 +108,11 @@ export default function CreatePatientModal({
         throw new Error(errorData.error || "Failed to create patient");
       }
 
-      await mutate("/api/patients");
+      await mutate(
+        (key) => typeof key === "string" && key.startsWith("/api/patients"),
+        undefined,
+        { revalidate: true }
+      );
       setSuccessMessage("Patient created successfully!");
       reset();
 

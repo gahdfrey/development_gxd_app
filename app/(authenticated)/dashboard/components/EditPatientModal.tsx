@@ -150,7 +150,11 @@ export default function EditPatientModal({
         throw new Error(errorData.error || "Failed to update patient");
       }
 
-      await mutate("/api/patients");
+      await mutate(
+        (key) => typeof key === "string" && key.startsWith("/api/patients"),
+        undefined,
+        { revalidate: true }
+      );
       setSuccessMessage("Patient updated successfully!");
 
       setTimeout(() => {

@@ -77,15 +77,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate time is between 09:00 and 15:00
-    const [hours, minutes] = appointmentTime.split(":").map(Number);
-    if (hours < 9 || hours >= 15) {
-      return NextResponse.json(
-        { error: "Appointments must be scheduled between 09:00 and 15:00" },
-        { status: 400 }
-      );
-    }
-
     // Create new appointment
     const newAppointment = await db
       .insert(appointments)

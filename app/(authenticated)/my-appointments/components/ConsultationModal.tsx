@@ -5,6 +5,8 @@ import Modal from "@/app/components/ui/Modal";
 import { mutate } from "swr";
 import { useSession } from "next-auth/react";
 
+import { useRouter } from "next/navigation";
+
 interface Patient {
   id: number;
   firstname: string;
@@ -35,6 +37,7 @@ export default function ConsultationModal({
   onClose,
   appointment,
 }: ConsultationModalProps) {
+  const router = useRouter();
   const { data: session } = useSession();
   const [doctorNotes, setDoctorNotes] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -100,8 +103,16 @@ export default function ConsultationModal({
         throw new Error("Failed to save visit");
       }
 
-      // Refresh appointments list
-      await mutate("/api/my-appointments");
+      // Refresh appointments list - invalidate all appointment queries
+      await mutate(
+        (key) =>
+          typeof key === "string" && key.startsWith("/api/my-appointments"),
+        undefined,
+        { revalidate: true }
+      );
+
+      // Force router refresh to update server components
+      router.refresh();
 
       // Close modal
       onClose();
