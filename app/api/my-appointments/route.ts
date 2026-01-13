@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { appointments, patients, users } from "@/lib/db/schema";
-import { desc, asc, eq, or, ilike, and } from "drizzle-orm";
+import { desc, asc, eq, or, ilike, and, gte, lte } from "drizzle-orm";
 import { auth } from "@/auth";
 
 export async function GET(request: Request) {
@@ -30,6 +30,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const orderBy = searchParams.get("orderBy") || "desc";
     const search = searchParams.get("search");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
     // Build base query
     let queryBuilder = db
@@ -54,6 +56,14 @@ export async function GET(request: Request) {
 
     // Build WHERE conditions
     const conditions = [eq(appointments.doctorId, doctorId)];
+
+    // Add date range filtering
+    if (startDate) {
+      conditions.push(gte(appointments.appointmentDate, startDate) as any);
+    }
+    if (endDate) {
+      conditions.push(lte(appointments.appointmentDate, endDate) as any);
+    }
 
     if (search && search.trim() !== "") {
       const searchTerm = `%${search.trim()}%`;

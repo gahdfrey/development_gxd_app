@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { usePatientFilters } from "@/lib/hooks/usePatientFilters";
 import Table from "@/app/components/ui/Table";
 import Modal from "@/app/components/ui/Modal";
 import CreatePatientModal from "./components/CreatePatientModal";
@@ -32,19 +33,14 @@ interface Patient {
 }
 
 export default function DashboardPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { filterState, setFilters, resetFilters, queryString } =
+    usePatientFilters();
 
   const {
     data: patients = [],
     error,
     isLoading,
-  } = useSWR<Patient[]>(
-    `/api/patients${
-      debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""
-    }`,
-    fetcher
-  );
+  } = useSWR<Patient[]>(`/api/patients${queryString}`, fetcher);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -55,14 +51,6 @@ export default function DashboardPage() {
   );
   const { showToast } = useToast();
 
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
   const handleDeletePatient = async () => {
     if (!selectedPatient) return;
 
@@ -159,51 +147,95 @@ export default function DashboardPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          {/* Search Input */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search patients..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-            />
-            <svg
-              className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
+      </div>
 
+      {/* Search and Filter Controls */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        {/* Date Range Filters */}
+        <div className="flex gap-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              From Date
+            </label>
+            <input
+              type="date"
+              value={filterState.startDate}
+              onChange={(e) => setFilters({ startDate: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              To Date
+            </label>
+            <input
+              type="date"
+              value={filterState.endDate}
+              onChange={(e) => setFilters({ endDate: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Search Patients
+          </label>
+          <input
+            type="text"
+            placeholder="Search patients..."
+            value={filterState.search}
+            onChange={(e) => setFilters({ search: e.target.value })}
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <svg
+            className="absolute left-3 bottom-2.5 h-5 w-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          {filterState.search && (
+            <button
+              onClick={() => setFilters({ search: "" })}
+              className="absolute right-3 bottom-2.5 text-gray-400 hover:text-gray-600"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-end gap-2">
+          {(filterState.startDate ||
+            filterState.endDate ||
+            filterState.search) && (
+            <button
+              onClick={resetFilters}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
