@@ -1,142 +1,283 @@
-import { getSession, logout } from '@/lib/session';
-import { redirect } from 'next/navigation';
-import type { Metadata } from 'next';
+"use client";
 
-export const metadata: Metadata = {
-    title: 'Dashboard - EMS',
-    description: 'Your Employee Management System dashboard',
-};
+import { useState, useEffect, useMemo } from "react";
+import { createColumnHelper } from "@tanstack/react-table";
+import useSWR, { mutate } from "swr";
+import { fetcher } from "@/lib/fetcher";
+import Table from "@/app/components/ui/Table";
+import Modal from "@/app/components/ui/Modal";
+import CreatePatientModal from "./components/CreatePatientModal";
+import EditPatientModal from "./components/EditPatientModal";
+import ViewPatientModal from "./components/ViewPatientModal";
+import {
+  PencilSquareIcon,
+  TrashIcon,
+  EyeIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
+import { useToast } from "@/app/contexts/ToastContext";
 
-async function SignOutButton() {
-    return (
-        <form
-            action={async () => {
-                'use server';
-                await logout();
-            }}
-        >
-            <button
-                type="submit"
-                className="px-6 py-2 bg-linear-to-r from-(--gradient-secondary-start) to-(--gradient-secondary-end) text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-            >
-                Sign Out
-            </button>
-        </form>
-    );
+interface Patient {
+  id: number;
+  firstname: string;
+  lastname: string;
+  gender: string;
+  dob: string;
+  maidenName: string;
+  countryCode: string;
+  phone: string;
+  insuranceType: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export default async function DashboardPage() {
-    const user = await getSession();
+export default function DashboardPage() {
+  const {
+    data: patients = [],
+    error,
+    isLoading,
+  } = useSWR<Patient[]>("/api/patients", fetcher);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const { showToast } = useToast();
 
-    if (!user) {
-        redirect('/login');
+  const handleCreatePatient = async (data: any) => {
+    const response = await fetch("/api/patients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      showToast(error.error || "Failed to create patient", "error");
+      throw new Error(error.error || "Failed to create patient");
     }
 
-    return (
-        <main className="min-h-screen bg-linear-to-br from-(--gradient-accent-start) via-(--gradient-primary-start) to-(--gradient-accent-end) animate-gradient p-8">
-            <div className="max-w-4xl mx-auto">
-                <div className="glass rounded-3xl p-8 md:p-12 animate-fade-in">
+    mutate("/api/patients");
+    setIsCreateModalOpen(false);
+    showToast("Patient created successfully", "success");
+  };
 
-                    {/* Header */}
-                    <div>
-                        {/* SideMenu is now in layout */}
-                    </div>
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h1 className="text-4xl font-bold bg-linear-to-r from-(--gradient-primary-start) to-(--gradient-primary-end) bg-clip-text text-transparent mb-2">
-                                EMS Dashboard
-                            </h1>
-                            <p className="text-gray-600 dark:text-gray-300">
-                                Manage your employees and streamline HR processes
-                            </p>
-                        </div>
-                        <SignOutButton />
-                    </div>
+  const handleUpdatePatient = async (data: any) => {
+    if (!selectedPatient) return;
 
-                    {/* User Info Card */}
-                    <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-gray-200 dark:border-gray-700">
-                        <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-100">
-                            Your Profile
-                        </h2>
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                <span className="font-medium text-gray-700 dark:text-gray-200 w-24">
-                                    Username:
-                                </span>
-                                <span className="text-gray-900 dark:text-gray-100 font-semibold">
-                                    {user.username || 'N/A'}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="font-medium text-gray-700 dark:text-gray-200 w-24">
-                                    Email:
-                                </span>
-                                <span className="text-gray-900 dark:text-gray-100">
-                                    {user.email}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="font-medium text-gray-700 dark:text-gray-200 w-24">
-                                    User ID:
-                                </span>
-                                <span className="text-gray-600 dark:text-gray-400 text-sm font-mono">
-                                    {user.id || 'N/A'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+    const response = await fetch(`/api/patients/${selectedPatient.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
-                    {/* EMS Info Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-linear-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
-                            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
-                                👥 Employee Management
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                                View, add, and update employee records with secure access.
-                            </p>
-                        </div>
-                        <div className="bg-linear-to-br from-pink-50 to-red-50 dark:from-pink-900/20 dark:to-red-900/20 rounded-2xl p-6 border border-pink-200 dark:border-pink-800">
-                            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
-                                📊 Attendance Tracking
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                                Monitor attendance and generate reports for your team.
-                            </p>
-                        </div>
-                        <div className="bg-linear-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
-                            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
-                                💼 Payroll Processing
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                                Handle salaries, deductions, and compliance effortlessly.
-                            </p>
-                        </div>
-                        <div className="bg-linear-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 border border-yellow-200 dark:border-yellow-800">
-                            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">
-                                📈 Performance Analytics
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                                Track KPIs and insights to boost team productivity.
-                            </p>
-                        </div>
-                    </div>
+    if (!response.ok) {
+      const error = await response.json();
+      showToast(error.error || "Failed to update patient", "error");
+      throw new Error(error.error || "Failed to update patient");
+    }
 
-                    {/* Quick Actions for EMS */}
-                    <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800">
-                        <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">
-                            🚀 Quick Actions
-                        </h3>
-                        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                            <li>• <a href="/employees" className="text-blue-600 hover:underline">View Employees</a></li>
-                            <li>• <a href="/attendance" className="text-blue-600 hover:underline">Track Attendance</a></li>
-                            <li>• <a href="/payroll" className="text-blue-600 hover:underline">Process Payroll</a></li>
-                            <li>• <a href="/reports" className="text-blue-600 hover:underline">Generate Reports</a></li>
-                            <li>• Customize roles and permissions</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </main>
-    );
+    mutate("/api/patients");
+    setIsEditModalOpen(false);
+    setSelectedPatient(null);
+    showToast("Patient updated successfully", "success");
+  };
+
+  const handleDeletePatient = async () => {
+    if (!selectedPatient) return;
+
+    const response = await fetch(`/api/patients/${selectedPatient.id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      console.error("Failed to delete patient");
+      showToast("Failed to delete patient", "error");
+      return;
+    }
+
+    mutate("/api/patients");
+    setIsDeleteModalOpen(false);
+    setSelectedPatient(null);
+    showToast("Patient deleted successfully", "success");
+  };
+
+  const columnHelper = createColumnHelper<Patient>();
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("firstname", {
+        header: "First Name",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.accessor("lastname", {
+        header: "Last Name",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.accessor("gender", {
+        header: "Gender",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.accessor("dob", {
+        header: "Date of Birth",
+        cell: (info) => new Date(info.getValue()).toLocaleDateString(),
+      }),
+      columnHelper.accessor("phone", {
+        header: "Phone",
+        cell: (info) => {
+          const patient = info.row.original;
+          return `${patient.countryCode} ${info.getValue()}`;
+        },
+      }),
+      columnHelper.accessor("insuranceType", {
+        header: "Insurance",
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: (props) => (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setSelectedPatient(props.row.original);
+                setIsViewModalOpen(true);
+              }}
+              className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+              title="View"
+            >
+              <EyeIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setSelectedPatient(props.row.original);
+                setIsEditModalOpen(true);
+              }}
+              className="p-1 text-yellow-600 hover:text-yellow-800 transition-colors"
+              title="Edit"
+            >
+              <PencilSquareIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setSelectedPatient(props.row.original);
+                setIsDeleteModalOpen(true);
+              }}
+              className="p-1 text-red-600 hover:text-red-800 transition-colors"
+              title="Delete"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          </div>
+        ),
+      }),
+    ],
+    []
+  );
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+        >
+          <PlusIcon className="w-5 h-5" />
+          Create Patient
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
+        <Table data={patients} columns={columns} />
+      )}
+
+      {/* Create Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create New Patient"
+      >
+        <CreatePatientModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+        />
+      </Modal>
+
+      {/* Edit Modal */}
+      <EditPatientModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedPatient(null);
+        }}
+        patient={selectedPatient}
+        onSuccess={() => {
+          setIsEditModalOpen(false);
+          setSelectedPatient(null);
+        }}
+      />
+
+      {/* View Modal */}
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setSelectedPatient(null);
+        }}
+        title="View Patient"
+      >
+        {selectedPatient && (
+          <ViewPatientModal
+            patient={selectedPatient}
+            onClose={() => {
+              setIsViewModalOpen(false);
+              setSelectedPatient(null);
+            }}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedPatient(null);
+        }}
+        title="Delete Patient"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete patient{" "}
+            <strong>
+              {selectedPatient?.firstname} {selectedPatient?.lastname}
+            </strong>
+            ? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setSelectedPatient(null);
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeletePatient}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
 }

@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
       <div className="relative isolate px-6 pt-14 lg:px-8">
         <div
@@ -20,19 +20,19 @@ export default function Home() {
         </div>
         <div className="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
           <div className="hidden sm:mb-8 sm:flex sm:justify-center">
-            <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-gray-600 ring-1 ring-gray-900/10 hover:ring-gray-900/20 dark:text-gray-300 dark:ring-gray-700 dark:hover:ring-gray-600">
+            <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-gray-600 ring-1 ring-gray-900/10 hover:ring-gray-900/20">
               Announcing our next round of funding.{' '}
-              <a href="#" className="font-semibold text-indigo-600 dark:text-indigo-400">
+              <a href="#" className="font-semibold text-indigo-600">
                 <span className="absolute inset-0" aria-hidden="true" />
                 Read more <span aria-hidden="true">&rarr;</span>
               </a>
             </div>
           </div>
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-6xl">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
               Employee Management Simplified
             </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300">
+            <p className="mt-6 text-lg leading-8 text-gray-600">
               Streamline your HR processes, manage employee data, track attendance, and process payroll with ease. The all-in-one solution for modern businesses.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
@@ -42,7 +42,7 @@ export default function Home() {
               >
                 Try Demo
               </Link>
-              <Link href="/login" className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">
+              <Link href="/login" className="text-sm font-semibold leading-6 text-gray-900">
                 Log In <span aria-hidden="true">→</span>
               </Link>
             </div>
