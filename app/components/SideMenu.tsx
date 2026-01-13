@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/app/contexts/SidebarContext";
@@ -11,6 +11,7 @@ import { fetcher } from "@/lib/fetcher";
 export default function SideMenu() {
   const { isExpanded, isLocked, setIsExpanded } = useSidebar();
   const pathname = usePathname();
+  const [isSetupOpen, setIsSetupOpen] = useState(false);
 
   const { data: user } = useSWR("/api/wai", fetcher);
 
@@ -274,6 +275,101 @@ export default function SideMenu() {
                 </div>
               )}
             </Link>
+          )}
+
+          {/* Setup Accordion */}
+          {hasPermission("setup", "view") && (
+            <div className="space-y-1">
+              {/* Setup Parent Item */}
+              <button
+                onClick={() => setIsSetupOpen(!isSetupOpen)}
+                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 w-full ${
+                  pathname.startsWith("/setup")
+                    ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+                }`}
+              >
+                <div className="shrink-0 relative p-1">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                    />
+                  </svg>
+                </div>
+                <span
+                  className={`overflow-hidden whitespace-nowrap transition-all duration-300 flex-1 text-left ${
+                    isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+                  }`}
+                >
+                  Setup
+                </span>
+                {isExpanded && (
+                  <svg
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isSetupOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                )}
+                {!isExpanded && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                    Setup
+                  </div>
+                )}
+              </button>
+
+              {/* Setup Children - Only show when accordion is open and sidebar is expanded */}
+              {isSetupOpen && isExpanded && (
+                <div className="ml-4 space-y-1 border-l-2 border-gray-200 pl-2">
+                  {/* HMO Setup */}
+                  <Link
+                    href="/setup/hmo"
+                    className={`group relative flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm font-medium transition-all duration-200 ${
+                      isActive("/setup/hmo")
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                    aria-current={isActive("/setup/hmo") ? "page" : undefined}
+                  >
+                    <span className="overflow-hidden whitespace-nowrap">
+                      HMO Setup
+                    </span>
+                  </Link>
+
+                  {/* Org Setup */}
+                  <Link
+                    href="/setup/org"
+                    className={`group relative flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm font-medium transition-all duration-200 ${
+                      isActive("/setup/org")
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                    aria-current={isActive("/setup/org") ? "page" : undefined}
+                  >
+                    <span className="overflow-hidden whitespace-nowrap">
+                      Org Setup
+                    </span>
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
         </nav>
 

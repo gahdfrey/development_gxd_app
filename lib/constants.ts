@@ -4,6 +4,7 @@ export const APP_MODULES = [
   { key: "my-appointments", label: "My Appointments" },
   { key: "users", label: "Users" },
   { key: "roles", label: "Roles" },
+  { key: "setup", label: "Setup" },
 ];
 
 export const APP_PERMISSIONS = [

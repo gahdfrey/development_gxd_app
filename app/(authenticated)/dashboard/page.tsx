@@ -200,16 +200,10 @@ export default function DashboardPage() {
       )}
 
       {/* Create Modal */}
-      <Modal
+      <CreatePatientModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create New Patient"
-      >
-        <CreatePatientModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-        />
-      </Modal>
+      />
 
       {/* Edit Modal */}
       <EditPatientModal

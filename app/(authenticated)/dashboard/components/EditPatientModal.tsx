@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { HMO } from "@/lib/db/schema";
 import { COUNTRY_CODES } from "@/lib/constants/countryCodes";
 import {
   PencilSquareIcon,
@@ -25,6 +26,8 @@ interface PatientFormData {
   countryCode: string;
   phone: string;
   insuranceType: string;
+  hmoId?: string;
+  policyNumber?: string;
 }
 
 interface Patient {
@@ -37,6 +40,8 @@ interface Patient {
   countryCode: string;
   phone: string;
   insuranceType: string;
+  hmoId?: number | null;
+  policyNumber?: string | null;
 }
 
 interface EditPatientModalProps {
@@ -52,6 +57,7 @@ export default function EditPatientModal({
   patientId,
   onSuccess,
 }: EditPatientModalProps) {
+  const { data: hmos } = useSWR<HMO[]>("/api/hmo", fetcher);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +74,9 @@ export default function EditPatientModal({
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setError,
+    clearErrors,
   } = useForm<PatientFormData>({
     defaultValues: {
       firstname: "",
@@ -78,9 +87,13 @@ export default function EditPatientModal({
       countryCode: "+234",
       phone: "",
       insuranceType: "",
+      hmoId: "",
+      policyNumber: "",
     },
     mode: "onChange",
   });
+
+  const insuranceType = watch("insuranceType");
 
   // Update form values when patient data is loaded
   useEffect(() => {
@@ -94,6 +107,8 @@ export default function EditPatientModal({
         countryCode: patient.countryCode,
         phone: patient.phone,
         insuranceType: patient.insuranceType,
+        hmoId: patient.hmoId ? patient.hmoId.toString() : "",
+        policyNumber: patient.policyNumber || "",
       });
     }
   }, [patient, reset]);
@@ -104,6 +119,22 @@ export default function EditPatientModal({
     setIsSubmitting(true);
     setErrorMessage("");
     setSuccessMessage("");
+
+    // Validate HMO fields when insurance type is "hmo"
+    if (data.insuranceType === "hmo") {
+      if (!data.hmoId || data.hmoId === "") {
+        setError("hmoId", { message: "Please select an HMO" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (!data.policyNumber || data.policyNumber.trim() === "") {
+        setError("policyNumber", {
+          message: "Policy number is required for HMO insurance",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     try {
       const response = await fetch(`/api/patients/${patient.id}`, {
@@ -487,6 +518,7 @@ export default function EditPatientModal({
                   <option value="">Select Insurance Type</option>
                   <option value="private">Private</option>
                   <option value="hmo">HMO</option>
+                  <option value="corporate">Corporate</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                   <svg
@@ -510,6 +542,85 @@ export default function EditPatientModal({
                 </p>
               )}
             </div>
+
+            {/* HMO Selection (Conditional) */}
+            {insuranceType === "hmo" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="hmoId"
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                  >
+                    <ShieldCheckIcon className="h-4 w-4" />
+                    Select HMO *
+                  </label>
+                  <div className="relative">
+                    <select
+                      {...register("hmoId")}
+                      id="hmoId"
+                      className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
+                        errors.hmoId
+                          ? "border-red-500 bg-red-50"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      <option value="">Select HMO</option>
+                      {hmos?.map((hmo) => (
+                        <option key={hmo.id} value={hmo.id}>
+                          {hmo.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  {errors.hmoId && (
+                    <p className="text-xs text-red-600">
+                      {errors.hmoId.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="policyNumber"
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                  >
+                    <IdentificationIcon className="h-4 w-4" />
+                    Policy Number *
+                  </label>
+                  <input
+                    {...register("policyNumber")}
+                    type="text"
+                    id="policyNumber"
+                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                      errors.policyNumber
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300 bg-gray-50"
+                    }`}
+                    placeholder="Enter policy number"
+                  />
+                  {errors.policyNumber && (
+                    <p className="text-xs text-red-600">
+                      {errors.policyNumber.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="flex gap-3 pt-4">

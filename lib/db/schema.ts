@@ -41,7 +41,9 @@ export const patients = pgTable("patients", {
   maidenName: text("maiden_name"),
   countryCode: text("country_code").notNull(),
   phone: text("phone").notNull(),
-  insuranceType: text("insurance_type").notNull(),
+  insuranceType: text("insurance_type").notNull(), // "private", "hmo", "corporate"
+  hmoId: integer("hmo_id").references(() => hmos.id), // Required when insuranceType is "hmo"
+  policyNumber: text("policy_number"), // Required when insuranceType is "hmo"
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -104,6 +106,21 @@ export type NewAppointment = typeof appointments.$inferInsert;
 
 export type Visit = typeof visits.$inferSelect;
 export type NewVisit = typeof visits.$inferInsert;
+
+/**
+ * HMO table schema
+ * Stores Health Maintenance Organization information
+ */
+export const hmos = pgTable("hmos", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type HMO = typeof hmos.$inferSelect;
+export type NewHMO = typeof hmos.$inferInsert;
 
 // User with role name joined
 export type UserWithRole = User & { roleName: string | null };

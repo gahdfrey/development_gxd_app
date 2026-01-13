@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { HMO } from "@/lib/db/schema";
 import {
   UserIcon,
   XMarkIcon,
@@ -22,6 +23,8 @@ interface Patient {
   countryCode: string;
   phone: string;
   insuranceType: string;
+  hmoId?: number | null;
+  policyNumber?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +43,14 @@ export default function ViewPatientModal({
     isLoading,
     error,
   } = useSWR<Patient>(patientId ? `/api/patients/${patientId}` : null, fetcher);
+
+  // Fetch HMO data if patient has HMO insurance
+  const { data: hmo } = useSWR<HMO>(
+    patient?.insuranceType === "hmo" && patient?.hmoId
+      ? `/api/hmo/${patient.hmoId}`
+      : null,
+    fetcher
+  );
 
   if (!patientId) return null;
 
@@ -191,12 +202,28 @@ export default function ViewPatientModal({
             <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
               Insurance Information
             </h3>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InfoCard
                 label="Insurance Type"
                 value={patient.insuranceType.toUpperCase()}
                 icon={ShieldCheckIcon}
               />
+              {patient.insuranceType === "hmo" && hmo && (
+                <>
+                  <InfoCard
+                    label="HMO Provider"
+                    value={hmo.name}
+                    icon={ShieldCheckIcon}
+                  />
+                  {patient.policyNumber && (
+                    <InfoCard
+                      label="Policy Number"
+                      value={patient.policyNumber}
+                      icon={IdentificationIcon}
+                    />
+                  )}
+                </>
+              )}
             </div>
           </div>
 

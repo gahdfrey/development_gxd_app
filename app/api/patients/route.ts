@@ -39,6 +39,8 @@ export async function POST(request: Request) {
       countryCode,
       phone,
       insuranceType,
+      hmoId,
+      policyNumber,
     } = body;
 
     if (
@@ -56,6 +58,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate HMO fields when insurance type is "hmo"
+    if (insuranceType === "hmo") {
+      if (!hmoId) {
+        return NextResponse.json(
+          { error: "HMO selection is required for HMO insurance type" },
+          { status: 400 }
+        );
+      }
+      if (!policyNumber || policyNumber.trim() === "") {
+        return NextResponse.json(
+          { error: "Policy number is required for HMO insurance type" },
+          { status: 400 }
+        );
+      }
+    }
+
     const newPatient = await db
       .insert(patients)
       .values({
@@ -67,6 +85,8 @@ export async function POST(request: Request) {
         countryCode,
         phone,
         insuranceType,
+        hmoId: hmoId ? parseInt(hmoId) : null,
+        policyNumber: policyNumber || null,
       })
       .returning();
 
