@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import DoctorAppointmentsTable from "./components/DoctorAppointmentsTable";
@@ -25,28 +26,91 @@ interface Appointment {
 }
 
 export default function MyAppointmentsPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
   const {
     data: appointments = [],
     isLoading,
     error,
-  } = useSWR<Appointment[]>("/api/my-appointments", fetcher);
+  } = useSWR<Appointment[]>(
+    `/api/my-appointments${
+      debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""
+    }`,
+    fetcher
+  );
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   return (
     <main className="min-h-screen  p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-linear-to-br from-green-500 to-emerald-600 rounded-2xl">
-              <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-linear-to-br from-green-500 to-emerald-600 rounded-2xl">
+                <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">
+                  My Appointments
+                </h1>
+                <p className="text-gray-600 text-sm">
+                  View and manage your scheduled patient appointments
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">
-                My Appointments
-              </h1>
-              <p className="text-gray-600 text-sm">
-                View and manage your scheduled patient appointments
-              </p>
+
+            {/* Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by patient name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-64"
+              />
+              <svg
+                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>

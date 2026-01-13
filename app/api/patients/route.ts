@@ -1,21 +1,36 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
-import { desc, asc } from "drizzle-orm";
+import { desc, asc, or, ilike } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
-    // Get orderBy query parameter (optional)
+    // Get query parameters
     const { searchParams } = new URL(request.url);
     const orderBy = searchParams.get("orderBy"); // 'asc' or 'desc'
+    const search = searchParams.get("search"); // search query
 
-    // Build query based on orderBy parameter
+    // Build base query
+    let query = db.select().from(patients);
+
+    // Add search filter if search parameter exists
+    if (search && search.trim() !== "") {
+      const searchTerm = `%${search.trim()}%`;
+      query = query.where(
+        or(
+          ilike(patients.firstname, searchTerm),
+          ilike(patients.lastname, searchTerm)
+        )
+      ) as any;
+    }
+
+    // Apply ordering
     const allPatients =
       orderBy === "asc"
-        ? await db.select().from(patients).orderBy(asc(patients.firstname))
+        ? await query.orderBy(asc(patients.firstname))
         : orderBy === "desc"
-        ? await db.select().from(patients).orderBy(desc(patients.firstname))
-        : await db.select().from(patients).orderBy(desc(patients.createdAt));
+        ? await query.orderBy(desc(patients.firstname))
+        : await query.orderBy(desc(patients.createdAt));
 
     return NextResponse.json(allPatients);
   } catch (error) {

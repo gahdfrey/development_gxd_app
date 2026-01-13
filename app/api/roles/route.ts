@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { roles } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, ilike } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const allRoles = await db.select().from(roles);
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search");
+
+    let query = db.select().from(roles);
+
+    // Add search filter if search parameter exists
+    if (search && search.trim() !== "") {
+      const searchTerm = `%${search.trim()}%`;
+      query = query.where(ilike(roles.name, searchTerm)) as any;
+    }
+
+    const allRoles = await query;
+
     return NextResponse.json(allRoles);
   } catch (error) {
     console.error("Error fetching roles:", error);

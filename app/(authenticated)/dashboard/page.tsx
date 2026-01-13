@@ -32,11 +32,19 @@ interface Patient {
 }
 
 export default function DashboardPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
   const {
     data: patients = [],
     error,
     isLoading,
-  } = useSWR<Patient[]>("/api/patients", fetcher);
+  } = useSWR<Patient[]>(
+    `/api/patients${
+      debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""
+    }`,
+    fetcher
+  );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -47,45 +55,14 @@ export default function DashboardPage() {
   );
   const { showToast } = useToast();
 
-  const handleCreatePatient = async (data: any) => {
-    const response = await fetch("/api/patients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500); // 500ms delay
 
-    if (!response.ok) {
-      const error = await response.json();
-      showToast(error.error || "Failed to create patient", "error");
-      throw new Error(error.error || "Failed to create patient");
-    }
-
-    mutate("/api/patients");
-    setIsCreateModalOpen(false);
-    showToast("Patient created successfully", "success");
-  };
-
-  const handleUpdatePatient = async (data: any) => {
-    if (!selectedPatient) return;
-
-    const response = await fetch(`/api/patients/${selectedPatient.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      showToast(error.error || "Failed to update patient", "error");
-      throw new Error(error.error || "Failed to update patient");
-    }
-
-    mutate("/api/patients");
-    setIsEditModalOpen(false);
-    setSelectedPatient(null);
-    showToast("Patient updated successfully", "success");
-  };
-
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const handleDeletePatient = async () => {
     if (!selectedPatient) return;
 
@@ -182,13 +159,59 @@ export default function DashboardPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Create Patient
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Search Input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search patients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            />
+            <svg
+              className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Create Patient
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
