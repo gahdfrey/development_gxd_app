@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { signOut } from "next-auth/react";
-import { useSession } from "next-auth/react";
 import { NavigationToggle } from "./NavigationToggle";
 import { useSidebar } from "@/app/contexts/SidebarContext";
+import type { Session } from "next-auth";
 
-export default function NavigationBar() {
+interface NavigationBarProps {
+  session: Session | null;
+}
+
+export default function NavigationBar({ session }: NavigationBarProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { data: session } = useSession();
   const { isLocked, toggleLock } = useSidebar();
 
   const handleSignOut = async () => {
@@ -41,7 +44,7 @@ export default function NavigationBar() {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white">
                 {session?.user?.firstname && session?.user?.lastname
                   ? `${session.user.firstname.charAt(
-                      0
+                      0,
                     )}${session.user.lastname.charAt(0)}`.toUpperCase()
                   : session?.user?.username?.charAt(0).toUpperCase() || "U"}
               </div>
@@ -84,8 +87,7 @@ export default function NavigationBar() {
                   </p>
                   <p className="text-xs text-gray-500 truncate mt-0.5">
                     {/* {session?.user?.email} */}
-                  {session?.user?.role || "User"}
-
+                    {session?.user?.role || "User"}
                   </p>
                 </div>
                 <div className="p-2">

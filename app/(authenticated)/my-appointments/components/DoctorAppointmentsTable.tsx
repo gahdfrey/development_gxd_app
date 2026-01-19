@@ -5,6 +5,7 @@ import { mutate } from "swr";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
+import type { Session } from "next-auth";
 import {
   formatTime,
   formatDate,
@@ -32,10 +33,12 @@ interface Appointment {
 
 interface DoctorAppointmentsTableProps {
   appointments: Appointment[];
+  session: Session | null;
 }
 
 export default function DoctorAppointmentsTable({
   appointments,
+  session,
 }: DoctorAppointmentsTableProps) {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
@@ -60,7 +63,7 @@ export default function DoctorAppointmentsTable({
 
   const handleStatusUpdate = async (
     appointmentId: number,
-    newStatus: string
+    newStatus: string,
   ) => {
     setUpdatingId(appointmentId);
 
@@ -82,7 +85,7 @@ export default function DoctorAppointmentsTable({
         (key) =>
           typeof key === "string" && key.startsWith("/api/my-appointments"),
         undefined,
-        { revalidate: true }
+        { revalidate: true },
       );
     } catch (error) {
       console.error("Error updating appointment:", error);
@@ -143,7 +146,7 @@ export default function DoctorAppointmentsTable({
           return (
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(
-                status
+                status,
               )}`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -217,7 +220,7 @@ export default function DoctorAppointmentsTable({
         },
       }),
     ],
-    [updatingId]
+    [updatingId],
   );
 
   if (appointments.length === 0) {
@@ -243,6 +246,7 @@ export default function DoctorAppointmentsTable({
             setActiveConsultation(false);
           }}
           appointment={selectedAppointment}
+          session={session}
         />
       )}
     </>

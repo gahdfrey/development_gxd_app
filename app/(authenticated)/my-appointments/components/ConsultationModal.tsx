@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Modal from "@/app/components/ui/Modal";
 import { mutate } from "swr";
-import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
 
 import { useRouter } from "next/navigation";
 
@@ -30,15 +30,16 @@ interface ConsultationModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointment: Appointment;
+  session: Session | null;
 }
 
 export default function ConsultationModal({
   isOpen,
   onClose,
   appointment,
+  session,
 }: ConsultationModalProps) {
   const router = useRouter();
-  const { data: session } = useSession();
   const [doctorNotes, setDoctorNotes] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,7 +109,7 @@ export default function ConsultationModal({
         (key) =>
           typeof key === "string" && key.startsWith("/api/my-appointments"),
         undefined,
-        { revalidate: true }
+        { revalidate: true },
       );
 
       // Force router refresh to update server components

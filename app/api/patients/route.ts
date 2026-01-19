@@ -35,8 +35,8 @@ export async function GET(request: Request) {
       conditions.push(
         or(
           ilike(patients.firstname, searchTerm),
-          ilike(patients.lastname, searchTerm)
-        ) as any
+          ilike(patients.lastname, searchTerm),
+        ) as any,
       );
     }
 
@@ -50,15 +50,15 @@ export async function GET(request: Request) {
       orderBy === "asc"
         ? await query.orderBy(asc(patients.firstname))
         : orderBy === "desc"
-        ? await query.orderBy(desc(patients.firstname))
-        : await query.orderBy(desc(patients.createdAt));
+          ? await query.orderBy(desc(patients.firstname))
+          : await query.orderBy(desc(patients.createdAt));
 
     return NextResponse.json(allPatients);
   } catch (error) {
     console.error("Error fetching patients:", error);
     return NextResponse.json(
       { error: "Failed to fetch patients" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -77,6 +77,12 @@ export async function POST(request: Request) {
       insuranceType,
       hmoId,
       policyNumber,
+      nextOfKinFirstname,
+      nextOfKinLastname,
+      nextOfKinRelationship,
+      nextOfKinAddress,
+      nextOfKinPhone,
+      nextOfKinEmail,
     } = body;
 
     if (
@@ -90,7 +96,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -99,13 +105,24 @@ export async function POST(request: Request) {
       if (!hmoId) {
         return NextResponse.json(
           { error: "HMO selection is required for HMO insurance type" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       if (!policyNumber || policyNumber.trim() === "") {
         return NextResponse.json(
           { error: "Policy number is required for HMO insurance type" },
-          { status: 400 }
+          { status: 400 },
+        );
+      }
+    }
+
+    // Validate next of kin email format if provided
+    if (nextOfKinEmail && nextOfKinEmail.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(nextOfKinEmail)) {
+        return NextResponse.json(
+          { error: "Invalid next of kin email address" },
+          { status: 400 },
         );
       }
     }
@@ -123,6 +140,12 @@ export async function POST(request: Request) {
         insuranceType,
         hmoId: hmoId ? parseInt(hmoId) : null,
         policyNumber: policyNumber || null,
+        nextOfKinFirstname: nextOfKinFirstname || null,
+        nextOfKinLastname: nextOfKinLastname || null,
+        nextOfKinRelationship: nextOfKinRelationship || null,
+        nextOfKinAddress: nextOfKinAddress || null,
+        nextOfKinPhone: nextOfKinPhone || null,
+        nextOfKinEmail: nextOfKinEmail || null,
       })
       .returning();
 
@@ -131,7 +154,7 @@ export async function POST(request: Request) {
     console.error("Error creating patient:", error);
     return NextResponse.json(
       { error: "Failed to create patient" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

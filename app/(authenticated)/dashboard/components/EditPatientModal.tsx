@@ -28,6 +28,13 @@ interface PatientFormData {
   insuranceType: string;
   hmoId?: string;
   policyNumber?: string;
+  // Next of Kin fields
+  nextOfKinFirstname: string;
+  nextOfKinLastname: string;
+  nextOfKinRelationship: string;
+  nextOfKinAddress: string;
+  nextOfKinPhone: string;
+  nextOfKinEmail: string;
 }
 
 interface Patient {
@@ -42,6 +49,13 @@ interface Patient {
   insuranceType: string;
   hmoId?: number | null;
   policyNumber?: string | null;
+  // Next of Kin fields
+  nextOfKinFirstname?: string | null;
+  nextOfKinLastname?: string | null;
+  nextOfKinRelationship?: string | null;
+  nextOfKinAddress?: string | null;
+  nextOfKinPhone?: string | null;
+  nextOfKinEmail?: string | null;
 }
 
 interface EditPatientModalProps {
@@ -89,6 +103,12 @@ export default function EditPatientModal({
       insuranceType: "",
       hmoId: "",
       policyNumber: "",
+      nextOfKinFirstname: "",
+      nextOfKinLastname: "",
+      nextOfKinRelationship: "",
+      nextOfKinAddress: "",
+      nextOfKinPhone: "",
+      nextOfKinEmail: "",
     },
     mode: "onChange",
   });
@@ -109,6 +129,12 @@ export default function EditPatientModal({
         insuranceType: patient.insuranceType,
         hmoId: patient.hmoId ? patient.hmoId.toString() : "",
         policyNumber: patient.policyNumber || "",
+        nextOfKinFirstname: patient.nextOfKinFirstname || "",
+        nextOfKinLastname: patient.nextOfKinLastname || "",
+        nextOfKinRelationship: patient.nextOfKinRelationship || "",
+        nextOfKinAddress: patient.nextOfKinAddress || "",
+        nextOfKinPhone: patient.nextOfKinPhone || "",
+        nextOfKinEmail: patient.nextOfKinEmail || "",
       });
     }
   }, [patient, reset]);
@@ -153,7 +179,7 @@ export default function EditPatientModal({
       await mutate(
         (key) => typeof key === "string" && key.startsWith("/api/patients"),
         undefined,
-        { revalidate: true }
+        { revalidate: true },
       );
       setSuccessMessage("Patient updated successfully!");
 
@@ -164,7 +190,7 @@ export default function EditPatientModal({
       }, 1500);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Failed to update patient"
+        error instanceof Error ? error.message : "Failed to update patient",
       );
     } finally {
       setIsSubmitting(false);
@@ -625,6 +651,164 @@ export default function EditPatientModal({
                 </div>
               </div>
             )}
+
+            {/* Next of Kin Information */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-1">
+                  Next of Kin Information
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Emergency contact details (optional)
+                </p>
+              </div>
+
+              {/* Next of Kin Name */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="nextOfKinFirstname"
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                  >
+                    <UserIcon className="h-4 w-4" />
+                    First Name
+                  </label>
+                  <input
+                    {...register("nextOfKinFirstname")}
+                    type="text"
+                    id="nextOfKinFirstname"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 transition-all"
+                    placeholder="John"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="nextOfKinLastname"
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                  >
+                    <UserIcon className="h-4 w-4" />
+                    Last Name
+                  </label>
+                  <input
+                    {...register("nextOfKinLastname")}
+                    type="text"
+                    id="nextOfKinLastname"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 transition-all"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+
+              {/* Relationship */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="nextOfKinRelationship"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                >
+                  <HeartIcon className="h-4 w-4" />
+                  Relationship to Patient
+                </label>
+                <div className="relative">
+                  <select
+                    {...register("nextOfKinRelationship")}
+                    id="nextOfKinRelationship"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="spouse">Spouse</option>
+                    <option value="parent">Parent</option>
+                    <option value="sibling">Sibling</option>
+                    <option value="child">Child</option>
+                    <option value="friend">Friend</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="nextOfKinAddress"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                >
+                  <IdentificationIcon className="h-4 w-4" />
+                  Address
+                </label>
+                <input
+                  {...register("nextOfKinAddress")}
+                  type="text"
+                  id="nextOfKinAddress"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 transition-all"
+                  placeholder="Enter full address"
+                />
+              </div>
+
+              {/* Phone Number */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="nextOfKinPhone"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                >
+                  <PhoneIcon className="h-4 w-4" />
+                  Phone Number
+                </label>
+                <input
+                  {...register("nextOfKinPhone")}
+                  type="tel"
+                  id="nextOfKinPhone"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 transition-all"
+                  placeholder="+234 801 234 5678"
+                />
+              </div>
+
+              {/* Email Address */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="nextOfKinEmail"
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                >
+                  <UserIcon className="h-4 w-4" />
+                  Email Address
+                </label>
+                <input
+                  {...register("nextOfKinEmail", {
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Enter a valid email address",
+                    },
+                  })}
+                  type="email"
+                  id="nextOfKinEmail"
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                    errors.nextOfKinEmail
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 bg-gray-50"
+                  }`}
+                  placeholder="john@example.com"
+                />
+                {errors.nextOfKinEmail && (
+                  <p className="text-xs text-red-600">
+                    {errors.nextOfKinEmail.message}
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* Submit Button */}
             <div className="flex gap-3 pt-4">

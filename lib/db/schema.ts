@@ -44,6 +44,13 @@ export const patients = pgTable("patients", {
   insuranceType: text("insurance_type").notNull(), // "private", "hmo", "corporate"
   hmoId: integer("hmo_id").references(() => hmos.id), // Required when insuranceType is "hmo"
   policyNumber: text("policy_number"), // Required when insuranceType is "hmo"
+  // Next of Kin fields
+  nextOfKinFirstname: text("next_of_kin_firstname"),
+  nextOfKinLastname: text("next_of_kin_lastname"),
+  nextOfKinRelationship: text("next_of_kin_relationship"),
+  nextOfKinAddress: text("next_of_kin_address"),
+  nextOfKinPhone: text("next_of_kin_phone"),
+  nextOfKinEmail: text("next_of_kin_email"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

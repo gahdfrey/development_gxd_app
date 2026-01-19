@@ -13,11 +13,16 @@ export default function SideMenu() {
   const pathname = usePathname();
   const [isSetupOpen, setIsSetupOpen] = useState(false);
 
-  const { data: user } = useSWR("/api/wai", fetcher);
+  const { data: user } = useSWR("/api/wai", fetcher, {
+    shouldRetryOnError: false, // Don't retry on auth failures
+    revalidateOnFocus: false, // Don't revalidate when window regains focus
+    dedupingInterval: 60000, // Cache for 1 minute to reduce repeated calls
+  });
 
   const hasPermission = useCallback(
     (module: string, permission: string) => {
-      if (!user || !user.permissions) return true; // Default to true if no permissions set
+      // Handle case when user is null or doesn't exist
+      if (!user || user.user === null || !user.permissions) return true; // Default to true if no permissions set
       const modulePermissions = user.permissions[module];
 
       // Handle missing module permissions - default to true
@@ -39,7 +44,7 @@ export default function SideMenu() {
       // Unknown structure - default to true for safety
       return true;
     },
-    [user]
+    [user],
   );
 
   const handleMouseEnter = useCallback(() => {
@@ -58,7 +63,7 @@ export default function SideMenu() {
     (href: string) => {
       return pathname === href;
     },
-    [pathname]
+    [pathname],
   );
 
   return (
