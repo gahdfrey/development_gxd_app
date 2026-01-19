@@ -51,6 +51,11 @@ export default function Table<T>({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 20,
+      },
+    },
   });
 
   return (
@@ -115,7 +120,7 @@ export default function Table<T>({
                     <div className="flex items-center gap-2">
                       {flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                       {{
                         asc: " 🔼",

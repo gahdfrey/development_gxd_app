@@ -70,6 +70,7 @@ export const appointments = pgTable("appointments", {
   appointmentDate: text("appointment_date").notNull(), // Format: YYYY-MM-DD
   appointmentTime: text("appointment_time").notNull(), // Format: HH:MM (24-hour)
   status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled, no-show
+  visitType: text("visit_type").notNull().default("new visit"), // new visit, follow up, review, first visit after discharge, drug refill
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

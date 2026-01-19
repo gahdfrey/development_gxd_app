@@ -6,6 +6,7 @@ import { useAppointmentFilters } from "@/lib/hooks/useAppointmentFilters";
 import DoctorAppointmentsTable from "./components/DoctorAppointmentsTable";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import type { Session } from "next-auth";
+import PermissionDenied from "@/app/components/ui/PermissionDenied";
 
 interface Patient {
   id: number;
@@ -22,6 +23,7 @@ interface Appointment {
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  visitType: string;
   notes: string | null;
   patient: Patient | null;
 }
@@ -262,14 +264,25 @@ export default function MyAppointmentsClient({
           </div>
         )}
 
+        {/* Permission Denied */}
+        {error &&
+          (error.message?.includes("Forbidden") ||
+            error.message?.includes("permission")) && (
+            <PermissionDenied moduleName="My Appointments" />
+          )}
+
         {/* Error State */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
-            <p className="text-red-700 text-center">
-              Failed to load appointments. Please try again.
-            </p>
-          </div>
-        )}
+        {error &&
+          !(
+            error.message?.includes("Forbidden") ||
+            error.message?.includes("permission")
+          ) && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+              <p className="text-red-700 text-center">
+                Failed to load appointments. Please try again.
+              </p>
+            </div>
+          )}
 
         {/* Appointments Table */}
         {!isLoading && !error && (

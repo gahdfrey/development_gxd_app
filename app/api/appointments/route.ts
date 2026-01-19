@@ -12,6 +12,7 @@ export async function GET() {
         appointmentDate: appointments.appointmentDate,
         appointmentTime: appointments.appointmentTime,
         status: appointments.status,
+        visitType: appointments.visitType,
         notes: appointments.notes,
         createdAt: appointments.createdAt,
         patient: {
@@ -32,7 +33,7 @@ export async function GET() {
       .leftJoin(users, eq(appointments.doctorId, users.id))
       .orderBy(
         desc(appointments.appointmentDate),
-        desc(appointments.appointmentTime)
+        desc(appointments.appointmentTime),
       );
 
     return NextResponse.json(allAppointments);
@@ -40,7 +41,7 @@ export async function GET() {
     console.error("Error fetching appointments:", error);
     return NextResponse.json(
       { error: "Failed to fetch appointments" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
       appointmentDate,
       appointmentTime,
       status,
+      visitType,
       notes,
     } = body;
 
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
           error:
             "Missing required fields: patientId, doctorId, appointmentDate, appointmentTime",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -73,7 +75,22 @@ export async function POST(request: Request) {
     if (!timeRegex.test(appointmentTime)) {
       return NextResponse.json(
         { error: "Invalid time format. Use HH:MM (24-hour format)" },
-        { status: 400 }
+        { status: 400 },
+      );
+    }
+
+    // Validate visit type
+    const validVisitTypes = [
+      "new visit",
+      "follow up",
+      "review",
+      "first visit after discharge",
+      "drug refill",
+    ];
+    if (visitType && !validVisitTypes.includes(visitType)) {
+      return NextResponse.json(
+        { error: "Invalid visit type" },
+        { status: 400 },
       );
     }
 
@@ -86,6 +103,7 @@ export async function POST(request: Request) {
         appointmentDate,
         appointmentTime,
         status: status || "scheduled",
+        visitType: visitType || "new visit",
         notes: notes || null,
       })
       .returning();
@@ -97,6 +115,7 @@ export async function POST(request: Request) {
         appointmentDate: appointments.appointmentDate,
         appointmentTime: appointments.appointmentTime,
         status: appointments.status,
+        visitType: appointments.visitType,
         notes: appointments.notes,
         createdAt: appointments.createdAt,
         patient: {
@@ -122,7 +141,7 @@ export async function POST(request: Request) {
     console.error("Error creating appointment:", error);
     return NextResponse.json(
       { error: "Failed to create appointment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

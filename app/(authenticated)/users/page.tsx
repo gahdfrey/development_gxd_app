@@ -18,6 +18,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "@/app/contexts/ToastContext";
+import PermissionDenied from "@/app/components/ui/PermissionDenied";
 
 import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -34,7 +35,7 @@ export default function UsersPage() {
     `/api/users${
       debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""
     }`,
-    fetcher
+    fetcher,
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -187,8 +188,17 @@ export default function UsersPage() {
         ),
       }),
     ],
-    []
+    [],
   );
+
+  // Check for permission error
+  if (
+    error &&
+    (error.message?.includes("Forbidden") ||
+      error.message?.includes("permission"))
+  ) {
+    return <PermissionDenied moduleName="Users" />;
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

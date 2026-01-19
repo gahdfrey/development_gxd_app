@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         appointmentDate: appointments.appointmentDate,
         appointmentTime: appointments.appointmentTime,
         status: appointments.status,
+        visitType: appointments.visitType,
         notes: appointments.notes,
         createdAt: appointments.createdAt,
         patient: {
@@ -70,8 +71,8 @@ export async function GET(request: Request) {
       conditions.push(
         or(
           ilike(patients.firstname, searchTerm),
-          ilike(patients.lastname, searchTerm)
-        ) as any
+          ilike(patients.lastname, searchTerm),
+        ) as any,
       );
     }
 
@@ -82,11 +83,11 @@ export async function GET(request: Request) {
       orderBy === "asc"
         ? await queryBuilder.orderBy(
             asc(appointments.appointmentDate),
-            asc(appointments.appointmentTime)
+            asc(appointments.appointmentTime),
           )
         : await queryBuilder.orderBy(
             desc(appointments.appointmentDate),
-            desc(appointments.appointmentTime)
+            desc(appointments.appointmentTime),
           );
 
     return NextResponse.json(doctorAppointments);
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
     console.error("Error fetching doctor's appointments:", error);
     return NextResponse.json(
       { error: "Failed to fetch appointments" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

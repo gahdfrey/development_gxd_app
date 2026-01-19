@@ -14,6 +14,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "@/app/contexts/ToastContext";
+import PermissionDenied from "@/app/components/ui/PermissionDenied";
 import { Role } from "@/lib/db/schema";
 
 export default function RolesPage() {
@@ -28,7 +29,7 @@ export default function RolesPage() {
     `/api/roles${
       debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""
     }`,
-    fetcher
+    fetcher,
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -155,8 +156,17 @@ export default function RolesPage() {
         ),
       }),
     ],
-    []
+    [],
   );
+
+  // Check for permission error
+  if (
+    error &&
+    (error.message?.includes("Forbidden") ||
+      error.message?.includes("permission"))
+  ) {
+    return <PermissionDenied moduleName="Roles" />;
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

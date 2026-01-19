@@ -17,6 +17,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "@/app/contexts/ToastContext";
+import PermissionDenied from "@/app/components/ui/PermissionDenied";
 
 interface Patient {
   id: number;
@@ -47,7 +48,7 @@ export default function DashboardPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
-    null
+    null,
   );
   const { showToast } = useToast();
 
@@ -67,7 +68,7 @@ export default function DashboardPage() {
     mutate(
       (key) => typeof key === "string" && key.startsWith("/api/patients"),
       undefined,
-      { revalidate: true }
+      { revalidate: true },
     );
     setIsDeleteModalOpen(false);
     setSelectedPatient(null);
@@ -144,8 +145,17 @@ export default function DashboardPage() {
         ),
       }),
     ],
-    []
+    [],
   );
+
+  // Check for permission error
+  if (
+    error &&
+    (error.message?.includes("Forbidden") ||
+      error.message?.includes("permission"))
+  ) {
+    return <PermissionDenied moduleName="Dashboard" />;
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

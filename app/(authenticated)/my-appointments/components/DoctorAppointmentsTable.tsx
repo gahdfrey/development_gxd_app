@@ -27,6 +27,7 @@ interface Appointment {
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  visitType: string;
   notes: string | null;
   patient: Patient | null;
 }
@@ -136,6 +137,14 @@ export default function DoctorAppointmentsTable({
         cell: (info) => (
           <span className="text-sm text-gray-900 capitalize">
             {info.getValue() || "N/A"}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("visitType", {
+        header: "Visit Type",
+        cell: (info) => (
+          <span className="text-sm text-gray-700 capitalize">
+            {info.getValue()}
           </span>
         ),
       }),

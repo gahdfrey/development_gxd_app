@@ -22,6 +22,7 @@ interface Appointment {
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  visitType: string;
   notes: string | null;
   patient: Patient | null;
 }
@@ -154,6 +155,12 @@ export default function ConsultationModal({
                   <p className="text-sm text-gray-600">Gender</p>
                   <p className="text-base font-medium text-gray-900 capitalize">
                     {appointment.patient.gender}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Visit Type</p>
+                  <p className="text-base font-medium text-gray-900 capitalize">
+                    {appointment.visitType}
                   </p>
                 </div>
                 <div>
