@@ -140,6 +140,14 @@ export default function DoctorAppointmentsTable({
           </span>
         ),
       }),
+      columnHelper.accessor("patient.phone", {
+        header: "Phone",
+        cell: (info) => (
+          <span className="text-sm text-gray-900 capitalize">
+            {info.getValue() || "N/A"}
+          </span>
+        ),
+      }),
       columnHelper.accessor("visitType", {
         header: "Visit Type",
         cell: (info) => (

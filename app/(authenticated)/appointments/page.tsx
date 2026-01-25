@@ -34,7 +34,7 @@ export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
-    null
+    null,
   );
 
   const {
@@ -55,7 +55,7 @@ export default function AppointmentsPage() {
     // Apply patient filter
     if (selectedPatientId !== null) {
       filtered = filtered.filter(
-        (apt) => apt.patient?.id === selectedPatientId
+        (apt) => apt.patient?.id === selectedPatientId,
       );
     }
 

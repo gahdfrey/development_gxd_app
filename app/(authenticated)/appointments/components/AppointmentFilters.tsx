@@ -51,7 +51,7 @@ function SearchableSelect({
 
   const filteredOptions = useMemo(() => {
     return options.filter((option) =>
-      option.label.toLowerCase().includes(searchQuery.toLowerCase())
+      option.label.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   }, [options, searchQuery]);
 
@@ -150,12 +150,12 @@ export default function AppointmentFilters({
 }: AppointmentFiltersProps) {
   const { data: doctors = [], isLoading: loadingDoctors } = useSWR<Doctor[]>(
     "/api/doctors?orderBy=asc",
-    fetcher
+    fetcher,
   );
 
   const { data: patients = [], isLoading: loadingPatients } = useSWR<Patient[]>(
     "/api/patients?orderBy=asc",
-    fetcher
+    fetcher,
   );
 
   // Map doctors and patients to options (already sorted by API by firstname)
@@ -181,41 +181,41 @@ export default function AppointmentFilters({
     selectedDoctorId !== null || selectedPatientId !== null;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        {/* Filters */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="flex-1 min-w-[200px]">
-            <SearchableSelect
-              options={sortedDoctors}
-              value={selectedDoctorId}
-              onChange={onDoctorChange}
-              placeholder="All Doctors"
-              disabled={loadingDoctors}
-            />
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <SearchableSelect
-              options={sortedPatients}
-              value={selectedPatientId}
-              onChange={onPatientChange}
-              placeholder="All Patients"
-              disabled={loadingPatients}
-            />
-          </div>
+    // <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+    <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex-1 min-w-[200px]">
+          <SearchableSelect
+            options={sortedDoctors}
+            value={selectedDoctorId}
+            onChange={onDoctorChange}
+            placeholder="All Doctors"
+            disabled={loadingDoctors}
+          />
         </div>
-
-        {/* Clear Filters Button */}
-        {hasActiveFilters && (
-          <button
-            onClick={onClearFilters}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
-          >
-            <XMarkIcon className="h-4 w-4" />
-            Clear
-          </button>
-        )}
+        <div className="flex-1 min-w-[200px]">
+          <SearchableSelect
+            options={sortedPatients}
+            value={selectedPatientId}
+            onChange={onPatientChange}
+            placeholder="All Patients"
+            disabled={loadingPatients}
+          />
+        </div>
       </div>
+
+      {/* Clear Filters Button */}
+      {hasActiveFilters && (
+        <button
+          onClick={onClearFilters}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+        >
+          <XMarkIcon className="h-4 w-4" />
+          Clear
+        </button>
+      )}
     </div>
+    // </div>
   );
 }

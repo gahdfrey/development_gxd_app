@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
-import { desc, asc, or, ilike, and, gte, lte } from "drizzle-orm";
+import { desc, asc, or, ilike, and, gte, lte, eq, isNull } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
@@ -17,6 +17,9 @@ export async function GET(request: Request) {
 
     // Build WHERE conditions
     const conditions = [];
+
+    // Exclude soft-deleted patients
+    conditions.push(isNull(patients.deletedAt) as any);
 
     // Add date range filtering (by createdAt)
     if (startDate) {

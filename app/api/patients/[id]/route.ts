@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export async function GET(
   request: Request,
@@ -20,7 +20,7 @@ export async function GET(
     const patient = await db
       .select()
       .from(patients)
-      .where(eq(patients.id, id))
+      .where(and(eq(patients.id, id), isNull(patients.deletedAt)))
       .limit(1);
 
     if (patient.length === 0) {
@@ -165,9 +165,11 @@ export async function DELETE(
       );
     }
 
+    // Soft delete: set deletedAt timestamp instead of actually deleting
     const deletedPatient = await db
-      .delete(patients)
-      .where(eq(patients.id, id))
+      .update(patients)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(patients.id, id), isNull(patients.deletedAt)))
       .returning();
 
     if (deletedPatient.length === 0) {
@@ -177,18 +179,6 @@ export async function DELETE(
     return NextResponse.json({ message: "Patient deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting patient:", error);
-
-    // Check for foreign key constraint violation
-    if (error?.cause?.code === "23503") {
-      return NextResponse.json(
-        {
-          error:
-            "Cannot delete patient with existing appointments. Please delete all appointments for this patient first.",
-        },
-        { status: 409 },
-      );
-    }
-
     return NextResponse.json(
       { error: "Failed to delete patient" },
       { status: 500 },

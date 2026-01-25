@@ -53,6 +53,7 @@ export const patients = pgTable("patients", {
   nextOfKinEmail: text("next_of_kin_email"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"), // Soft delete: null = active, timestamp = deleted
 });
 
 /**
