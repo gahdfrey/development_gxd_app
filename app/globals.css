@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -81,3 +86,24 @@ Glassmorphism effect utility
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   transition: all 0.3s ease;
 }
+
+@layer utilities {
+  .bg-mesh-gradient {
+    background: linear-gradient(-45deg, #f8fafc, #e0f2fe, #f0fdf4, #f8fafc);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+

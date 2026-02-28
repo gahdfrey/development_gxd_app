@@ -1,334 +1,218 @@
-import "dotenv/config";
-import { db } from "./index";
-import { users, patients, appointments } from "./schema";
-import bcrypt from "bcrypt";
+import 'dotenv/config';
+import { db } from './index';
+import { users, roles, patients, appointments, hmos } from './schema';
+import { eq } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 
+// ─── Helpers ────────────────────────────────────────────────
+function randomItem<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function padZero(n: number): string {
+    return n.toString().padStart(2, '0');
+}
+
+function randomDate(startDate: Date, endDate: Date): Date {
+    const start = startDate.getTime();
+    const end = endDate.getTime();
+    return new Date(start + Math.random() * (end - start));
+}
+
+function formatDate(d: Date): string {
+    return `${d.getFullYear()}-${padZero(d.getMonth() + 1)}-${padZero(d.getDate())}`;
+}
+
+function randomTime(): string {
+    const hour = randomInt(8, 17); // 8 AM to 5 PM
+    const minute = randomItem([0, 15, 30, 45]);
+    return `${padZero(hour)}:${padZero(minute)}`;
+}
+
+function randomPhone(): string {
+    return `${randomInt(800, 909)}${randomInt(1000000, 9999999)}`;
+}
+
+function randomDOB(): string {
+    const year = randomInt(1950, 2005);
+    const month = randomInt(1, 12);
+    const day = randomInt(1, 28);
+    return `${year}-${padZero(month)}-${padZero(day)}`;
+}
+
+// ─── Data ────────────────────────────────────────────────────
+const firstNames = [
+    'Adaeze', 'Chinedu', 'Fatima', 'Ibrahim', 'Ngozi', 'Oluwaseun', 'Yusuf', 'Amina',
+    'Emeka', 'Halima', 'Obiora', 'Rashida', 'Tunde', 'Zainab', 'Chidera', 'Musa',
+    'Aisha', 'Obinna', 'Funke', 'Abdullahi', 'Kemi', 'Idris', 'Bola', 'Usman',
+    'Nkechi', 'Taiwo', 'Hauwa', 'Chukwuma', 'Adeola', 'Suleiman', 'Blessing',
+    'Kabiru', 'Grace', 'Mohammed', 'Joy', 'Aliyu', 'Patience', 'Danjuma', 'Stella',
+    'Garba', 'Chioma', 'Hassan', 'Mercy', 'Bello', 'Rita', 'Yakubu', 'Esther',
+    'Sanusi', 'Vivian', 'Audu'
+];
+
+const lastNames = [
+    'Okafor', 'Balogun', 'Abdullahi', 'Eze', 'Ogundipe', 'Ibrahim', 'Nnamdi', 'Abubakar',
+    'Okonkwo', 'Adeyemi', 'Mohammed', 'Chukwu', 'Adekunle', 'Musa', 'Okoro', 'Lawal',
+    'Nnadi', 'Afolabi', 'Sani', 'Igwe', 'Bakare', 'Yusuf', 'Nwachukwu', 'Ogunbiyi',
+    'Danladi', 'Ojo', 'Haruna', 'Onuoha', 'Adebayo', 'Garba', 'Osagie', 'Shehu',
+    'Uzoma', 'Oladipo', 'Buba', 'Anyanwu', 'Olawale', 'Tijani', 'Ibe', 'Jimoh',
+    'Uche', 'Kolawole', 'Dauda', 'Achebe', 'Oladele', 'Ahmad', 'Ezeh', 'Fashola',
+    'Aliyu', 'Obasi'
+];
+
+const relationships = ['parent', 'sibling', 'spouse', 'child', 'relative', 'friend'];
+const genders = ['male', 'female'];
+const insuranceTypes = ['private', 'hmo'];
+const statuses = ['scheduled', 'completed', 'cancelled', 'no-show'];
+const visitTypes = ['new visit', 'follow up', 'review', 'first visit after discharge', 'drug refill'];
+const appointmentNotes = [
+    'Routine checkup', 'Follow-up for blood pressure monitoring', 'Prescription refill needed',
+    'Patient reports persistent headache', 'Post-surgery follow-up', 'Annual physical examination',
+    'Lab results review', 'Referred by Dr. for specialist consultation', 'Chronic pain management',
+    'Diabetes management review', 'Prenatal checkup', 'Vaccination appointment',
+    'Wound dressing change', 'Eye examination referral', 'Chest pain evaluation',
+    null, null, null, // some with no notes
+];
+
+const doctors = [
+    { username: 'dr.adebayo', email: 'adebayo@gxdapp.com', firstname: 'Adebayo', lastname: 'Ogundimu' },
+    { username: 'dr.amina', email: 'amina@gxdapp.com', firstname: 'Amina', lastname: 'Bello' },
+    { username: 'dr.chukwu', email: 'chukwu@gxdapp.com', firstname: 'Chukwuemeka', lastname: 'Obi' },
+];
+
+// ─── Main Seed ──────────────────────────────────────────────
 async function seedTestData() {
-  console.log("Creating test users (doctors)...");
+    console.log('🌱 Starting test data seed...\n');
 
-  // First, create some doctors
-  const hashedPassword = await bcrypt.hash("password123", 10);
-  const doctorIds: number[] = [];
+    // 1. Get doctor role ID
+    const doctorRole = await db.select().from(roles).where(eq(roles.name, 'doctor'));
+    if (doctorRole.length === 0) {
+        console.error('❌ Doctor role not found. Run the main seed first: npm run db:seed');
+        process.exit(1);
+    }
+    const doctorRoleId = doctorRole[0].id;
 
-  const doctors = [
-    {
-      firstname: "John",
-      lastname: "Smith",
-      email: "dr.smith@hospital.com",
-      username: "drsmith",
-    },
-    {
-      firstname: "Sarah",
-      lastname: "Johnson",
-      email: "dr.johnson@hospital.com",
-      username: "drjohnson",
-    },
-    {
-      firstname: "Michael",
-      lastname: "Williams",
-      email: "dr.williams@hospital.com",
-      username: "drwilliams",
-    },
-    {
-      firstname: "Emily",
-      lastname: "Brown",
-      email: "dr.brown@hospital.com",
-      username: "drbrown",
-    },
-    {
-      firstname: "David",
-      lastname: "Jones",
-      email: "dr.jones@hospital.com",
-      username: "drjones",
-    },
-  ];
+    // 2. Get HMO IDs
+    const allHmos = await db.select().from(hmos);
+    const hmoIds = allHmos.map(h => h.id);
 
-  for (const doctor of doctors) {
-    const result = await db
-      .insert(users)
-      .values({
-        ...doctor,
-        password: hashedPassword,
-        roleId: 1, // Assuming doctor role ID is 1
-      })
-      .returning({ id: users.id });
-    doctorIds.push(result[0].id);
-  }
+    // 3. Create 3 doctors
+    console.log('👨‍⚕️ Creating 3 doctors...');
+    const hashedPassword = await bcrypt.hash('Doctor@123', 10);
+    const doctorIds: number[] = [];
 
-  console.log(`Created ${doctorIds.length} doctors.`);
-
-  console.log("Creating 20 test patients...");
-
-  const patientData = [
-    {
-      firstname: "Emma",
-      lastname: "Anderson",
-      gender: "Female",
-      dob: "1990-05-15",
-      countryCode: "+1",
-      phone: "5551234567",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Liam",
-      lastname: "Martinez",
-      gender: "Male",
-      dob: "1985-08-22",
-      countryCode: "+1",
-      phone: "5551234568",
-      insuranceType: "Medicare",
-    },
-    {
-      firstname: "Olivia",
-      lastname: "Garcia",
-      gender: "Female",
-      dob: "1992-03-10",
-      countryCode: "+1",
-      phone: "5551234569",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Noah",
-      lastname: "Rodriguez",
-      gender: "Male",
-      dob: "1988-11-30",
-      countryCode: "+1",
-      phone: "5551234570",
-      insuranceType: "Medicaid",
-    },
-    {
-      firstname: "Ava",
-      lastname: "Wilson",
-      gender: "Female",
-      dob: "1995-07-18",
-      countryCode: "+1",
-      phone: "5551234571",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Ethan",
-      lastname: "Moore",
-      gender: "Male",
-      dob: "1983-12-05",
-      countryCode: "+1",
-      phone: "5551234572",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Sophia",
-      lastname: "Taylor",
-      gender: "Female",
-      dob: "1991-09-25",
-      countryCode: "+1",
-      phone: "5551234573",
-      insuranceType: "Medicare",
-    },
-    {
-      firstname: "Mason",
-      lastname: "Thomas",
-      gender: "Male",
-      dob: "1987-04-14",
-      countryCode: "+1",
-      phone: "5551234574",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Isabella",
-      lastname: "Jackson",
-      gender: "Female",
-      dob: "1993-06-08",
-      countryCode: "+1",
-      phone: "5551234575",
-      insuranceType: "Medicaid",
-    },
-    {
-      firstname: "James",
-      lastname: "White",
-      gender: "Male",
-      dob: "1989-02-20",
-      countryCode: "+1",
-      phone: "5551234576",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Mia",
-      lastname: "Harris",
-      gender: "Female",
-      dob: "1994-10-12",
-      countryCode: "+1",
-      phone: "5551234577",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Benjamin",
-      lastname: "Martin",
-      gender: "Male",
-      dob: "1986-01-28",
-      countryCode: "+1",
-      phone: "5551234578",
-      insuranceType: "Medicare",
-    },
-    {
-      firstname: "Charlotte",
-      lastname: "Thompson",
-      gender: "Female",
-      dob: "1996-08-03",
-      countryCode: "+1",
-      phone: "5551234579",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Lucas",
-      lastname: "Lee",
-      gender: "Male",
-      dob: "1984-05-19",
-      countryCode: "+1",
-      phone: "5551234580",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Amelia",
-      lastname: "Walker",
-      gender: "Female",
-      dob: "1997-11-07",
-      countryCode: "+1",
-      phone: "5551234581",
-      insuranceType: "Medicaid",
-    },
-    {
-      firstname: "Henry",
-      lastname: "Hall",
-      gender: "Male",
-      dob: "1982-03-16",
-      countryCode: "+1",
-      phone: "5551234582",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Harper",
-      lastname: "Allen",
-      gender: "Female",
-      dob: "1998-07-22",
-      countryCode: "+1",
-      phone: "5551234583",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "Alexander",
-      lastname: "Young",
-      gender: "Male",
-      dob: "1990-09-11",
-      countryCode: "+1",
-      phone: "5551234584",
-      insuranceType: "Medicare",
-    },
-    {
-      firstname: "Evelyn",
-      lastname: "King",
-      gender: "Female",
-      dob: "1991-12-29",
-      countryCode: "+1",
-      phone: "5551234585",
-      insuranceType: "Private",
-    },
-    {
-      firstname: "William",
-      lastname: "Wright",
-      gender: "Male",
-      dob: "1988-04-05",
-      countryCode: "+1",
-      phone: "5551234586",
-      insuranceType: "Private",
-    },
-  ];
-
-  const patientIds: number[] = [];
-  for (const patient of patientData) {
-    const result = await db
-      .insert(patients)
-      .values(patient)
-      .returning({ id: patients.id });
-    patientIds.push(result[0].id);
-  }
-
-  console.log(`Created ${patientIds.length} patients.`);
-
-  console.log("Creating 100 test appointments...");
-
-  const statuses = ["scheduled", "completed", "cancelled", "no-show"];
-  const appointmentNotes = [
-    "Regular checkup",
-    "Follow-up appointment",
-    "Annual physical",
-    "Consultation",
-    "Lab results review",
-    "Medication review",
-    "Vaccination",
-    "Health screening",
-    null,
-    null,
-  ];
-
-  // Generate appointments for the next 60 days and past 30 days
-  const today = new Date();
-  const appointmentsToCreate = [];
-
-  for (let i = 0; i < 100; i++) {
-    // Random date between -30 and +60 days
-    const daysOffset = Math.floor(Math.random() * 91) - 30;
-    const appointmentDate = new Date(today);
-    appointmentDate.setDate(appointmentDate.getDate() + daysOffset);
-
-    // Random time between 8 AM and 5 PM
-    const hour = Math.floor(Math.random() * 9) + 8; // 8-16
-    const minute = Math.random() < 0.5 ? "00" : "30";
-
-    // Random patient and doctor
-    const patientId = patientIds[Math.floor(Math.random() * patientIds.length)];
-    const doctorId = doctorIds[Math.floor(Math.random() * doctorIds.length)];
-
-    // Status based on date
-    let status;
-    if (daysOffset < -7) {
-      // Past appointments more likely to be completed or other statuses
-      const rand = Math.random();
-      if (rand < 0.7) status = "completed";
-      else if (rand < 0.85) status = "cancelled";
-      else status = "no-show";
-    } else if (daysOffset < 0) {
-      // Recent past appointments
-      const rand = Math.random();
-      if (rand < 0.8) status = "completed";
-      else if (rand < 0.9) status = "cancelled";
-      else status = "no-show";
-    } else {
-      // Future appointments mostly scheduled
-      status = Math.random() < 0.9 ? "scheduled" : "cancelled";
+    for (const doc of doctors) {
+        const existing = await db.select().from(users).where(eq(users.username, doc.username));
+        if (existing.length > 0) {
+            doctorIds.push(existing[0].id);
+            console.log(`   ✓ Doctor ${doc.firstname} ${doc.lastname} already exists (id: ${existing[0].id})`);
+        } else {
+            const [newDoc] = await db.insert(users).values({
+                username: doc.username,
+                email: doc.email,
+                firstname: doc.firstname,
+                lastname: doc.lastname,
+                password: hashedPassword,
+                roleId: doctorRoleId,
+            }).returning();
+            doctorIds.push(newDoc.id);
+            console.log(`   ✓ Created Dr. ${doc.firstname} ${doc.lastname} (id: ${newDoc.id})`);
+        }
     }
 
-    appointmentsToCreate.push({
-      patientId,
-      doctorId,
-      appointmentDate: appointmentDate.toISOString().split("T")[0],
-      appointmentTime: `${hour.toString().padStart(2, "0")}:${minute}`,
-      status,
-      notes:
-        appointmentNotes[Math.floor(Math.random() * appointmentNotes.length)],
-    });
-  }
+    // 4. Create 50 patients
+    console.log('\n🏥 Creating 50 patients...');
+    const patientIds: number[] = [];
+    const usedNames = new Set<string>();
 
-  await db.insert(appointments).values(appointmentsToCreate);
+    for (let i = 0; i < 50; i++) {
+        let firstname: string, lastname: string, key: string;
+        do {
+            firstname = firstNames[i % firstNames.length];
+            lastname = lastNames[i % lastNames.length];
+            if (i >= firstNames.length) {
+                // Add a suffix for uniqueness
+                firstname = firstNames[randomInt(0, firstNames.length - 1)];
+                lastname = lastNames[randomInt(0, lastNames.length - 1)];
+            }
+            key = `${firstname}-${lastname}`;
+        } while (usedNames.has(key));
+        usedNames.add(key);
 
-  console.log("Created 100 appointments.");
-  console.log("\n✅ Test data seeding complete!");
-  console.log(`   - 5 doctors created`);
-  console.log(`   - 20 patients created`);
-  console.log(`   - 100 appointments created`);
+        const gender = randomItem(genders);
+        const insurance = randomItem(insuranceTypes);
+        const isHmo = insurance === 'hmo' && hmoIds.length > 0;
 
-  process.exit(0);
+        const [patient] = await db.insert(patients).values({
+            firstname,
+            lastname,
+            gender,
+            dob: randomDOB(),
+            maidenName: gender === 'female' ? randomItem(lastNames) : null,
+            countryCode: '+234',
+            phone: randomPhone(),
+            insuranceType: insurance,
+            hmoId: isHmo ? randomItem(hmoIds) : null,
+            policyNumber: isHmo ? `HMO-${randomInt(100000, 999999)}` : null,
+            nextOfKinFirstname: randomItem(firstNames),
+            nextOfKinLastname: lastname,
+            nextOfKinRelationship: randomItem(relationships),
+            nextOfKinAddress: `${randomInt(1, 200)} ${randomItem(['Broad Street', 'Allen Avenue', 'Aba Road', 'Ahmadu Bello Way', 'Herbert Macaulay Road', 'Awolowo Road'])}, Lagos`,
+            nextOfKinPhone: randomPhone(),
+            nextOfKinEmail: `${firstname.toLowerCase()}.kin@email.com`,
+        }).returning();
+
+        patientIds.push(patient.id);
+    }
+    console.log(`   ✓ Created ${patientIds.length} patients`);
+
+    // 5. Create 200 appointments spread across the next 5 months
+    console.log('\n📅 Creating 200 appointments across the next 5 months...');
+
+    const today = new Date();
+    const fiveMonthsLater = new Date(today);
+    fiveMonthsLater.setMonth(fiveMonthsLater.getMonth() + 5);
+
+    let createdCount = 0;
+
+    for (let i = 0; i < 200; i++) {
+        const appointmentDay = randomDate(today, fiveMonthsLater);
+        // Skip weekends
+        if (appointmentDay.getDay() === 0) appointmentDay.setDate(appointmentDay.getDate() + 1);
+        if (appointmentDay.getDay() === 6) appointmentDay.setDate(appointmentDay.getDate() + 2);
+
+        const status = randomItem(statuses);
+
+        await db.insert(appointments).values({
+            patientId: randomItem(patientIds),
+            doctorId: randomItem(doctorIds),
+            appointmentDate: formatDate(appointmentDay),
+            appointmentTime: randomTime(),
+            status,
+            visitType: randomItem(visitTypes),
+            notes: randomItem(appointmentNotes),
+        });
+
+        createdCount++;
+    }
+
+    console.log(`   ✓ Created ${createdCount} appointments`);
+
+    // Summary
+    console.log('\n✅ Seed complete!');
+    console.log(`   • 3 doctors (password: Doctor@123)`);
+    console.log(`   • ${patientIds.length} patients`);
+    console.log(`   • ${createdCount} appointments (next 5 months)`);
+
+    process.exit(0);
 }
 
 seedTestData().catch((err) => {
-  console.error("Seeding failed:", err);
-  process.exit(1);
+    console.error('❌ Seeding failed:', err);
+    process.exit(1);
 });

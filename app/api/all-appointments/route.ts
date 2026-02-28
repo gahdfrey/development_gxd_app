@@ -40,15 +40,19 @@ export async function GET(request: Request) {
 
     const user = userDetails[0];
 
-    // Check permission - permissions is a JSON object like { "all-appointments": { "view": true } }
-    const permissions = user.permissions as Record<
-      string,
-      Record<string, boolean>
-    > | null;
-    const hasPermission =
-      permissions &&
-      "all-appointments" in permissions &&
-      permissions["all-appointments"]?.["view"] === true;
+    // Check permission - supports both formats:
+    // Array: { "all-appointments": ["view", "add"] }
+    // Object: { "all-appointments": { "view": true } }
+    const permissions = user.permissions as Record<string, any> | null;
+    let hasPermission = false;
+    if (permissions && "all-appointments" in permissions) {
+      const modulePerm = permissions["all-appointments"];
+      if (Array.isArray(modulePerm)) {
+        hasPermission = modulePerm.includes("view");
+      } else if (typeof modulePerm === "object" && modulePerm !== null) {
+        hasPermission = modulePerm["view"] === true;
+      }
+    }
 
     if (!hasPermission) {
       return NextResponse.json(
