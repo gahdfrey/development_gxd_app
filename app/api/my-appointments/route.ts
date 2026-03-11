@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { appointments, patients, users } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, asc, eq, or, ilike, and, gte, lte } from "drizzle-orm";
 import { auth } from "@/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Get the logged-in user's session
     const session = await auth();
@@ -26,13 +26,21 @@ export async function GET() {
 
     const doctorId = currentUser[0].id;
 
-    // Fetch appointments for this doctor only
-    const doctorAppointments = await db
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const orderBy = searchParams.get("orderBy") || "desc";
+    const search = searchParams.get("search");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    // Build base query
+    let queryBuilder = db
       .select({
         id: appointments.id,
         appointmentDate: appointments.appointmentDate,
         appointmentTime: appointments.appointmentTime,
         status: appointments.status,
+        visitType: appointments.visitType,
         notes: appointments.notes,
         createdAt: appointments.createdAt,
         patient: {
@@ -45,16 +53,49 @@ export async function GET() {
         },
       })
       .from(appointments)
-      .leftJoin(patients, eq(appointments.patientId, patients.id))
-      .where(eq(appointments.doctorId, doctorId))
-      .orderBy(appointments.appointmentDate, appointments.appointmentTime);
+      .leftJoin(patients, eq(appointments.patientId, patients.id));
+
+    // Build WHERE conditions
+    const conditions = [eq(appointments.doctorId, doctorId)];
+
+    // Add date range filtering
+    if (startDate) {
+      conditions.push(gte(appointments.appointmentDate, startDate) as any);
+    }
+    if (endDate) {
+      conditions.push(lte(appointments.appointmentDate, endDate) as any);
+    }
+
+    if (search && search.trim() !== "") {
+      const searchTerm = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(patients.firstname, searchTerm),
+          ilike(patients.lastname, searchTerm),
+        ) as any,
+      );
+    }
+
+    queryBuilder = queryBuilder.where(and(...conditions)) as any;
+
+    // Apply ordering
+    const doctorAppointments =
+      orderBy === "asc"
+        ? await queryBuilder.orderBy(
+            asc(appointments.appointmentDate),
+            asc(appointments.appointmentTime),
+          )
+        : await queryBuilder.orderBy(
+            desc(appointments.appointmentDate),
+            desc(appointments.appointmentTime),
+          );
 
     return NextResponse.json(doctorAppointments);
   } catch (error) {
     console.error("Error fetching doctor's appointments:", error);
     return NextResponse.json(
       { error: "Failed to fetch appointments" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

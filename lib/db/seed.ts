@@ -1,7 +1,7 @@
 
 import 'dotenv/config';
 import { db } from './index';
-import { roles } from './schema';
+import { roles, hmos } from './schema';
 
 async function seed() {
     // console.log('Seeding roles...');
@@ -11,33 +11,47 @@ async function seed() {
             name: 'doctor',
             description: 'Medical professional with access to patient records',
             permissions: {
-                users: [],
                 dashboard: ['view'],
                 patients: ['add', 'view', 'edit', 'print'],
+                appointments: ['add', 'view', 'edit'],
+                'my-appointments': ['view'],
+                'all-appointments': [],
+                users: [],
+                roles: [],
+                setup: [],
             },
         },
         {
             name: 'nurse',
             description: 'Medical support staff',
             permissions: {
-                users: [],
                 dashboard: ['view'],
                 patients: ['view', 'add'],
+                appointments: ['view'],
+                'my-appointments': ['view'],
+                'all-appointments': [],
+                users: [],
+                roles: [],
+                setup: [],
             },
         },
         {
             name: 'superadmin',
             description: 'Full system access',
             permissions: {
-                users: ['add', 'view', 'delete', 'print'],
                 dashboard: ['add', 'edit', 'view', 'delete', 'print'],
                 patients: ['add', 'view', 'edit', 'delete', 'print'],
+                appointments: ['add', 'view', 'edit', 'delete', 'print'],
+                'my-appointments': ['view'],
+                'all-appointments': ['add', 'view', 'edit', 'delete', 'print'],
+                users: ['add', 'view', 'delete', 'print'],
+                roles: ['add', 'view', 'edit', 'delete'],
+                setup: ['view', 'edit'],
             },
         },
     ];
 
     for (const role of defaultRoles) {
-        // Try to insert, if conflict on 'name', update the permissions and description
         await db.insert(roles)
             .values(role)
             .onConflictDoUpdate({
@@ -50,6 +64,35 @@ async function seed() {
     }
 
     console.log('Roles seeded successfully.');
+
+    // Seed HMOs
+    const defaultHmos = [
+        {
+            name: 'Leadway Health',
+            description: 'Leadway Health HMO - comprehensive health coverage',
+        },
+        {
+            name: 'Hygeia HMO',
+            description: 'Hygeia HMO - quality healthcare services',
+        },
+        {
+            name: 'Reliance HMO',
+            description: 'Reliance HMO - affordable health insurance',
+        },
+    ];
+
+    for (const hmo of defaultHmos) {
+        await db.insert(hmos)
+            .values(hmo)
+            .onConflictDoUpdate({
+                target: hmos.name,
+                set: {
+                    description: hmo.description,
+                },
+            });
+    }
+
+    console.log('HMOs seeded successfully.');
     process.exit(0);
 }
 

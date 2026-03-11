@@ -1,5 +1,8 @@
 "use client";
 
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+import { HMO } from "@/lib/db/schema";
 import {
   UserIcon,
   XMarkIcon,
@@ -20,20 +23,70 @@ interface Patient {
   countryCode: string;
   phone: string;
   insuranceType: string;
+  hmoId?: number | null;
+  policyNumber?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 interface ViewPatientModalProps {
-  patient: Patient | null;
+  patientId: number | null;
   onClose: () => void;
 }
 
 export default function ViewPatientModal({
-  patient,
+  patientId,
   onClose,
 }: ViewPatientModalProps) {
-  if (!patient) return null;
+  const {
+    data: patient,
+    isLoading,
+    error,
+  } = useSWR<Patient>(patientId ? `/api/patients/${patientId}` : null, fetcher);
+
+  // Fetch HMO data if patient has HMO insurance
+  const { data: hmo } = useSWR<HMO>(
+    patient?.insuranceType === "hmo" && patient?.hmoId
+      ? `/api/hmo/${patient.hmoId}`
+      : null,
+    fetcher
+  );
+
+  if (!patientId) return null;
+
+  if (isLoading) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+        onClick={onClose}
+      >
+        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-12 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !patient) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+        onClick={onClose}
+      >
+        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-12">
+          <p className="text-red-600 text-center">
+            Failed to load patient data
+          </p>
+          <button
+            onClick={onClose}
+            className="mt-4 w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const InfoCard = ({
     label,
@@ -47,13 +100,9 @@ export default function ViewPatientModal({
     <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
       <div className="flex items-center gap-2 mb-2">
         <Icon className="h-4 w-4 text-blue-600" />
-        <p className="text-xs font-semibold text-gray-500 uppercase">
-          {label}
-        </p>
+        <p className="text-xs font-semibold text-gray-500 uppercase">{label}</p>
       </div>
-      <p className="text-base font-semibold text-gray-900">
-        {value}
-      </p>
+      <p className="text-base font-semibold text-gray-900">{value}</p>
     </div>
   );
 
@@ -153,12 +202,28 @@ export default function ViewPatientModal({
             <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
               Insurance Information
             </h3>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InfoCard
                 label="Insurance Type"
                 value={patient.insuranceType.toUpperCase()}
                 icon={ShieldCheckIcon}
               />
+              {patient.insuranceType === "hmo" && hmo && (
+                <>
+                  <InfoCard
+                    label="HMO Provider"
+                    value={hmo.name}
+                    icon={ShieldCheckIcon}
+                  />
+                  {patient.policyNumber && (
+                    <InfoCard
+                      label="Policy Number"
+                      value={patient.policyNumber}
+                      icon={IdentificationIcon}
+                    />
+                  )}
+                </>
+              )}
             </div>
           </div>
 

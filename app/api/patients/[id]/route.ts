@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
-export async function PUT(
+export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: paramId } = await params;
@@ -13,7 +13,41 @@ export async function PUT(
     if (isNaN(id)) {
       return NextResponse.json(
         { error: "Invalid patient ID" },
-        { status: 400 }
+        { status: 400 },
+      );
+    }
+
+    const patient = await db
+      .select()
+      .from(patients)
+      .where(and(eq(patients.id, id), isNull(patients.deletedAt)))
+      .limit(1);
+
+    if (patient.length === 0) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(patient[0]);
+  } catch (error) {
+    console.error("Error fetching patient:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch patient" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id: paramId } = await params;
+    const id = parseInt(paramId);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: "Invalid patient ID" },
+        { status: 400 },
       );
     }
 
@@ -27,6 +61,14 @@ export async function PUT(
       countryCode,
       phone,
       insuranceType,
+      hmoId,
+      policyNumber,
+      nextOfKinFirstname,
+      nextOfKinLastname,
+      nextOfKinRelationship,
+      nextOfKinAddress,
+      nextOfKinPhone,
+      nextOfKinEmail,
     } = body;
 
     if (
@@ -40,8 +82,35 @@ export async function PUT(
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
+    }
+
+    // Validate HMO fields when insurance type is "hmo"
+    if (insuranceType === "hmo") {
+      if (!hmoId) {
+        return NextResponse.json(
+          { error: "HMO selection is required for HMO insurance type" },
+          { status: 400 },
+        );
+      }
+      if (!policyNumber || policyNumber.trim() === "") {
+        return NextResponse.json(
+          { error: "Policy number is required for HMO insurance type" },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Validate next of kin email format if provided
+    if (nextOfKinEmail && nextOfKinEmail.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(nextOfKinEmail)) {
+        return NextResponse.json(
+          { error: "Invalid next of kin email address" },
+          { status: 400 },
+        );
+      }
     }
 
     const updatedPatient = await db
@@ -55,6 +124,14 @@ export async function PUT(
         countryCode,
         phone,
         insuranceType,
+        hmoId: hmoId ? parseInt(hmoId) : null,
+        policyNumber: policyNumber || null,
+        nextOfKinFirstname: nextOfKinFirstname || null,
+        nextOfKinLastname: nextOfKinLastname || null,
+        nextOfKinRelationship: nextOfKinRelationship || null,
+        nextOfKinAddress: nextOfKinAddress || null,
+        nextOfKinPhone: nextOfKinPhone || null,
+        nextOfKinEmail: nextOfKinEmail || null,
         updatedAt: new Date(),
       })
       .where(eq(patients.id, id))
@@ -69,14 +146,14 @@ export async function PUT(
     console.error("Error updating patient:", error);
     return NextResponse.json(
       { error: "Failed to update patient" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: paramId } = await params;
@@ -84,13 +161,15 @@ export async function DELETE(
     if (isNaN(id)) {
       return NextResponse.json(
         { error: "Invalid patient ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
+    // Soft delete: set deletedAt timestamp instead of actually deleting
     const deletedPatient = await db
-      .delete(patients)
-      .where(eq(patients.id, id))
+      .update(patients)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(patients.id, id), isNull(patients.deletedAt)))
       .returning();
 
     if (deletedPatient.length === 0) {
@@ -100,21 +179,9 @@ export async function DELETE(
     return NextResponse.json({ message: "Patient deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting patient:", error);
-
-    // Check for foreign key constraint violation
-    if (error?.cause?.code === "23503") {
-      return NextResponse.json(
-        {
-          error:
-            "Cannot delete patient with existing appointments. Please delete all appointments for this patient first.",
-        },
-        { status: 409 }
-      );
-    }
-
     return NextResponse.json(
       { error: "Failed to delete patient" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

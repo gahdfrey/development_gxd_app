@@ -23,6 +23,7 @@ interface AppointmentFormData {
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  visitType: string;
   notes: string;
 }
 
@@ -78,6 +79,7 @@ export default function CreateAppointmentModal({
       appointmentDate: "",
       appointmentTime: "",
       status: "scheduled",
+      visitType: "new visit",
       notes: "",
     },
     mode: "onChange",
@@ -96,15 +98,15 @@ export default function CreateAppointmentModal({
     sublabel: doctor.email,
   }));
 
-  // Generate time slots (9:00 AM to 3:00 PM in 30-minute intervals)
+  // Generate time slots (9:00 AM to 12:00 AM in 30-minute intervals)
   const timeSlots = [];
-  for (let hour = 9; hour < 15; hour++) {
+  for (let hour = 9; hour <= 23; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       const timeString = `${hour.toString().padStart(2, "0")}:${minute
         .toString()
         .padStart(2, "0")}`;
       const displayTime = new Date(
-        `1970-01-01T${timeString}`
+        `1970-01-01T${timeString}`,
       ).toLocaleTimeString("en-US", {
         hour: "numeric",
         minute: "2-digit",
@@ -113,6 +115,8 @@ export default function CreateAppointmentModal({
       timeSlots.push({ value: timeString, label: displayTime });
     }
   }
+  // Add 12:00 AM (midnight) as the last slot
+  timeSlots.push({ value: "00:00", label: "12:00 AM" });
 
   const onSubmit = async (data: AppointmentFormData) => {
     if (!selectedPatient || !selectedDoctor) {
@@ -136,6 +140,7 @@ export default function CreateAppointmentModal({
           appointmentDate: data.appointmentDate,
           appointmentTime: data.appointmentTime,
           status: data.status,
+          visitType: data.visitType,
           notes: data.notes,
         }),
       });
@@ -145,20 +150,20 @@ export default function CreateAppointmentModal({
         throw new Error(errorData.error || "Failed to create appointment");
       }
 
-      await mutate("/api/appointments");
-      setSuccessMessage("Appointment created successfully!");
+      await mutate(
+        (key) => typeof key === "string" && key.startsWith("/api/appointments"),
+        undefined,
+        { revalidate: true },
+      );
+
       reset();
       setSelectedPatient(null);
       setSelectedDoctor(null);
-
-      setTimeout(() => {
-        setSuccessMessage("");
-        onClose();
-        onSuccess?.();
-      }, 1500);
+      onClose();
+      onSuccess?.();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Failed to create appointment"
+        error instanceof Error ? error.message : "Failed to create appointment",
       );
     } finally {
       setIsSubmitting(false);
@@ -347,6 +352,58 @@ export default function CreateAppointmentModal({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Visit Type */}
+            <div className="space-y-2">
+              <label
+                htmlFor="visitType"
+                className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+              >
+                <ClockIcon className="h-4 w-4" />
+                Visit Type *
+              </label>
+              <div className="relative">
+                <select
+                  {...register("visitType", {
+                    required: "Visit type is required",
+                  })}
+                  id="visitType"
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
+                    errors.visitType
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                >
+                  <option value="new visit">New Visit</option>
+                  <option value="follow up">Follow Up</option>
+                  <option value="review">Review</option>
+                  <option value="first visit after discharge">
+                    First Visit After Discharge
+                  </option>
+                  <option value="drug refill">Drug Refill</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+              {errors.visitType && (
+                <p className="text-xs text-red-600">
+                  {errors.visitType.message}
+                </p>
+              )}
             </div>
 
             {/* Status */}

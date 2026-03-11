@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import Modal from "@/app/components/ui/Modal";
 import { mutate } from "swr";
-import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
+
+import { useRouter } from "next/navigation";
 
 interface Patient {
   id: number;
@@ -20,6 +22,7 @@ interface Appointment {
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  visitType: string;
   notes: string | null;
   patient: Patient | null;
 }
@@ -28,14 +31,16 @@ interface ConsultationModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointment: Appointment;
+  session: Session | null;
 }
 
 export default function ConsultationModal({
   isOpen,
   onClose,
   appointment,
+  session,
 }: ConsultationModalProps) {
-  const { data: session } = useSession();
+  const router = useRouter();
   const [doctorNotes, setDoctorNotes] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,8 +105,16 @@ export default function ConsultationModal({
         throw new Error("Failed to save visit");
       }
 
-      // Refresh appointments list
-      await mutate("/api/my-appointments");
+      // Refresh appointments list - invalidate all appointment queries
+      await mutate(
+        (key) =>
+          typeof key === "string" && key.startsWith("/api/my-appointments"),
+        undefined,
+        { revalidate: true },
+      );
+
+      // Force router refresh to update server components
+      router.refresh();
 
       // Close modal
       onClose();
@@ -142,6 +155,12 @@ export default function ConsultationModal({
                   <p className="text-sm text-gray-600">Gender</p>
                   <p className="text-base font-medium text-gray-900 capitalize">
                     {appointment.patient.gender}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Visit Type</p>
+                  <p className="text-base font-medium text-gray-900 capitalize">
+                    {appointment.visitType}
                   </p>
                 </div>
                 <div>

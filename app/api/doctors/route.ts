@@ -1,22 +1,53 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, roles } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Fetch all users with the 'doctor' role
-    const doctors = await db
-      .select({
-        id: users.id,
-        firstname: users.firstname,
-        lastname: users.lastname,
-        email: users.email,
-        username: users.username,
-      })
-      .from(users)
-      .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(eq(roles.name, "doctor"));
+    // Get orderBy query parameter (optional)
+    const { searchParams } = new URL(request.url);
+    const orderBy = searchParams.get("orderBy"); // 'asc' or 'desc'
+
+    // Build query based on orderBy parameter
+    const doctors =
+      orderBy === "asc"
+        ? await db
+            .select({
+              id: users.id,
+              firstname: users.firstname,
+              lastname: users.lastname,
+              email: users.email,
+              username: users.username,
+            })
+            .from(users)
+            .leftJoin(roles, eq(users.roleId, roles.id))
+            .where(eq(roles.name, "doctor"))
+            .orderBy(asc(users.firstname))
+        : orderBy === "desc"
+        ? await db
+            .select({
+              id: users.id,
+              firstname: users.firstname,
+              lastname: users.lastname,
+              email: users.email,
+              username: users.username,
+            })
+            .from(users)
+            .leftJoin(roles, eq(users.roleId, roles.id))
+            .where(eq(roles.name, "doctor"))
+            .orderBy(desc(users.firstname))
+        : await db
+            .select({
+              id: users.id,
+              firstname: users.firstname,
+              lastname: users.lastname,
+              email: users.email,
+              username: users.username,
+            })
+            .from(users)
+            .leftJoin(roles, eq(users.roleId, roles.id))
+            .where(eq(roles.name, "doctor"));
 
     return NextResponse.json(doctors);
   } catch (error) {

@@ -32,6 +32,21 @@ export const roles = pgTable("roles", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+/**
+ * HMO table schema
+ * Stores Health Maintenance Organization information
+ */
+export const hmos = pgTable("hmos", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type HMO = typeof hmos.$inferSelect;
+export type NewHMO = typeof hmos.$inferInsert;
+
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
   firstname: text("firstname").notNull(),
@@ -41,9 +56,19 @@ export const patients = pgTable("patients", {
   maidenName: text("maiden_name"),
   countryCode: text("country_code").notNull(),
   phone: text("phone").notNull(),
-  insuranceType: text("insurance_type").notNull(),
+  insuranceType: text("insurance_type").notNull(), // "private", "hmo", "corporate"
+  hmoId: integer("hmo_id").references(() => hmos.id), // Required when insuranceType is "hmo"
+  policyNumber: text("policy_number"), // Required when insuranceType is "hmo"
+  // Next of Kin fields
+  nextOfKinFirstname: text("next_of_kin_firstname"),
+  nextOfKinLastname: text("next_of_kin_lastname"),
+  nextOfKinRelationship: text("next_of_kin_relationship"),
+  nextOfKinAddress: text("next_of_kin_address"),
+  nextOfKinPhone: text("next_of_kin_phone"),
+  nextOfKinEmail: text("next_of_kin_email"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"), // Soft delete: null = active, timestamp = deleted
 });
 
 /**
@@ -61,6 +86,7 @@ export const appointments = pgTable("appointments", {
   appointmentDate: text("appointment_date").notNull(), // Format: YYYY-MM-DD
   appointmentTime: text("appointment_time").notNull(), // Format: HH:MM (24-hour)
   status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled, no-show
+  visitType: text("visit_type").notNull().default("new visit"), // new visit, follow up, review, first visit after discharge, drug refill
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -104,6 +130,8 @@ export type NewAppointment = typeof appointments.$inferInsert;
 
 export type Visit = typeof visits.$inferSelect;
 export type NewVisit = typeof visits.$inferInsert;
+
+
 
 // User with role name joined
 export type UserWithRole = User & { roleName: string | null };

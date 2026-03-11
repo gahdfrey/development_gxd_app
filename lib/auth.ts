@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users } from "./db/schema";
+import { users, roles } from "./db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -34,11 +34,30 @@ export async function createUser(data: {
 }
 
 /**
- * Find user by email
+ * Find user by email with role name
  */
 export async function getUserByEmail(email: string) {
-  const [user] = await db.select().from(users).where(eq(users.email, email));
-  return user;
+  const result = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+      firstname: users.firstname,
+      lastname: users.lastname,
+      password: users.password,
+      roleId: users.roleId,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      roleName: roles.name,
+    })
+    .from(users)
+    .leftJoin(roles, eq(users.roleId, roles.id))
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (result.length === 0) return undefined;
+
+  return result[0];
 }
 
 /**

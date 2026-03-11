@@ -2,10 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { mutate } from "swr";
-import { format } from "date-fns";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
+import type { Session } from "next-auth";
+import {
+  formatTime,
+  formatDate,
+  hasAppointmentDatePassed,
+} from "@/lib/appointmentUtils";
 
 interface Patient {
   id: number;
@@ -22,16 +27,19 @@ interface Appointment {
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  visitType: string;
   notes: string | null;
   patient: Patient | null;
 }
 
 interface DoctorAppointmentsTableProps {
   appointments: Appointment[];
+  session: Session | null;
 }
 
 export default function DoctorAppointmentsTable({
   appointments,
+  session,
 }: DoctorAppointmentsTableProps) {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
@@ -54,51 +62,9 @@ export default function DoctorAppointmentsTable({
     }
   };
 
-  const formatTime = (time: string) => {
-    try {
-      const [hours, minutes] = time.split(":");
-      const date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes));
-      return format(date, "h:mm a");
-    } catch {
-      return time;
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), "MMM d, yyyy");
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const hasAppointmentTimePassed = (dateStr: string, timeStr: string) => {
-    try {
-      // Parse the appointment date and time
-      const [hours, minutes] = timeStr.split(":");
-      const appointmentDateTime = new Date(dateStr);
-      appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-      // Get current date and time
-      const now = new Date();
-
-      // Check if the appointment date is today
-      const isToday =
-        appointmentDateTime.getDate() === now.getDate() &&
-        appointmentDateTime.getMonth() === now.getMonth() &&
-        appointmentDateTime.getFullYear() === now.getFullYear();
-
-      // Only show buttons if it's today AND the time has passed
-      return isToday && now >= appointmentDateTime;
-    } catch {
-      return false;
-    }
-  };
-
   const handleStatusUpdate = async (
     appointmentId: number,
-    newStatus: string
+    newStatus: string,
   ) => {
     setUpdatingId(appointmentId);
 
@@ -116,7 +82,12 @@ export default function DoctorAppointmentsTable({
       }
 
       // Refresh the appointments list
-      await mutate("/api/my-appointments");
+      await mutate(
+        (key) =>
+          typeof key === "string" && key.startsWith("/api/my-appointments"),
+        undefined,
+        { revalidate: true },
+      );
     } catch (error) {
       console.error("Error updating appointment:", error);
       alert("Failed to update appointment status");
@@ -169,6 +140,22 @@ export default function DoctorAppointmentsTable({
           </span>
         ),
       }),
+      columnHelper.accessor("patient.phone", {
+        header: "Phone",
+        cell: (info) => (
+          <span className="text-sm text-gray-900 capitalize">
+            {info.getValue() || "N/A"}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("visitType", {
+        header: "Visit Type",
+        cell: (info) => (
+          <span className="text-sm text-gray-700 capitalize">
+            {info.getValue()}
+          </span>
+        ),
+      }),
       columnHelper.accessor("status", {
         header: "Status",
         cell: (info) => {
@@ -176,7 +163,7 @@ export default function DoctorAppointmentsTable({
           return (
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(
-                status
+                status,
               )}`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -200,11 +187,8 @@ export default function DoctorAppointmentsTable({
           return (
             <div>
               {appointment.status === "scheduled" &&
-              hasAppointmentTimePassed(
-                appointment.appointmentDate,
-                appointment.appointmentTime
-              ) ? (
-                <div className="flex gap-2 flex-wrap">
+              hasAppointmentDatePassed(appointment.appointmentDate) ? (
+                <div className="flex gap-2">
                   <button
                     onClick={() => {
                       setSelectedAppointment(appointment);
@@ -253,7 +237,7 @@ export default function DoctorAppointmentsTable({
         },
       }),
     ],
-    [updatingId]
+    [updatingId],
   );
 
   if (appointments.length === 0) {
@@ -279,6 +263,7 @@ export default function DoctorAppointmentsTable({
             setActiveConsultation(false);
           }}
           appointment={selectedAppointment}
+          session={session}
         />
       )}
     </>
