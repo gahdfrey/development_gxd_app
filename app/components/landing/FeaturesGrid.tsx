@@ -55,7 +55,7 @@ const features: Feature[] = [
     {
         icon: <InteroperabilityIcon/>,
         title: "Interoperability",
-        desc: "Connect with any health system seamlessly for seamless data exchange."
+        desc: "Connect with any health system for seamless data exchange."
     },
     {
         icon: <SmartAnalyticsIcon/>,
@@ -74,11 +74,16 @@ const features: Feature[] = [
     }, {
         icon: <SecureDataIcon/>,
         title: "Secure Data",
-        desc: "Enterprise grade security protocols ensuring 100% HIPAA compliance and encrypted data storage across all systems."
+        desc: "Enterprise-grade security and full HIPAA compliance for patient data protection"
+
+
     }, {
         icon: <HIPAAIcon/>,
         title: "HIPAA Compliance",
-        desc: "Enterprise-grade security protocols ensuring 100% HIPAA compliance and encrypted data storage across all systems."
+        // desc: "Enterprise-grade security and full HIPAA compliance for patient data protection"
+        desc: "Enterprise grade security protocols ensuring 100% HIPAA compliance and encrypted data storage across all systems."
+
+
     },
 ];
 

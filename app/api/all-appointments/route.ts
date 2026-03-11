@@ -119,8 +119,8 @@ export async function GET(request: Request) {
       .innerJoin(users, eq(appointments.doctorId, users.id))
       .where(and(...conditions))
       .orderBy(
-        desc(appointments.appointmentDate),
-        desc(appointments.appointmentTime),
+        asc(appointments.appointmentDate),
+        asc(appointments.appointmentTime),
       );
 
     // Format the response

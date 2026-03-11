@@ -99,7 +99,9 @@ export default function LandingFooter() {
                     <p className="text-xs text-slate-400">© {
                         new Date().getFullYear()
                     }
-                        dleventh. All rights reserved.</p>
+                        {" "}
+
+                        Dleventh. All rights reserved.</p>
                     <div className="flex gap-8 text-xs font-medium text-slate-500">
                         <a className="hover:text-blue-600" href="#">Privacy Policy</a>
                         <a className="hover:text-blue-600" href="#">Terms of Service</a>

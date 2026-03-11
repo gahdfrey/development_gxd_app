@@ -1,6 +1,6 @@
 export default function HeroSection() {
     return (
-        <section className="relative min-h-[90vh] flex items-center">
+        <section className="relative min-h-[90vh] flex items-center overflow-hidden">
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-600/10 via-transparent to-transparent"></div>
             <div className="absolute top-40 left-10 -z-10 opacity-20">
                 <span className="material-symbols-outlined text-8xl text-blue-600 select-none">medical_services</span>
