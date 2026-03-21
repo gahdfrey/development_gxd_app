@@ -1,21 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requests, patients, departments, labTests, users } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, ilike, and } from "drizzle-orm";
 import { auth } from "@/auth";
 
-// GET /api/requests - Get all requests with joined details
-export async function GET() {
+// GET /api/requests?department=laboratory|radiography
+// Omit ?department to return all (finance view)
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const allRequests = await db
+    const { searchParams } = new URL(request.url);
+    const departmentFilter = searchParams.get("department");
+
+    const conditions = [];
+    if (departmentFilter) {
+      conditions.push(ilike(departments.name, `%${departmentFilter}%`));
+    }
+
+    const query = db
       .select({
         id: requests.id,
         status: requests.status,
+        paymentStatus: requests.paymentStatus,
         createdAt: requests.createdAt,
         patientId: requests.patientId,
         patientFirstname: patients.firstname,
@@ -36,6 +46,11 @@ export async function GET() {
       .leftJoin(users, eq(requests.requestedBy, users.id))
       .orderBy(desc(requests.createdAt));
 
+    const allRequests =
+      conditions.length > 0
+        ? await query.where(and(...conditions))
+        : await query;
+
     return NextResponse.json(allRequests, { status: 200 });
   } catch (error) {
     console.error("Error fetching requests:", error);
@@ -55,7 +70,6 @@ export async function POST(request: NextRequest) {
     }
 
     const requestedBy = (session.user as any).id;
-
     const body = await request.json();
     const { patientId, departmentId, testId } = body;
 
@@ -65,14 +79,12 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
     if (!departmentId) {
       return NextResponse.json(
         { error: "Department is required" },
         { status: 400 },
       );
     }
-
     if (!testId) {
       return NextResponse.json(
         { error: "Test is required" },
@@ -88,20 +100,19 @@ export async function POST(request: NextRequest) {
         testId: parseInt(testId),
         requestedBy: parseInt(requestedBy),
         status: "pending",
+        paymentStatus: "not_paid",
       })
       .returning();
 
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error: any) {
     console.error("Error creating request:", error);
-
     if (error.code === "23503") {
       return NextResponse.json(
         { error: "Invalid patient, department, or test reference" },
         { status: 400 },
       );
     }
-
     return NextResponse.json(
       { error: "Failed to create request" },
       { status: 500 },
