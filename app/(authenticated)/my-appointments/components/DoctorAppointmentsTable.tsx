@@ -22,6 +22,10 @@ interface Patient {
   dob: string;
   phone: string;
   countryCode: string;
+  insuranceType: string;
+  hmoId: number | null;
+  policyNumber: string | null;
+  hmoName: string | null;
 }
 
 interface Appointment {
@@ -304,7 +308,8 @@ export default function DoctorAppointmentsTable({
             setIsRaiseRequestModalOpen(false);
             setSelectedRaiseRequestAppointment(null);
           }}
-          appointmentId={selectedRaiseRequestAppointment?.id}
+          appointmentId={selectedRaiseRequestAppointment.id}
+          prefilledPatient={selectedRaiseRequestAppointment.patient ?? undefined}
           onSuccess={() => {
             mutate(
               (key) =>

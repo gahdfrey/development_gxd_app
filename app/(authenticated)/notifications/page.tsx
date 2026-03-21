@@ -102,30 +102,60 @@ export default function NotificationsPage() {
               <Link
                 key={notif.id}
                 href={href}
-                className={`flex items-start gap-4 px-5 py-4 transition-colors ${
+                className={`flex items-start gap-4 px-5 py-4 transition-colors border-l-4 ${
                   !notif.isRead
-                    ? "bg-blue-50/50 hover:bg-blue-100/50"
-                    : "hover:bg-gray-50"
+                    ? "bg-blue-50 hover:bg-blue-100/60 border-l-blue-500"
+                    : "hover:bg-gray-50 border-l-transparent"
                 }`}
               >
+                {/* Dot indicator */}
                 <div
-                  className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${
+                  className={`mt-2 h-2.5 w-2.5 rounded-full shrink-0 ${
                     !notif.isRead ? "bg-blue-500" : "bg-gray-300"
                   }`}
                 />
+
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-semibold text-blue-700">{patientName}</span>
-                    <span className="text-gray-500"> — result received from </span>
+                  {/* Title row with patient name + NEW badge */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`text-sm ${
+                        !notif.isRead
+                          ? "font-bold text-gray-900"
+                          : "font-semibold text-blue-700"
+                      }`}
+                    >
+                      {patientName}
+                    </span>
+                    {!notif.isRead && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500 text-white uppercase tracking-wide leading-none">
+                        New
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Subtitle */}
+                  <p className={`text-sm mt-0.5 ${!notif.isRead ? "text-gray-700" : "text-gray-500"}`}>
+                    Result received from{" "}
                     <span className="font-medium text-gray-800">
                       {notif.departmentName ?? "department"}
                     </span>
                   </p>
+
+                  {/* Optional message */}
                   {notif.message && (
-                    <p className="text-sm text-gray-600 mt-1 italic bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                    <p
+                      className={`text-sm mt-1.5 italic rounded-lg px-3 py-2 border ${
+                        !notif.isRead
+                          ? "bg-white border-blue-100 text-gray-700"
+                          : "bg-gray-50 border-gray-100 text-gray-600"
+                      }`}
+                    >
                       &ldquo;{notif.message}&rdquo;
                     </p>
                   )}
+
+                  {/* Timestamp */}
                   <p className="text-xs text-gray-400 mt-1.5">
                     {formatDateTime(notif.createdAt)}
                   </p>

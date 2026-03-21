@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { appointments, patients, users, requests } from "@/lib/db/schema";
+import { appointments, patients, users, requests, hmos } from "@/lib/db/schema";
 import { desc, asc, eq, or, ilike, and, gte, lte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 
@@ -50,6 +50,11 @@ export async function GET(request: Request) {
           gender: patients.gender,
           dob: patients.dob,
           phone: patients.phone,
+          countryCode: patients.countryCode,
+          insuranceType: patients.insuranceType,
+          hmoId: patients.hmoId,
+          policyNumber: patients.policyNumber,
+          hmoName: hmos.name,
         },
         hasRequest: sql<boolean>`EXISTS (
           SELECT 1 FROM requests
@@ -57,7 +62,8 @@ export async function GET(request: Request) {
         )`,
       })
       .from(appointments)
-      .leftJoin(patients, eq(appointments.patientId, patients.id));
+      .leftJoin(patients, eq(appointments.patientId, patients.id))
+      .leftJoin(hmos, eq(patients.hmoId, hmos.id));
 
     // Build WHERE conditions
     const conditions = [eq(appointments.doctorId, doctorId)];

@@ -20,8 +20,8 @@ export const users = pgTable("users", {
   lastname: text("lastname").notNull(),
   password: text("password").notNull(), // Hashed with bcrypt
   roleId: integer("role_id").references(() => roles.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const roles = pgTable("roles", {
@@ -29,8 +29,8 @@ export const roles = pgTable("roles", {
   name: text("name").notNull().unique(),
   description: text("description"),
   permissions: json("permissions"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /**
@@ -41,8 +41,8 @@ export const hmos = pgTable("hmos", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
   description: text("description"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type HMO = typeof hmos.$inferSelect;
@@ -67,9 +67,9 @@ export const patients = pgTable("patients", {
   nextOfKinAddress: text("next_of_kin_address"),
   nextOfKinPhone: text("next_of_kin_phone"),
   nextOfKinEmail: text("next_of_kin_email"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  deletedAt: timestamp("deleted_at"), // Soft delete: null = active, timestamp = deleted
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }), // Soft delete: null = active, timestamp = deleted
 });
 
 /**
@@ -89,8 +89,8 @@ export const appointments = pgTable("appointments", {
   status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled, no-show
   visitType: text("visit_type").notNull().default("new visit"), // new visit, follow up, review, first visit after discharge, drug refill
   notes: text("notes"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /**
@@ -110,10 +110,10 @@ export const visits = pgTable("visits", {
     .references(() => users.id),
   doctorNotes: text("doctor_notes"),
   durationMinutes: integer("duration_minutes").notNull(),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+  endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Type inference for TypeScript
@@ -144,9 +144,8 @@ export type UserWithRole = User & { roleName: string | null };
 export const departments = pgTable("departments", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
-  module: text("module"), // "laboratory" | "radiography" | null (general)
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type Department = typeof departments.$inferSelect;
@@ -163,8 +162,8 @@ export const labTests = pgTable("lab_tests", {
   departmentId: integer("department_id")
     .notNull()
     .references(() => departments.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type LabTest = typeof labTests.$inferSelect;
@@ -194,8 +193,8 @@ export const requests = pgTable("requests", {
   appointmentId: integer("appointment_id").references(() => appointments.id),
   status: text("status").notNull().default("pending"), // pending, completed, cancelled
   paymentStatus: text("payment_status").notNull().default("not_paid"), // paid, not_paid
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type Request = typeof requests.$inferSelect;
@@ -217,7 +216,7 @@ export const requestResults = pgTable("request_results", {
   uploadedBy: integer("uploaded_by")
     .notNull()
     .references(() => users.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type RequestResult = typeof requestResults.$inferSelect;
@@ -240,7 +239,7 @@ export const notifications = pgTable("notifications", {
   departmentName: text("department_name"),
   message: text("message"), // optional message from the uploaded result
   isRead: boolean("is_read").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type Notification = typeof notifications.$inferSelect;

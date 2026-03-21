@@ -12,7 +12,7 @@ import { fetcher } from "@/lib/fetcher";
 // Types
 // ---------------------------------------------------------------------------
 
-interface Patient {
+interface PrefilledPatient {
   id: number;
   firstname: string;
   lastname: string;
@@ -20,9 +20,10 @@ interface Patient {
   dob: string;
   countryCode: string;
   phone: string;
-  insuranceType: string;
-  hmoId: number | null;
-  policyNumber: string | null;
+  insuranceType?: string | null;
+  hmoId?: number | null;
+  policyNumber?: string | null;
+  hmoName?: string | null;
 }
 
 interface Department {
@@ -42,11 +43,11 @@ interface RaiseRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointmentId?: number;
+  prefilledPatient?: PrefilledPatient;
   onSuccess?: () => void;
 }
 
 interface FormErrors {
-  patient?: string;
   department?: string;
   test?: string;
   submit?: string;
@@ -78,9 +79,12 @@ const formatAge = (dob: string): string => {
   return `${days} ${days === 1 ? "day" : "days"}`;
 };
 
-const formatInsuranceType = (type: string): string => {
+const formatInsuranceLabel = (patient: PrefilledPatient): string => {
+  const type = patient.insuranceType ?? "";
   if (type === "hmo") return "HMO";
-  return type.charAt(0).toUpperCase() + type.slice(1);
+  if (type === "corporate") return "Corporate";
+  if (type === "private") return "Private";
+  return type ? type.charAt(0).toUpperCase() + type.slice(1) : "—";
 };
 
 // ---------------------------------------------------------------------------
@@ -91,12 +95,9 @@ export default function RaiseRequestModal({
   isOpen,
   onClose,
   appointmentId,
+  prefilledPatient,
   onSuccess,
 }: RaiseRequestModalProps) {
-  const { data: patients, isLoading: patientsLoading } = useSWR<Patient[]>(
-    "/api/patients",
-    fetcher,
-  );
   const { data: departments, isLoading: deptsLoading } = useSWR<Department[]>(
     "/api/departments",
     fetcher,
@@ -106,20 +107,12 @@ export default function RaiseRequestModal({
     fetcher,
   );
 
-  const [selectedPatientOption, setSelectedPatientOption] =
-    useState<SearchableSelectOption | null>(null);
   const [selectedDeptOption, setSelectedDeptOption] =
     useState<SearchableSelectOption | null>(null);
   const [selectedTestOption, setSelectedTestOption] =
     useState<SearchableSelectOption | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Derived values
-  const selectedPatient =
-    selectedPatientOption && patients
-      ? (patients.find((p) => p.id === selectedPatientOption.id) ?? null)
-      : null;
 
   const testsForDept: SearchableSelectOption[] = selectedDeptOption
     ? (allTests ?? [])
@@ -131,29 +124,14 @@ export default function RaiseRequestModal({
         }))
     : [];
 
-  // Options
-  const patientOptions: SearchableSelectOption[] = (patients ?? []).map(
-    (p) => ({
-      id: p.id,
-      label: `${p.firstname} ${p.lastname}`,
-      sublabel: `${p.countryCode} ${p.phone}`,
-    }),
-  );
-
   const deptOptions: SearchableSelectOption[] = (departments ?? []).map(
     (d) => ({ id: d.id, label: d.name }),
   );
 
-  // When department changes, reset the test selection
   const handleDeptChange = (opt: SearchableSelectOption | null) => {
     setSelectedDeptOption(opt);
     setSelectedTestOption(null);
     if (opt) setErrors((prev) => ({ ...prev, department: undefined }));
-  };
-
-  const handlePatientChange = (opt: SearchableSelectOption | null) => {
-    setSelectedPatientOption(opt);
-    if (opt) setErrors((prev) => ({ ...prev, patient: undefined }));
   };
 
   const handleTestChange = (opt: SearchableSelectOption | null) => {
@@ -161,10 +139,8 @@ export default function RaiseRequestModal({
     if (opt) setErrors((prev) => ({ ...prev, test: undefined }));
   };
 
-  // Validate and return true if valid
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
-    if (!selectedPatientOption) newErrors.patient = "Please select a patient";
     if (!selectedDeptOption) newErrors.department = "Please select a department";
     if (!selectedTestOption) newErrors.test = "Please select a test";
     setErrors(newErrors);
@@ -182,7 +158,7 @@ export default function RaiseRequestModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patientId: selectedPatientOption!.id,
+          patientId: prefilledPatient!.id,
           departmentId: selectedDeptOption!.id,
           testId: selectedTestOption!.id,
           appointmentId: appointmentId ?? null,
@@ -206,7 +182,6 @@ export default function RaiseRequestModal({
   };
 
   const handleClose = () => {
-    setSelectedPatientOption(null);
     setSelectedDeptOption(null);
     setSelectedTestOption(null);
     setErrors({});
@@ -229,56 +204,76 @@ export default function RaiseRequestModal({
           </div>
         )}
 
-        {/* ── Patient ── */}
-        <div>
-          <SearchableSelect
-            label="Patient"
-            options={patientOptions}
-            value={selectedPatientOption}
-            onChange={handlePatientChange}
-            placeholder={patientsLoading ? "Loading patients..." : "Search by name..."}
-            disabled={patientsLoading}
-            error={errors.patient}
-          />
-        </div>
+        {/* ── Patient card (always shown, pre-filled from appointment) ── */}
+        {prefilledPatient && (
+          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Patient
+              </p>
+            </div>
+            {/* Name + phone row */}
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-blue-600">
+                  {prefilledPatient.firstname.charAt(0)}{prefilledPatient.lastname.charAt(0)}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {prefilledPatient.firstname} {prefilledPatient.lastname}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {prefilledPatient.countryCode} {prefilledPatient.phone}
+                </p>
+              </div>
+            </div>
+            {/* Details grid */}
+            <div className="grid grid-cols-3 gap-3 pt-1">
+              {/* Gender */}
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-gray-500">Gender</label>
+                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
+                  {prefilledPatient.gender
+                    ? prefilledPatient.gender.charAt(0).toUpperCase() + prefilledPatient.gender.slice(1)
+                    : "—"}
+                </div>
+              </div>
 
-        {/* ── Auto-populated Patient Details ── */}
-        {selectedPatient && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Patient Details
-            </p>
-            <div className="grid grid-cols-3 gap-4">
+              {/* Age */}
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500">
-                  Gender
-                </label>
-                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 select-none cursor-default">
-                  {selectedPatient.gender
-                    ? selectedPatient.gender.charAt(0).toUpperCase() +
-                      selectedPatient.gender.slice(1)
-                    : "—"}
+                <label className="block text-xs font-medium text-gray-500">Age</label>
+                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
+                  {prefilledPatient.dob ? formatAge(prefilledPatient.dob) : "—"}
                 </div>
               </div>
+
+              {/* Insurance type */}
               <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500">
-                  Insurance Type
-                </label>
-                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 select-none cursor-default">
-                  {selectedPatient.insuranceType
-                    ? formatInsuranceType(selectedPatient.insuranceType)
-                    : "—"}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500">
-                  Age
-                </label>
-                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 select-none cursor-default">
-                  {selectedPatient.dob ? formatAge(selectedPatient.dob) : "—"}
+                <label className="block text-xs font-medium text-gray-500">Insurance</label>
+                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
+                  {formatInsuranceLabel(prefilledPatient)}
                 </div>
               </div>
             </div>
+
+            {/* HMO details — only when insurance type is HMO */}
+            {prefilledPatient.insuranceType === "hmo" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-500">HMO Provider</label>
+                  <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
+                    {prefilledPatient.hmoName ?? "—"}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-500">Policy Number</label>
+                  <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default font-mono tracking-wide">
+                    {prefilledPatient.policyNumber ?? "—"}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

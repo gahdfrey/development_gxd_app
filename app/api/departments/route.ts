@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, module } = body;
+    const { name } = body;
 
     if (!name || name.trim() === "") {
       return NextResponse.json(
@@ -34,12 +34,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validModules = ["laboratory", "radiology"];
-    const resolvedModule = validModules.includes(module) ? module : null;
-
     const [newDepartment] = await db
       .insert(departments)
-      .values({ name: name.trim(), module: resolvedModule })
+      .values({ name: name.trim() })
       .returning();
 
     return NextResponse.json(newDepartment, { status: 201 });
