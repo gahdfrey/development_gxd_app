@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { db } from "@/lib/db";
-import { requestResults, requests } from "@/lib/db/schema";
+import { requestResults, requests, notifications, patients, departments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 
@@ -110,6 +110,36 @@ export async function POST(
       .update(requests)
       .set({ status: "completed", updatedAt: new Date() })
       .where(eq(requests.id, requestId));
+
+    // Create notification for the doctor who raised this request
+    try {
+      const [requestDetail] = await db
+        .select({
+          requestedBy: requests.requestedBy,
+          patientFirstname: patients.firstname,
+          patientLastname: patients.lastname,
+          departmentName: departments.name,
+        })
+        .from(requests)
+        .leftJoin(patients, eq(requests.patientId, patients.id))
+        .leftJoin(departments, eq(requests.departmentId, departments.id))
+        .where(eq(requests.id, requestId));
+
+      if (requestDetail) {
+        await db.insert(notifications).values({
+          userId: requestDetail.requestedBy,
+          requestId,
+          patientFirstname: requestDetail.patientFirstname,
+          patientLastname: requestDetail.patientLastname,
+          departmentName: requestDetail.departmentName,
+          message: message || null,
+          isRead: false,
+        });
+      }
+    } catch (notifErr) {
+      // Non-fatal: log but don't fail the upload
+      console.error("Failed to create notification:", notifErr);
+    }
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

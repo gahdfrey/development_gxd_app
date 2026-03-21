@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { NavigationToggle } from "./NavigationToggle";
 import { useSidebar } from "@/app/contexts/SidebarContext";
 import type { Session } from "next-auth";
+import NotificationBell from "./NotificationBell";
 
 interface NavigationBarProps {
   session: Session | null;
@@ -36,6 +37,7 @@ export default function NavigationBar({ session }: NavigationBarProps) {
         <div className="flex items-center gap-4">Client Logo</div>
 
         <div className="flex items-center gap-4">
+          <NotificationBell userRole={session?.user?.role} />
           <div className="relative">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}

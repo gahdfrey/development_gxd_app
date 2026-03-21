@@ -5,6 +5,7 @@ import {
   json,
   serial,
   integer,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -220,3 +221,26 @@ export const requestResults = pgTable("request_results", {
 
 export type RequestResult = typeof requestResults.$inferSelect;
 export type NewRequestResult = typeof requestResults.$inferInsert;
+
+/**
+ * Notifications table schema
+ * Stores result-upload notifications for doctors
+ */
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id), // the doctor to notify
+  requestId: integer("request_id")
+    .notNull()
+    .references(() => requests.id),
+  patientFirstname: text("patient_firstname"),
+  patientLastname: text("patient_lastname"),
+  departmentName: text("department_name"),
+  message: text("message"), // optional message from the uploaded result
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
