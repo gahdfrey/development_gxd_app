@@ -10,6 +10,7 @@ import { BellAlertIcon } from "@heroicons/react/24/solid";
 interface NotificationItem {
   id: number;
   requestId: number;
+  patientId: number | null;
   patientFirstname: string | null;
   patientLastname: string | null;
   departmentName: string | null;
@@ -123,15 +124,20 @@ export default function NotificationBell({ userRole }: NotificationBellProps) {
               notifList.map((notif) => {
                 const patientName =
                   `${notif.patientFirstname ?? ""} ${notif.patientLastname ?? ""}`.trim() || "Unknown patient";
+                const href = notif.patientId
+                  ? `/patients/${notif.patientId}/history`
+                  : "/notifications";
                 return (
-                  <div
+                  <Link
                     key={notif.id}
-                    className={`px-4 py-3 hover:bg-gray-50 transition-colors ${
+                    href={href}
+                    onClick={() => setOpen(false)}
+                    className={`block px-4 py-3 hover:bg-blue-50 transition-colors ${
                       !notif.isRead ? "bg-blue-50/40" : ""
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
-                      <div className="mt-0.5 h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+                      <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-900">
                           <span className="font-semibold">{patientName}</span>
@@ -150,7 +156,7 @@ export default function NotificationBell({ userRole }: NotificationBellProps) {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })
             )}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { BellIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
@@ -8,6 +9,7 @@ import { BellAlertIcon } from "@heroicons/react/24/solid";
 interface NotificationItem {
   id: number;
   requestId: number;
+  patientId: number | null;
   patientFirstname: string | null;
   patientLastname: string | null;
   departmentName: string | null;
@@ -93,21 +95,27 @@ export default function NotificationsPage() {
             const patientName =
               `${notif.patientFirstname ?? ""} ${notif.patientLastname ?? ""}`.trim() ||
               "Unknown patient";
+            const href = notif.patientId
+              ? `/patients/${notif.patientId}/history`
+              : "#";
             return (
-              <div
+              <Link
                 key={notif.id}
-                className={`px-5 py-4 flex items-start gap-4 transition-colors ${
-                  !notif.isRead ? "bg-blue-50/50" : "hover:bg-gray-50"
+                href={href}
+                className={`flex items-start gap-4 px-5 py-4 transition-colors ${
+                  !notif.isRead
+                    ? "bg-blue-50/50 hover:bg-blue-100/50"
+                    : "hover:bg-gray-50"
                 }`}
               >
                 <div
-                  className={`mt-1 h-2.5 w-2.5 rounded-full shrink-0 ${
+                  className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${
                     !notif.isRead ? "bg-blue-500" : "bg-gray-300"
                   }`}
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-900">
-                    <span className="font-semibold">{patientName}</span>
+                    <span className="font-semibold text-blue-700">{patientName}</span>
                     <span className="text-gray-500"> — result received from </span>
                     <span className="font-medium text-gray-800">
                       {notif.departmentName ?? "department"}
@@ -122,7 +130,7 @@ export default function NotificationsPage() {
                     {formatDateTime(notif.createdAt)}
                   </p>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

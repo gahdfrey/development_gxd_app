@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { notifications } from "@/lib/db/schema";
+import { notifications, requests } from "@/lib/db/schema";
 import { eq, desc, count, and } from "drizzle-orm";
 import { auth } from "@/auth";
 
@@ -24,10 +24,21 @@ export async function GET(req: NextRequest) {
 
     const unreadCount = Number(unreadResult[0]?.value ?? 0);
 
-    // Notification list (all, newest first, optionally limited)
+    // Notification list joined with requests to get patientId
     const baseQuery = db
-      .select()
+      .select({
+        id: notifications.id,
+        requestId: notifications.requestId,
+        patientId: requests.patientId,
+        patientFirstname: notifications.patientFirstname,
+        patientLastname: notifications.patientLastname,
+        departmentName: notifications.departmentName,
+        message: notifications.message,
+        isRead: notifications.isRead,
+        createdAt: notifications.createdAt,
+      })
       .from(notifications)
+      .leftJoin(requests, eq(notifications.requestId, requests.id))
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
 
