@@ -170,3 +170,29 @@ export type NewLabTest = typeof labTests.$inferInsert;
 
 // Lab test with department name joined
 export type LabTestWithDepartment = LabTest & { departmentName: string };
+
+/**
+ * Requests table schema
+ * Stores lab/test requests raised by doctors after a consultation
+ */
+export const requests = pgTable("requests", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id")
+    .notNull()
+    .references(() => patients.id),
+  departmentId: integer("department_id")
+    .notNull()
+    .references(() => departments.id),
+  testId: integer("test_id")
+    .notNull()
+    .references(() => labTests.id),
+  requestedBy: integer("requested_by")
+    .notNull()
+    .references(() => users.id),
+  status: text("status").notNull().default("pending"), // pending, completed, cancelled
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type Request = typeof requests.$inferSelect;
+export type NewRequest = typeof requests.$inferInsert;

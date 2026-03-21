@@ -6,7 +6,11 @@ import Modal from "@/app/components/ui/Modal";
 import SearchableSelect, {
   type SearchableSelectOption,
 } from "@/app/components/ui/SearchableSelect";
-import {fetcher} from "@/lib/fetcher";
+import { fetcher } from "@/lib/fetcher";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface Patient {
   id: number;
@@ -21,10 +25,34 @@ interface Patient {
   policyNumber: string | null;
 }
 
+interface Department {
+  id: number;
+  name: string;
+}
+
+interface TestRow {
+  id: number;
+  name: string;
+  price: number;
+  departmentId: number;
+  departmentName: string | null;
+}
+
 interface RaiseRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+interface FormErrors {
+  patient?: string;
+  department?: string;
+  test?: string;
+  submit?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 const formatAge = (dob: string): string => {
   const today = new Date();
@@ -53,17 +81,53 @@ const formatInsuranceType = (type: string): string => {
   return type.charAt(0).toUpperCase() + type.slice(1);
 };
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function RaiseRequestModal({
   isOpen,
   onClose,
 }: RaiseRequestModalProps) {
-  const { data: patients, isLoading } = useSWR<Patient[]>(
+  const { data: patients, isLoading: patientsLoading } = useSWR<Patient[]>(
     "/api/patients",
     fetcher,
   );
-  const [selectedOption, setSelectedOption] =
-    useState<SearchableSelectOption | null>(null);
+  const { data: departments, isLoading: deptsLoading } = useSWR<Department[]>(
+    "/api/departments",
+    fetcher,
+  );
+  const { data: allTests, isLoading: testsLoading } = useSWR<TestRow[]>(
+    "/api/tests",
+    fetcher,
+  );
 
+  const [selectedPatientOption, setSelectedPatientOption] =
+    useState<SearchableSelectOption | null>(null);
+  const [selectedDeptOption, setSelectedDeptOption] =
+    useState<SearchableSelectOption | null>(null);
+  const [selectedTestOption, setSelectedTestOption] =
+    useState<SearchableSelectOption | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Derived values
+  const selectedPatient =
+    selectedPatientOption && patients
+      ? (patients.find((p) => p.id === selectedPatientOption.id) ?? null)
+      : null;
+
+  const testsForDept: SearchableSelectOption[] = selectedDeptOption
+    ? (allTests ?? [])
+        .filter((t) => t.departmentId === selectedDeptOption.id)
+        .map((t) => ({
+          id: t.id,
+          label: t.name,
+          sublabel: `₦${t.price.toLocaleString()}`,
+        }))
+    : [];
+
+  // Options
   const patientOptions: SearchableSelectOption[] = (patients ?? []).map(
     (p) => ({
       id: p.id,
@@ -72,21 +136,76 @@ export default function RaiseRequestModal({
     }),
   );
 
-  const selectedPatient =
-    selectedOption && patients
-      ? patients.find((p) => p.id === selectedOption.id) ?? null
-      : null;
+  const deptOptions: SearchableSelectOption[] = (departments ?? []).map(
+    (d) => ({ id: d.id, label: d.name }),
+  );
 
-  const handleClose = () => {
-    setSelectedOption(null);
-    onClose();
+  // When department changes, reset the test selection
+  const handleDeptChange = (opt: SearchableSelectOption | null) => {
+    setSelectedDeptOption(opt);
+    setSelectedTestOption(null);
+    if (opt) setErrors((prev) => ({ ...prev, department: undefined }));
   };
 
-  const handleSubmit = () => {
-    if (!selectedPatient) return;
-    // Placeholder: ready for future API integration
-    console.log("Raise request for patient:", selectedPatient);
-    handleClose();
+  const handlePatientChange = (opt: SearchableSelectOption | null) => {
+    setSelectedPatientOption(opt);
+    if (opt) setErrors((prev) => ({ ...prev, patient: undefined }));
+  };
+
+  const handleTestChange = (opt: SearchableSelectOption | null) => {
+    setSelectedTestOption(opt);
+    if (opt) setErrors((prev) => ({ ...prev, test: undefined }));
+  };
+
+  // Validate and return true if valid
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {};
+    if (!selectedPatientOption) newErrors.patient = "Please select a patient";
+    if (!selectedDeptOption) newErrors.department = "Please select a department";
+    if (!selectedTestOption) newErrors.test = "Please select a test";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const res = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: selectedPatientOption!.id,
+          departmentId: selectedDeptOption!.id,
+          testId: selectedTestOption!.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrors({ submit: data.error || "Failed to create request" });
+        return;
+      }
+
+      handleClose();
+    } catch {
+      setErrors({ submit: "Something went wrong. Please try again." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setSelectedPatientOption(null);
+    setSelectedDeptOption(null);
+    setSelectedTestOption(null);
+    setErrors({});
+    setIsSubmitting(false);
+    onClose();
   };
 
   return (
@@ -94,31 +213,36 @@ export default function RaiseRequestModal({
       isOpen={isOpen}
       onClose={handleClose}
       title="Raise Request"
-      size="default"
+      size="large"
     >
-      <div className="space-y-6">
-        {/* Patient Selection */}
+      <div className="space-y-5">
+        {/* Submit-level error */}
+        {errors.submit && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+            {errors.submit}
+          </div>
+        )}
+
+        {/* ── Patient ── */}
         <div>
           <SearchableSelect
-            label="Select Patient"
+            label="Patient"
             options={patientOptions}
-            value={selectedOption}
-            onChange={setSelectedOption}
-            placeholder={
-              isLoading ? "Loading patients..." : "Search by name..."
-            }
-            disabled={isLoading}
+            value={selectedPatientOption}
+            onChange={handlePatientChange}
+            placeholder={patientsLoading ? "Loading patients..." : "Search by name..."}
+            disabled={patientsLoading}
+            error={errors.patient}
           />
         </div>
 
-        {/* Auto-populated Read-only Details */}
+        {/* ── Auto-populated Patient Details ── */}
         {selectedPatient && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Patient Details
             </p>
             <div className="grid grid-cols-3 gap-4">
-              {/* Gender */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">
                   Gender
@@ -130,8 +254,6 @@ export default function RaiseRequestModal({
                     : "—"}
                 </div>
               </div>
-
-              {/* Insurance Type */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">
                   Insurance Type
@@ -142,36 +264,79 @@ export default function RaiseRequestModal({
                     : "—"}
                 </div>
               </div>
-
-              {/* Age */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">
                   Age
                 </label>
                 <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 select-none cursor-default">
-                  {selectedPatient.dob
-                    ? formatAge(selectedPatient.dob)
-                    : "—"}
+                  {selectedPatient.dob ? formatAge(selectedPatient.dob) : "—"}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* ── Department ── */}
+        <div>
+          <SearchableSelect
+            label="Department"
+            options={deptOptions}
+            value={selectedDeptOption}
+            onChange={handleDeptChange}
+            placeholder={
+              deptsLoading
+                ? "Loading departments..."
+                : deptOptions.length === 0
+                ? "No departments available"
+                : "Search department..."
+            }
+            disabled={deptsLoading || deptOptions.length === 0}
+            error={errors.department}
+          />
+        </div>
+
+        {/* ── Test ── */}
+        <div>
+          <SearchableSelect
+            label="Test"
+            options={testsForDept}
+            value={selectedTestOption}
+            onChange={handleTestChange}
+            placeholder={
+              !selectedDeptOption
+                ? "Select a department first"
+                : testsLoading
+                ? "Loading tests..."
+                : testsForDept.length === 0
+                ? "No tests for this department"
+                : "Search test..."
+            }
+            disabled={
+              !selectedDeptOption ||
+              testsLoading ||
+              testsForDept.length === 0
+            }
+            error={errors.test}
+          />
+        </div>
+
+        {/* ── Action Buttons ── */}
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
           <button
+            type="button"
             onClick={handleClose}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            disabled={isSubmitting}
+            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
-            disabled={!selectedPatient}
+            disabled={isSubmitting}
             className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Submit Request
+            {isSubmitting ? "Submitting..." : "Submit Request"}
           </button>
         </div>
       </div>
