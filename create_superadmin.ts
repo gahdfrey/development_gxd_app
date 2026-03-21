@@ -9,7 +9,7 @@ async function createSuperadmin() {
 
     // 1. Get Superadmin Role ID
     const superadminRole = await db.query.roles.findFirst({
-        where: eq(roles.name, 'superadmin'),
+        where: eq(roles.name, 'Superadmin'),
     });
 
     if (!superadminRole) {

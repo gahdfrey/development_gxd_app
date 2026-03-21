@@ -8,7 +8,7 @@ async function seed() {
 
     const defaultRoles = [
         {
-            name: 'doctor',
+            name: 'Doctor',
             description: 'Medical professional with access to patient records',
             permissions: {
                 dashboard: ['view'],
@@ -22,7 +22,7 @@ async function seed() {
             },
         },
         {
-            name: 'nurse',
+            name: 'Nurse',
             description: 'Medical support staff',
             permissions: {
                 dashboard: ['view'],
@@ -36,7 +36,7 @@ async function seed() {
             },
         },
         {
-            name: 'superadmin',
+            name: 'Superadmin',
             description: 'Full system access',
             permissions: {
                 dashboard: ['add', 'edit', 'view', 'delete', 'print'],

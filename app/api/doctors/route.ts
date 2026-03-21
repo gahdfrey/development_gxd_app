@@ -22,7 +22,7 @@ export async function GET(request: Request) {
             })
             .from(users)
             .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(eq(roles.name, "doctor"))
+            .where(eq(roles.name, "Doctor"))
             .orderBy(asc(users.firstname))
         : orderBy === "desc"
         ? await db
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
             })
             .from(users)
             .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(eq(roles.name, "doctor"))
+            .where(eq(roles.name, "Doctor"))
             .orderBy(desc(users.firstname))
         : await db
             .select({
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
             })
             .from(users)
             .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(eq(roles.name, "doctor"));
+            .where(eq(roles.name, "Doctor"));
 
     return NextResponse.json(doctors);
   } catch (error) {
