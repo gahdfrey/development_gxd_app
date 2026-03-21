@@ -197,3 +197,25 @@ export const requests = pgTable("requests", {
 
 export type Request = typeof requests.$inferSelect;
 export type NewRequest = typeof requests.$inferInsert;
+
+/**
+ * Request Results table schema
+ * Stores uploaded result files (PDF, images, etc.) for a completed request
+ */
+export const requestResults = pgTable("request_results", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id")
+    .notNull()
+    .references(() => requests.id),
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileType: text("file_type").notNull(),
+  message: text("message"),
+  uploadedBy: integer("uploaded_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type RequestResult = typeof requestResults.$inferSelect;
+export type NewRequestResult = typeof requestResults.$inferInsert;

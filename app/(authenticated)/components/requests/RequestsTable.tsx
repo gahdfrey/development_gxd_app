@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
+import UploadResultModal from "./UploadResultModal";
 
 export interface RequestRow {
   id: number;
   status: string;
   paymentStatus: string;
   createdAt: string | Date;
+  patientId: number | null;
   patientFirstname: string | null;
   patientLastname: string | null;
   departmentName: string | null;
@@ -20,10 +22,13 @@ export interface RequestRow {
 
 interface RequestsTableProps {
   data: RequestRow[];
-  /** If true, renders a "Mark as Paid / Mark as Unpaid" action button (finance module) */
+  /** Finance module: toggle paid/unpaid */
   showPaymentToggle?: boolean;
   onTogglePayment?: (id: number, current: string) => void;
   updatingId?: number | null;
+  /** Lab / Radiography modules: show Upload Result button for paid rows */
+  showUploadResult?: boolean;
+  onUploadSuccess?: () => void;
 }
 
 export default function RequestsTable({
@@ -31,8 +36,13 @@ export default function RequestsTable({
   showPaymentToggle = false,
   onTogglePayment,
   updatingId,
+  showUploadResult = false,
+  onUploadSuccess,
 }: RequestsTableProps) {
   const columnHelper = createColumnHelper<RequestRow>();
+
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<RequestRow | null>(null);
 
   const columns = useMemo(
     () => [
@@ -105,6 +115,7 @@ export default function RequestsTable({
           );
         },
       }),
+      // Finance: toggle paid / unpaid
       ...(showPaymentToggle
         ? [
             columnHelper.display({
@@ -131,8 +142,33 @@ export default function RequestsTable({
             }),
           ]
         : []),
+      // Lab / Radiography: upload result when paid
+      ...(showUploadResult
+        ? [
+            columnHelper.display({
+              id: "actions",
+              header: "Actions",
+              cell: (props) => {
+                const row = props.row.original;
+                const isPaid = row.paymentStatus === "paid";
+                if (!isPaid) return null;
+                return (
+                  <button
+                    onClick={() => {
+                      setSelectedRow(row);
+                      setUploadModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-300 hover:bg-blue-100 transition-colors"
+                  >
+                    Upload Result
+                  </button>
+                );
+              },
+            }),
+          ]
+        : []),
     ],
-    [showPaymentToggle, updatingId, onTogglePayment],
+    [showPaymentToggle, updatingId, onTogglePayment, showUploadResult],
   );
 
   if (data.length === 0) {
@@ -143,5 +179,23 @@ export default function RequestsTable({
     );
   }
 
-  return <Table data={data} columns={columns} />;
+  return (
+    <>
+      <Table data={data} columns={columns} />
+
+      <UploadResultModal
+        isOpen={uploadModalOpen}
+        onClose={() => {
+          setUploadModalOpen(false);
+          setSelectedRow(null);
+        }}
+        row={selectedRow}
+        onSuccess={() => {
+          setUploadModalOpen(false);
+          setSelectedRow(null);
+          onUploadSuccess?.();
+        }}
+      />
+    </>
+  );
 }

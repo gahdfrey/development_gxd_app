@@ -5,7 +5,7 @@ import { fetcher } from "@/lib/fetcher";
 import RequestsTable, { type RequestRow } from "../components/requests/RequestsTable";
 
 export default function LaboratoryPage() {
-  const { data, isLoading } = useSWR<RequestRow[]>(
+  const { data, isLoading, mutate } = useSWR<RequestRow[]>(
     "/api/requests?department=laboratory",
     fetcher,
   );
@@ -24,7 +24,11 @@ export default function LaboratoryPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : (
-        <RequestsTable data={data ?? []} />
+        <RequestsTable
+          data={data ?? []}
+          showUploadResult
+          onUploadSuccess={() => mutate()}
+        />
       )}
     </div>
   );
