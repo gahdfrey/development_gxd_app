@@ -38,7 +38,13 @@ export const authConfig = {
         isLoggedIn &&
         (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")
       ) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
+        const role = ((auth?.user as any)?.role ?? "").toLowerCase();
+        let landingPage = "/dashboard";
+        if (role.includes("lab")) landingPage = "/laboratory";
+        else if (role.includes("radio")) landingPage = "/radiography";
+        else if (role.includes("finance")) landingPage = "/finance";
+        else if (role.includes("doctor")) landingPage = "/my-appointments";
+        return Response.redirect(new URL(landingPage, nextUrl));
       }
       return true;
     },
