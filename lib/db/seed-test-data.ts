@@ -90,7 +90,7 @@ async function seedTestData() {
     console.log('🌱 Starting test data seed...\n');
 
     // 1. Get doctor role ID
-    const doctorRole = await db.select().from(roles).where(eq(roles.name, 'doctor'));
+    const doctorRole = await db.select().from(roles).where(eq(roles.name, 'Doctor'));
     if (doctorRole.length === 0) {
         console.error('❌ Doctor role not found. Run the main seed first: npm run db:seed');
         process.exit(1);
