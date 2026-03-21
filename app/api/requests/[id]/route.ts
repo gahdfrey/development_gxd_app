@@ -25,16 +25,34 @@ export async function PATCH(
     const body = await request.json();
     const { paymentStatus } = body;
 
-    if (!paymentStatus || !["paid", "not_paid"].includes(paymentStatus)) {
+    if (!paymentStatus || paymentStatus !== "paid") {
       return NextResponse.json(
-        { error: "paymentStatus must be 'paid' or 'not_paid'" },
+        { error: "paymentStatus can only be set to 'paid'" },
         { status: 400 },
+      );
+    }
+
+    // Fetch current record — prevent reverting a paid status
+    const [existing] = await db
+      .select({ paymentStatus: requests.paymentStatus })
+      .from(requests)
+      .where(eq(requests.id, id))
+      .limit(1);
+
+    if (!existing) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 });
+    }
+
+    if (existing.paymentStatus === "paid") {
+      return NextResponse.json(
+        { error: "This request has already been marked as paid and cannot be changed" },
+        { status: 409 },
       );
     }
 
     const [updated] = await db
       .update(requests)
-      .set({ paymentStatus, updatedAt: new Date() })
+      .set({ paymentStatus: "paid", updatedAt: new Date() })
       .where(eq(requests.id, id))
       .returning();
 

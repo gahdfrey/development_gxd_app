@@ -12,22 +12,20 @@ export default function FinancePage() {
   );
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  const handleTogglePayment = async (id: number, current: string) => {
+  const handleMarkPaid = async (id: number) => {
     setUpdatingId(id);
-    const next = current === "paid" ? "not_paid" : "paid";
-
     try {
       const res = await fetch(`/api/requests/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentStatus: next }),
+        body: JSON.stringify({ paymentStatus: "paid" }),
       });
 
       if (res.ok) {
         mutate();
       } else {
-        const data = await res.json();
-        alert(data.error || "Failed to update payment status");
+        const body = await res.json();
+        alert(body.error || "Failed to update payment status");
       }
     } catch {
       alert("Failed to update payment status");
@@ -53,7 +51,7 @@ export default function FinancePage() {
         <RequestsTable
           data={data ?? []}
           showPaymentToggle
-          onTogglePayment={handleTogglePayment}
+          onMarkPaid={handleMarkPaid}
           updatingId={updatingId}
         />
       )}

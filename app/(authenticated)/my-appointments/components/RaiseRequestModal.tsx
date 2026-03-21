@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import useSWR from "swr";
 import Modal from "@/app/components/ui/Modal";
 import SearchableSelect, {
   type SearchableSelectOption,
 } from "@/app/components/ui/SearchableSelect";
 import { fetcher } from "@/lib/fetcher";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,10 +48,16 @@ interface RaiseRequestModalProps {
   onSuccess?: () => void;
 }
 
-interface FormErrors {
+// One row in the "add tests" list
+interface RequestRow {
+  rowId: string;
+  deptOption: SearchableSelectOption | null;
+  testOption: SearchableSelectOption | null;
+}
+
+interface RowErrors {
   department?: string;
   test?: string;
-  submit?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,20 +67,11 @@ interface FormErrors {
 const formatAge = (dob: string): string => {
   const today = new Date();
   const birth = new Date(dob);
-
   let years = today.getFullYear() - birth.getFullYear();
   let months = today.getMonth() - birth.getMonth();
   let days = today.getDate() - birth.getDate();
-
-  if (days < 0) {
-    months--;
-    days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-  }
-  if (months < 0) {
-    years--;
-    months += 12;
-  }
-
+  if (days < 0) { months--; days += new Date(today.getFullYear(), today.getMonth(), 0).getDate(); }
+  if (months < 0) { years--; months += 12; }
   if (years >= 1) return `${years} ${years === 1 ? "year" : "years"}`;
   if (months >= 1) return `${months} ${months === 1 ? "month" : "months"}`;
   return `${days} ${days === 1 ? "day" : "days"}`;
@@ -86,6 +84,12 @@ const formatInsuranceLabel = (patient: PrefilledPatient): string => {
   if (type === "private") return "Private";
   return type ? type.charAt(0).toUpperCase() + type.slice(1) : "—";
 };
+
+const newRow = (): RequestRow => ({
+  rowId: crypto.randomUUID(),
+  deptOption: null,
+  testOption: null,
+});
 
 // ---------------------------------------------------------------------------
 // Component
@@ -107,87 +111,169 @@ export default function RaiseRequestModal({
     fetcher,
   );
 
-  const [selectedDeptOption, setSelectedDeptOption] =
-    useState<SearchableSelectOption | null>(null);
-  const [selectedTestOption, setSelectedTestOption] =
-    useState<SearchableSelectOption | null>(null);
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [rows, setRows] = useState<RequestRow[]>([newRow()]);
+  const [rowErrors, setRowErrors] = useState<Record<string, RowErrors>>({});
+  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const testsForDept: SearchableSelectOption[] = selectedDeptOption
-    ? (allTests ?? [])
-        .filter((t) => t.departmentId === selectedDeptOption.id)
-        .map((t) => ({
-          id: t.id,
-          label: t.name,
-          sublabel: `₦${t.price.toLocaleString()}`,
-        }))
-    : [];
 
   const deptOptions: SearchableSelectOption[] = (departments ?? []).map(
     (d) => ({ id: d.id, label: d.name }),
   );
 
-  const handleDeptChange = (opt: SearchableSelectOption | null) => {
-    setSelectedDeptOption(opt);
-    setSelectedTestOption(null);
-    if (opt) setErrors((prev) => ({ ...prev, department: undefined }));
+  const testsForDept = useCallback(
+    (deptId: number | undefined): SearchableSelectOption[] => {
+      if (!deptId) return [];
+      return (allTests ?? [])
+        .filter((t) => t.departmentId === deptId)
+        .map((t) => ({
+          id: t.id,
+          label: t.name,
+          sublabel: `₦${t.price.toLocaleString()}`,
+        }));
+    },
+    [allTests],
+  );
+
+  // ── Row mutation helpers ────────────────────────────────────────────────
+
+  const handleDeptChange = (rowId: string, opt: SearchableSelectOption | null) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.rowId === rowId ? { ...r, deptOption: opt, testOption: null } : r,
+      ),
+    );
+    // Clear errors for this row's department (and test since dept changed)
+    setRowErrors((prev) => ({
+      ...prev,
+      [rowId]: { ...prev[rowId], department: undefined, test: undefined },
+    }));
   };
 
-  const handleTestChange = (opt: SearchableSelectOption | null) => {
-    setSelectedTestOption(opt);
-    if (opt) setErrors((prev) => ({ ...prev, test: undefined }));
+  const handleTestChange = (rowId: string, opt: SearchableSelectOption | null) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.rowId === rowId ? { ...r, testOption: opt } : r,
+      ),
+    );
+    setRowErrors((prev) => ({
+      ...prev,
+      [rowId]: { ...prev[rowId], test: undefined },
+    }));
   };
+
+  const addRow = () => setRows((prev) => [...prev, newRow()]);
+
+  const removeRow = (rowId: string) => {
+    setRows((prev) => prev.filter((r) => r.rowId !== rowId));
+    setRowErrors((prev) => {
+      const next = { ...prev };
+      delete next[rowId];
+      return next;
+    });
+  };
+
+  // ── Validation ──────────────────────────────────────────────────────────
 
   const validate = (): boolean => {
-    const newErrors: FormErrors = {};
-    if (!selectedDeptOption) newErrors.department = "Please select a department";
-    if (!selectedTestOption) newErrors.test = "Please select a test";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const newRowErrors: Record<string, RowErrors> = {};
+    let valid = true;
+
+    rows.forEach((row) => {
+      const errs: RowErrors = {};
+      if (!row.deptOption) { errs.department = "Select a department"; valid = false; }
+      if (!row.testOption) { errs.test = "Select a test"; valid = false; }
+      if (errs.department || errs.test) newRowErrors[row.rowId] = errs;
+    });
+
+    // Check for duplicate tests
+    const testIds = rows.map((r) => r.testOption?.id).filter(Boolean);
+    const hasDuplicates = testIds.length !== new Set(testIds).size;
+    if (hasDuplicates) {
+      setSubmitError("You have selected the same test more than once. Please remove duplicates.");
+      setRowErrors(newRowErrors);
+      return false;
+    }
+
+    setRowErrors(newRowErrors);
+    return valid;
   };
 
+  // ── Submit ──────────────────────────────────────────────────────────────
+
   const handleSubmit = async () => {
+    setSubmitError("");
     if (!validate()) return;
 
     setIsSubmitting(true);
-    setErrors({});
 
     try {
-      const res = await fetch("/api/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientId: prefilledPatient!.id,
-          departmentId: selectedDeptOption!.id,
-          testId: selectedTestOption!.id,
-          appointmentId: appointmentId ?? null,
-        }),
-      });
+      const results = await Promise.allSettled(
+        rows.map((row) =>
+          fetch("/api/requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              patientId: prefilledPatient!.id,
+              departmentId: row.deptOption!.id,
+              testId: row.testOption!.id,
+              appointmentId: appointmentId ?? null,
+            }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to create request");
+            return data;
+          }),
+        ),
+      );
 
-      const data = await res.json();
+      const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
 
-      if (!res.ok) {
-        setErrors({ submit: data.error || "Failed to create request" });
+      if (failed.length === results.length) {
+        // All failed
+        setSubmitError(failed[0].reason?.message || "All requests failed. Please try again.");
         return;
       }
 
+      if (failed.length > 0) {
+        // Partial success — still close but surface how many failed
+        setSubmitError(
+          `${results.length - failed.length} of ${results.length} requests submitted. ${failed.length} failed: ${failed.map((f) => f.reason?.message).join(", ")}`,
+        );
+        onSuccess?.();
+        return;
+      }
+
+      // All succeeded
       onSuccess?.();
       handleClose();
     } catch {
-      setErrors({ submit: "Something went wrong. Please try again." });
+      setSubmitError("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    setSelectedDeptOption(null);
-    setSelectedTestOption(null);
-    setErrors({});
+    setRows([newRow()]);
+    setRowErrors({});
+    setSubmitError("");
     setIsSubmitting(false);
     onClose();
   };
+
+  // ── Compute total price ─────────────────────────────────────────────────
+
+  const totalPrice = rows.reduce((sum, row) => {
+    if (!row.testOption) return sum;
+    const test = (allTests ?? []).find((t) => t.id === row.testOption!.id);
+    return sum + (test?.price ?? 0);
+  }, 0);
+
+  const hasAnyTest = rows.some((r) => r.testOption !== null);
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <Modal
@@ -198,21 +284,18 @@ export default function RaiseRequestModal({
     >
       <div className="space-y-5">
         {/* Submit-level error */}
-        {errors.submit && (
+        {submitError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-            {errors.submit}
+            {submitError}
           </div>
         )}
 
-        {/* ── Patient card (always shown, pre-filled from appointment) ── */}
+        {/* ── Patient card ── */}
         {prefilledPatient && (
           <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Patient
-              </p>
-            </div>
-            {/* Name + phone row */}
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Patient
+            </p>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                 <span className="text-sm font-bold text-blue-600">
@@ -228,9 +311,7 @@ export default function RaiseRequestModal({
                 </p>
               </div>
             </div>
-            {/* Details grid */}
             <div className="grid grid-cols-3 gap-3 pt-1">
-              {/* Gender */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">Gender</label>
                 <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
@@ -239,16 +320,12 @@ export default function RaiseRequestModal({
                     : "—"}
                 </div>
               </div>
-
-              {/* Age */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">Age</label>
                 <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
                   {prefilledPatient.dob ? formatAge(prefilledPatient.dob) : "—"}
                 </div>
               </div>
-
-              {/* Insurance type */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">Insurance</label>
                 <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
@@ -256,8 +333,6 @@ export default function RaiseRequestModal({
                 </div>
               </div>
             </div>
-
-            {/* HMO details — only when insurance type is HMO */}
             {prefilledPatient.insuranceType === "hmo" && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -277,49 +352,102 @@ export default function RaiseRequestModal({
           </div>
         )}
 
-        {/* ── Department ── */}
-        <div>
-          <SearchableSelect
-            label="Department"
-            options={deptOptions}
-            value={selectedDeptOption}
-            onChange={handleDeptChange}
-            placeholder={
-              deptsLoading
-                ? "Loading departments..."
-                : deptOptions.length === 0
-                ? "No departments available"
-                : "Search department..."
-            }
-            disabled={deptsLoading || deptOptions.length === 0}
-            error={errors.department}
-          />
+        {/* ── Test rows ── */}
+        <div className="space-y-3">
+          {rows.map((row, index) => {
+            const availableTests = testsForDept(row.deptOption?.id as number | undefined);
+            const errs = rowErrors[row.rowId] ?? {};
+
+            return (
+              <div
+                key={row.rowId}
+                className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3"
+              >
+                {/* Row header */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Request {index + 1}
+                  </span>
+                  {rows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeRow(row.rowId)}
+                      disabled={isSubmitting}
+                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="Remove this request"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Department */}
+                <SearchableSelect
+                  label="Department"
+                  options={deptOptions}
+                  value={row.deptOption}
+                  onChange={(opt) => handleDeptChange(row.rowId, opt)}
+                  placeholder={
+                    deptsLoading
+                      ? "Loading departments..."
+                      : deptOptions.length === 0
+                      ? "No departments available"
+                      : "Search department..."
+                  }
+                  disabled={deptsLoading || deptOptions.length === 0 || isSubmitting}
+                  error={errs.department}
+                />
+
+                {/* Test */}
+                <SearchableSelect
+                  label="Test"
+                  options={availableTests}
+                  value={row.testOption}
+                  onChange={(opt) => handleTestChange(row.rowId, opt)}
+                  placeholder={
+                    !row.deptOption
+                      ? "Select a department first"
+                      : testsLoading
+                      ? "Loading tests..."
+                      : availableTests.length === 0
+                      ? "No tests for this department"
+                      : "Search test..."
+                  }
+                  disabled={
+                    !row.deptOption ||
+                    testsLoading ||
+                    availableTests.length === 0 ||
+                    isSubmitting
+                  }
+                  error={errs.test}
+                />
+              </div>
+            );
+          })}
         </div>
 
-        {/* ── Test ── */}
-        <div>
-          <SearchableSelect
-            label="Test"
-            options={testsForDept}
-            value={selectedTestOption}
-            onChange={handleTestChange}
-            placeholder={
-              !selectedDeptOption
-                ? "Select a department first"
-                : testsLoading
-                ? "Loading tests..."
-                : testsForDept.length === 0
-                ? "No tests for this department"
-                : "Search test..."
-            }
-            disabled={
-              !selectedDeptOption ||
-              testsLoading ||
-              testsForDept.length === 0
-            }
-            error={errors.test}
-          />
-        </div>
+        {/* ── Add More button ── */}
+        <button
+          type="button"
+          onClick={addRow}
+          disabled={isSubmitting}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 border-dashed rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Add Another Test
+        </button>
+
+        {/* ── Total price summary ── */}
+        {hasAnyTest && (
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
+            <span className="text-sm text-gray-600">
+              {rows.filter((r) => r.testOption).length} test{rows.filter((r) => r.testOption).length !== 1 ? "s" : ""} selected
+            </span>
+            <span className="text-sm font-bold text-gray-900">
+              Total: ₦{totalPrice.toLocaleString()}
+            </span>
+          </div>
+        )}
 
         {/* ── Action Buttons ── */}
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
@@ -337,7 +465,11 @@ export default function RaiseRequestModal({
             disabled={isSubmitting}
             className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Submitting..." : "Submit Request"}
+            {isSubmitting
+              ? "Submitting..."
+              : rows.length === 1
+              ? "Submit Request"
+              : `Submit ${rows.length} Requests`}
           </button>
         </div>
       </div>

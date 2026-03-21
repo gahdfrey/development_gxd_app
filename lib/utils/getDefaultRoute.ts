@@ -18,7 +18,7 @@ export function getDefaultRoute(permissions: any): string {
     { path: "/my-history", module: "my-history" },
     { path: "/my-appointments", module: "my-appointments" },
     { path: "/laboratory", module: "laboratory" },
-    { path: "/radiography", module: "radiography" },
+    { path: "/radiology", module: "radiography" },
     { path: "/finance", module: "finance" },
     { path: "/dashboard", module: "dashboard" },
     { path: "/appointments", module: "appointments" },

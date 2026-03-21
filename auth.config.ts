@@ -44,7 +44,7 @@ export const authConfig = {
         let landingPage = "/dashboard";
         if (role.includes("patient")) landingPage = "/my-history";
         else if (role.includes("lab")) landingPage = "/laboratory";
-        else if (role.includes("radio")) landingPage = "/radiography";
+        else if (role.includes("radio")) landingPage = "/radiology";
         else if (role.includes("finance")) landingPage = "/finance";
         else if (role.includes("doctor")) landingPage = "/my-appointments";
         return Response.redirect(new URL(landingPage, nextUrl));
