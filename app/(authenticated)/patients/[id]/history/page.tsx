@@ -16,7 +16,10 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   DocumentArrowDownIcon,
+  ArrowDownTrayIcon,
+  XMarkIcon,
   ExclamationCircleIcon,
+  ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
@@ -188,43 +191,160 @@ function StatCard({ icon: Icon, label, value, color }: {
   );
 }
 
-function ResultCard({ result }: { result: ResultEntry }) {
+// ─── Result Viewer Modal ─────────────────────────────────────────────────────
+
+function ResultViewerModal({
+  result,
+  onClose,
+}: {
+  result: ResultEntry;
+  onClose: () => void;
+}) {
   const isImage = isImageType(result.fileType);
+  const isPdf = result.fileType === "application/pdf";
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
-      <div className="flex items-start gap-2.5">
-        <DocumentArrowDownIcon className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <a
-            href={result.filePath}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline truncate block"
-          >
-            {result.fileName}
-          </a>
-          {result.message && (
-            <p className="text-xs text-gray-600 mt-0.5 italic">"{result.message}"</p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <DocumentArrowDownIcon className="h-5 w-5 text-blue-500 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {result.fileName}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Uploaded by{" "}
+                <span className="font-medium text-gray-600">
+                  {result.uploadedByFirstname} {result.uploadedByLastname}
+                </span>{" "}
+                · {formatDateTime(result.createdAt)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={result.filePath}
+              download={result.fileName}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+              Download
+            </a>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Optional message */}
+        {result.message && (
+          <div className="px-5 py-3 bg-blue-50 border-b border-blue-100 flex items-start gap-2.5 shrink-0">
+            <ChatBubbleLeftEllipsisIcon className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-blue-800 italic">
+              &ldquo;{result.message}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {/* File viewer */}
+        <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center min-h-0">
+          {isImage ? (
+            <img
+              src={result.filePath}
+              alt={result.fileName}
+              className="max-w-full max-h-full object-contain p-4"
+            />
+          ) : isPdf ? (
+            <iframe
+              src={result.filePath}
+              title={result.fileName}
+              className="w-full h-full min-h-[500px] border-0"
+            />
+          ) : (
+            <div className="text-center p-12 space-y-4">
+              <DocumentArrowDownIcon className="h-14 w-14 text-gray-300 mx-auto" />
+              <p className="text-gray-500 text-sm">
+                Preview not available for this file type.
+              </p>
+              <a
+                href={result.filePath}
+                download={result.fileName}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4" />
+                Download File
+              </a>
+            </div>
           )}
-          <p className="text-xs text-gray-400 mt-1">
-            Uploaded by{" "}
-            <span className="text-gray-600 font-medium">
-              {result.uploadedByFirstname} {result.uploadedByLastname}
-            </span>{" "}
-            · {formatDateTime(result.createdAt)}
-          </p>
         </div>
       </div>
-      {isImage && (
-        <a href={result.filePath} target="_blank" rel="noopener noreferrer">
+    </div>
+  );
+}
+
+// ─── Result Card (clickable) ──────────────────────────────────────────────────
+
+function ResultCard({ result }: { result: ResultEntry }) {
+  const [viewing, setViewing] = useState(false);
+  const isImage = isImageType(result.fileType);
+
+  return (
+    <>
+      <button
+        onClick={() => setViewing(true)}
+        className="w-full text-left bg-white border border-gray-200 rounded-xl p-3 space-y-2 hover:border-blue-300 hover:bg-blue-50/30 transition-colors group"
+      >
+        <div className="flex items-start gap-2.5">
+          <DocumentArrowDownIcon className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-blue-600 group-hover:text-blue-800 truncate">
+              {result.fileName}
+            </p>
+            {result.message && (
+              <p className="text-xs text-gray-600 mt-0.5 italic truncate">
+                &ldquo;{result.message}&rdquo;
+              </p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              Uploaded by{" "}
+              <span className="text-gray-600 font-medium">
+                {result.uploadedByFirstname} {result.uploadedByLastname}
+              </span>{" "}
+              · {formatDateTime(result.createdAt)}
+            </p>
+          </div>
+          <span className="text-xs text-blue-500 group-hover:text-blue-700 font-medium shrink-0 mt-0.5">
+            View
+          </span>
+        </div>
+        {isImage && (
           <img
             src={result.filePath}
             alt={result.fileName}
-            className="w-full max-h-48 object-contain rounded-lg border border-gray-100 mt-1"
+            className="w-full max-h-32 object-contain rounded-lg border border-gray-100 mt-1 pointer-events-none"
           />
-        </a>
+        )}
+      </button>
+
+      {viewing && (
+        <ResultViewerModal result={result} onClose={() => setViewing(false)} />
       )}
-    </div>
+    </>
   );
 }
 
