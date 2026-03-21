@@ -305,6 +305,15 @@ export default function DoctorAppointmentsTable({
             setSelectedRaiseRequestAppointment(null);
           }}
           appointmentId={selectedRaiseRequestAppointment?.id}
+          onSuccess={() => {
+            mutate(
+              (key) =>
+                typeof key === "string" &&
+                key.startsWith("/api/my-appointments"),
+              undefined,
+              { revalidate: true },
+            );
+          }}
         />
       )}
     </>

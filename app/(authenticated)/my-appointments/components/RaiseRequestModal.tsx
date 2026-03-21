@@ -42,6 +42,7 @@ interface RaiseRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointmentId?: number;
+  onSuccess?: () => void;
 }
 
 interface FormErrors {
@@ -90,6 +91,7 @@ export default function RaiseRequestModal({
   isOpen,
   onClose,
   appointmentId,
+  onSuccess,
 }: RaiseRequestModalProps) {
   const { data: patients, isLoading: patientsLoading } = useSWR<Patient[]>(
     "/api/patients",
@@ -194,6 +196,7 @@ export default function RaiseRequestModal({
         return;
       }
 
+      onSuccess?.();
       handleClose();
     } catch {
       setErrors({ submit: "Something went wrong. Please try again." });
