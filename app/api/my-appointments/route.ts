@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { appointments, patients, users } from "@/lib/db/schema";
-import { desc, asc, eq, or, ilike, and, gte, lte } from "drizzle-orm";
+import { appointments, patients, users, requests } from "@/lib/db/schema";
+import { desc, asc, eq, or, ilike, and, gte, lte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 
 export async function GET(request: Request) {
@@ -51,6 +51,10 @@ export async function GET(request: Request) {
           dob: patients.dob,
           phone: patients.phone,
         },
+        hasRequest: sql<boolean>`EXISTS (
+          SELECT 1 FROM requests
+          WHERE requests.appointment_id = ${appointments.id}
+        )`,
       })
       .from(appointments)
       .leftJoin(patients, eq(appointments.patientId, patients.id));

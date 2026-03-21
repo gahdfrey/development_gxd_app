@@ -32,6 +32,7 @@ interface Appointment {
   visitType: string;
   notes: string | null;
   patient: Patient | null;
+  hasRequest: boolean;
 }
 
 interface DoctorAppointmentsTableProps {
@@ -238,12 +239,19 @@ export default function DoctorAppointmentsTable({
               ) : appointment.status === "completed" ? (
                 <button
                   onClick={() => {
+                    if (appointment.hasRequest) return;
                     setSelectedRaiseRequestAppointment(appointment);
                     setIsRaiseRequestModalOpen(true);
                   }}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                  disabled={appointment.hasRequest}
+                  title={appointment.hasRequest ? "A request has already been raised for this appointment" : undefined}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    appointment.hasRequest
+                      ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
                 >
-                  Raise Request
+                  {appointment.hasRequest ? "Request Raised" : "Raise Request"}
                 </button>
               ) : appointment.status !== "scheduled" ? (
                 <span className="text-xs text-gray-500 font-medium">

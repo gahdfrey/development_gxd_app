@@ -26,6 +26,7 @@ interface Appointment {
   visitType: string;
   notes: string | null;
   patient: Patient | null;
+  hasRequest: boolean;
 }
 
 interface MyAppointmentsClientProps {
