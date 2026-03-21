@@ -46,6 +46,7 @@ export async function getUserByEmail(email: string) {
       lastname: users.lastname,
       password: users.password,
       roleId: users.roleId,
+      patientId: users.patientId,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
       roleName: roles.name,

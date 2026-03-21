@@ -5,6 +5,7 @@ import {
   HeartIcon,
   ShieldCheckIcon,
   PhoneIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { UseFormRegister, FieldErrors, FieldError } from "react-hook-form";
 import { HMO } from "@/lib/db/schema";
@@ -18,6 +19,7 @@ interface PatientFormData {
   gender: string;
   dob: string;
   maidenName: string;
+  email: string;
   countryCode: string;
   phone: string;
   insuranceType: string;
@@ -199,6 +201,23 @@ export default function PatientDetailsFields({
           </p>
         )}
       </div>
+
+      {/* Email */}
+      <FormInput
+        id="email"
+        label="Email Address"
+        icon={<EnvelopeIcon className="h-4 w-4" />}
+        type="email"
+        placeholder="patient@example.com"
+        error={errors.email}
+        register={register("email", {
+          pattern: {
+            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            message: "Enter a valid email address",
+          },
+        })}
+        optional
+      />
 
       {/* Insurance Type */}
       <FormSelect

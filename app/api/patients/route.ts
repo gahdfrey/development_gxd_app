@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { patients } from "@/lib/db/schema";
+import { patients, users, roles } from "@/lib/db/schema";
 import { desc, asc, or, ilike, and, gte, lte, eq, isNull } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 export async function GET(request: Request) {
   try {
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
       gender,
       dob,
       maidenName,
+      email,
       countryCode,
       phone,
       insuranceType,
@@ -119,6 +121,17 @@ export async function POST(request: Request) {
       }
     }
 
+    // Validate patient email format if provided
+    if (email && email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return NextResponse.json(
+          { error: "Invalid email address" },
+          { status: 400 },
+        );
+      }
+    }
+
     // Validate next of kin email format if provided
     if (nextOfKinEmail && nextOfKinEmail.trim() !== "") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -130,7 +143,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const newPatient = await db
+    const [newPatient] = await db
       .insert(patients)
       .values({
         firstname,
@@ -138,6 +151,7 @@ export async function POST(request: Request) {
         gender,
         dob,
         maidenName: maidenName || null,
+        email: email?.trim() || null,
         countryCode,
         phone,
         insuranceType,
@@ -152,7 +166,35 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    return NextResponse.json(newPatient[0], { status: 201 });
+    // Auto-create a portal login for the patient
+    try {
+      // Find the "Patient" role
+      const [patientRole] = await db
+        .select({ id: roles.id })
+        .from(roles)
+        .where(ilike(roles.name, "patient"))
+        .limit(1);
+
+      const hashedPassword = await bcrypt.hash("Password1", 10);
+      const username = phone.trim();
+      const portalEmail = email?.trim() || `${phone.trim()}@patients.local`;
+
+      await db.insert(users).values({
+        firstname,
+        lastname,
+        username,
+        email: portalEmail,
+        password: hashedPassword,
+        roleId: patientRole?.id ?? null,
+        patientId: newPatient.id,
+      });
+    } catch (portalErr) {
+      // Don't fail patient creation if portal account creation fails
+      // (e.g. duplicate username — patient may have been re-registered)
+      console.warn("Could not create patient portal account:", portalErr);
+    }
+
+    return NextResponse.json(newPatient, { status: 201 });
   } catch (error) {
     console.error("Error creating patient:", error);
     return NextResponse.json(

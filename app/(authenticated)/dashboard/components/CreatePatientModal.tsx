@@ -23,6 +23,7 @@ interface PatientFormData {
   gender: string;
   dob: string;
   maidenName: string;
+  email: string;
   countryCode: string;
   phone: string;
   insuranceType: string;
@@ -66,6 +67,7 @@ export default function CreatePatientModal({
       gender: "",
       dob: "",
       maidenName: "",
+      email: "",
       countryCode: "+234",
       phone: "",
       insuranceType: "",

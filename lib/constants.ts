@@ -9,6 +9,7 @@ export const APP_MODULES = [
   { key: "finance", label: "Finance" },
   { key: "laboratory", label: "Laboratory" },
   { key: "radiography", label: "Radiography" },
+  { key: "my-history", label: "My History" },
 ];
 
 export const APP_PERMISSIONS = [

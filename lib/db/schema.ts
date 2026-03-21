@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   lastname: text("lastname").notNull(),
   password: text("password").notNull(), // Hashed with bcrypt
   roleId: integer("role_id").references(() => roles.id),
+  patientId: integer("patient_id"), // Links to patients table for patient portal accounts
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -55,6 +56,7 @@ export const patients = pgTable("patients", {
   gender: text("gender").notNull(),
   dob: text("dob").notNull(),
   maidenName: text("maiden_name"),
+  email: text("email"), // Patient's own email — used for portal login
   countryCode: text("country_code").notNull(),
   phone: text("phone").notNull(),
   insuranceType: text("insurance_type").notNull(), // "private", "hmo", "corporate"

@@ -15,6 +15,7 @@ export function getDefaultRoute(permissions: any): string {
   // Specialised modules come before general ones so role-specific users
   // (lab, radiology, finance, doctor) land on their own section first.
   const routes = [
+    { path: "/my-history", module: "my-history" },
     { path: "/my-appointments", module: "my-appointments" },
     { path: "/laboratory", module: "laboratory" },
     { path: "/radiography", module: "radiography" },
