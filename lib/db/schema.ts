@@ -135,3 +135,38 @@ export type NewVisit = typeof visits.$inferInsert;
 
 // User with role name joined
 export type UserWithRole = User & { roleName: string | null };
+
+/**
+ * Departments table schema
+ * Stores laboratory/clinical departments
+ */
+export const departments = pgTable("departments", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type Department = typeof departments.$inferSelect;
+export type NewDepartment = typeof departments.$inferInsert;
+
+/**
+ * Lab Tests table schema
+ * Stores tests/investigations linked to a department
+ */
+export const labTests = pgTable("lab_tests", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  price: integer("price").notNull(), // stored in smallest currency unit (e.g. kobo)
+  departmentId: integer("department_id")
+    .notNull()
+    .references(() => departments.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type LabTest = typeof labTests.$inferSelect;
+export type NewLabTest = typeof labTests.$inferInsert;
+
+// Lab test with department name joined
+export type LabTestWithDepartment = LabTest & { departmentName: string };
