@@ -14,7 +14,7 @@ interface DepartmentFormModalProps {
 const MODULE_OPTIONS = [
   { value: "", label: "None (General)" },
   { value: "laboratory", label: "Laboratory" },
-  { value: "radiography", label: "Radiography" },
+  { value: "radiology", label: "Radiology" },
 ];
 
 export default function DepartmentFormModal({

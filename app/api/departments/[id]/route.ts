@@ -67,7 +67,7 @@ export async function PUT(
       );
     }
 
-    const validModules = ["laboratory", "radiography"];
+    const validModules = ["laboratory", "radiology"];
     const resolvedModule = validModules.includes(module) ? module : null;
 
     const [updated] = await db

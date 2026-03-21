@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validModules = ["laboratory", "radiography"];
+    const validModules = ["laboratory", "radiology"];
     const resolvedModule = validModules.includes(module) ? module : null;
 
     const [newDepartment] = await db

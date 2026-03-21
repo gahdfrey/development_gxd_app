@@ -6,7 +6,7 @@ import RequestsTable, { type RequestRow } from "../components/requests/RequestsT
 
 export default function RadiographyPage() {
   const { data, isLoading, mutate } = useSWR<RequestRow[]>(
-    "/api/requests?department=radiography",
+    "/api/requests?department=radiology",
     fetcher,
   );
 
