@@ -15,6 +15,8 @@ import {
   ArrowLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   DocumentArrowDownIcon,
   ArrowDownTrayIcon,
   XMarkIcon,
@@ -530,6 +532,7 @@ export default function PatientHistoryPage({
   );
 
   const [nokExpanded, setNokExpanded] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
 
   if (isLoading) {
     return (
@@ -550,7 +553,13 @@ export default function PatientHistoryPage({
     );
   }
 
+  const TIMELINE_PAGE_SIZE = 5;
   const { patient, stats, timeline, unlinkedRequests } = data;
+  const timelinePageCount = Math.ceil(timeline.length / TIMELINE_PAGE_SIZE);
+  const pagedTimeline = timeline.slice(
+    (timelinePage - 1) * TIMELINE_PAGE_SIZE,
+    timelinePage * TIMELINE_PAGE_SIZE,
+  );
   const fullName = `${patient.firstname} ${patient.lastname}`;
   const hasNok = patient.nextOfKinFirstname || patient.nextOfKinLastname;
 
@@ -706,22 +715,65 @@ export default function PatientHistoryPage({
 
       {/* ── Visit Timeline ─────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Visit History</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">Visit History</h2>
+          {timeline.length > 0 && (
+            <span className="text-sm text-gray-400">
+              {timeline.length} visit{timeline.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
         {timeline.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <UserCircleIcon className="h-10 w-10 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No appointment history found for this patient.</p>
           </div>
         ) : (
-          <div className="relative">
-            {/* Vertical timeline line */}
-            <div className="absolute left-1.5 top-4 bottom-4 w-px bg-blue-200" />
-            <div className="space-y-6">
-              {timeline.map((entry) => (
-                <VisitCard key={entry.appointment.id} entry={entry} />
-              ))}
+          <>
+            <div className="relative">
+              {/* Vertical timeline line */}
+              <div className="absolute left-1.5 top-4 bottom-4 w-px bg-blue-200" />
+              <div className="space-y-6">
+                {pagedTimeline.map((entry) => (
+                  <VisitCard key={entry.appointment.id} entry={entry} />
+                ))}
+              </div>
             </div>
-          </div>
+
+            {/* Pagination controls */}
+            {timelinePageCount > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    setTimelinePage((p) => Math.max(1, p - 1));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  disabled={timelinePage === 1}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                  Previous
+                </button>
+                <span className="text-sm text-gray-500">
+                  Page{" "}
+                  <span className="font-semibold text-gray-800">{timelinePage}</span>
+                  {" "}of{" "}
+                  <span className="font-semibold text-gray-800">{timelinePageCount}</span>
+                </span>
+                <button
+                  onClick={() => {
+                    setTimelinePage((p) => Math.min(timelinePageCount, p + 1));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  disabled={timelinePage === timelinePageCount}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                  <ChevronRightIcon className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
