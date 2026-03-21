@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { mutate } from "swr";
+import Link from "next/link";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
@@ -126,9 +127,16 @@ export default function DoctorAppointmentsTable({
           const patient = info.getValue();
           return (
             <div>
-              <div className="text-sm font-medium text-gray-900">
-                {patient ? `${patient.firstname} ${patient.lastname}` : "N/A"}
-              </div>
+              {patient ? (
+                <Link
+                  href={`/patients/${patient.id}/history`}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  {patient.firstname} {patient.lastname}
+                </Link>
+              ) : (
+                <span className="text-sm font-medium text-gray-900">N/A</span>
+              )}
               {patient && (
                 <div className="text-xs text-gray-500">DOB: {patient.dob}</div>
               )}
@@ -288,6 +296,7 @@ export default function DoctorAppointmentsTable({
             setIsRaiseRequestModalOpen(false);
             setSelectedRaiseRequestAppointment(null);
           }}
+          appointmentId={selectedRaiseRequestAppointment?.id}
         />
       )}
     </>

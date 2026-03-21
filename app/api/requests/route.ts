@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     const requestedBy = (session.user as any).id;
     const body = await request.json();
-    const { patientId, departmentId, testId } = body;
+    const { patientId, departmentId, testId, appointmentId } = body;
 
     if (!patientId) {
       return NextResponse.json(
@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
         departmentId: parseInt(departmentId),
         testId: parseInt(testId),
         requestedBy: parseInt(requestedBy),
+        appointmentId: appointmentId ? parseInt(appointmentId) : null,
         status: "pending",
         paymentStatus: "not_paid",
       })

@@ -189,6 +189,7 @@ export const requests = pgTable("requests", {
   requestedBy: integer("requested_by")
     .notNull()
     .references(() => users.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
   status: text("status").notNull().default("pending"), // pending, completed, cancelled
   paymentStatus: text("payment_status").notNull().default("not_paid"), // paid, not_paid
   createdAt: timestamp("created_at").notNull().defaultNow(),

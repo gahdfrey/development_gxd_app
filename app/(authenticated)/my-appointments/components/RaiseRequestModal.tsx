@@ -41,6 +41,7 @@ interface TestRow {
 interface RaiseRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
+  appointmentId?: number;
 }
 
 interface FormErrors {
@@ -88,6 +89,7 @@ const formatInsuranceType = (type: string): string => {
 export default function RaiseRequestModal({
   isOpen,
   onClose,
+  appointmentId,
 }: RaiseRequestModalProps) {
   const { data: patients, isLoading: patientsLoading } = useSWR<Patient[]>(
     "/api/patients",
@@ -181,6 +183,7 @@ export default function RaiseRequestModal({
           patientId: selectedPatientOption!.id,
           departmentId: selectedDeptOption!.id,
           testId: selectedTestOption!.id,
+          appointmentId: appointmentId ?? null,
         }),
       });
 
