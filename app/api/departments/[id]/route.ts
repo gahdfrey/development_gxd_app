@@ -58,7 +58,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name } = body;
+    const { name, module } = body;
 
     if (!name || name.trim() === "") {
       return NextResponse.json(
@@ -67,9 +67,12 @@ export async function PUT(
       );
     }
 
+    const validModules = ["laboratory", "radiography"];
+    const resolvedModule = validModules.includes(module) ? module : null;
+
     const [updated] = await db
       .update(departments)
-      .set({ name: name.trim(), updatedAt: new Date() })
+      .set({ name: name.trim(), module: resolvedModule, updatedAt: new Date() })
       .where(eq(departments.id, id))
       .returning();
 

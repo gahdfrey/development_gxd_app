@@ -11,6 +11,12 @@ interface DepartmentFormModalProps {
   onSuccess: () => void;
 }
 
+const MODULE_OPTIONS = [
+  { value: "", label: "None (General)" },
+  { value: "laboratory", label: "Laboratory" },
+  { value: "radiography", label: "Radiography" },
+];
+
 export default function DepartmentFormModal({
   isOpen,
   onClose,
@@ -18,6 +24,7 @@ export default function DepartmentFormModal({
   onSuccess,
 }: DepartmentFormModalProps) {
   const [name, setName] = useState("");
+  const [module, setModule] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -25,12 +32,14 @@ export default function DepartmentFormModal({
   useEffect(() => {
     if (isOpen) {
       setName(editing?.name ?? "");
+      setModule((editing as any)?.module ?? "");
       setErrorMessage("");
     }
   }, [isOpen, editing]);
 
   const handleClose = () => {
     setName("");
+    setModule("");
     setErrorMessage("");
     onClose();
   };
@@ -49,7 +58,7 @@ export default function DepartmentFormModal({
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, module: module || null }),
       });
 
       const data = await res.json();
@@ -97,6 +106,31 @@ export default function DepartmentFormModal({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="e.g. Haematology"
           />
+        </div>
+
+        <div>
+          <label
+            htmlFor="dept-module"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Module
+          </label>
+          <select
+            id="dept-module"
+            value={module}
+            onChange={(e) => setModule(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            {MODULE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-400">
+            Assign this department to a module so its requests appear in the
+            correct section (Laboratory or Radiography).
+          </p>
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

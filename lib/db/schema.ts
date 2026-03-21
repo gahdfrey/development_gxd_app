@@ -144,6 +144,7 @@ export type UserWithRole = User & { roleName: string | null };
 export const departments = pgTable("departments", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
+  module: text("module"), // "laboratory" | "radiography" | null (general)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

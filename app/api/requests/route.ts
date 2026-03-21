@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requests, patients, departments, labTests, users, requestResults } from "@/lib/db/schema";
-import { eq, desc, ilike, and, sql } from "drizzle-orm";
+import { eq, desc, ilike, and, sql, or } from "drizzle-orm";
 import { auth } from "@/auth";
 
 // GET /api/requests?department=laboratory|radiography
@@ -18,7 +18,13 @@ export async function GET(request: NextRequest) {
 
     const conditions = [];
     if (departmentFilter) {
-      conditions.push(ilike(departments.name, `%${departmentFilter}%`));
+      // Match explicit module assignment OR fall back to name ILIKE
+      conditions.push(
+        or(
+          eq(departments.module, departmentFilter),
+          ilike(departments.name, `%${departmentFilter}%`),
+        ),
+      );
     }
 
     const query = db
