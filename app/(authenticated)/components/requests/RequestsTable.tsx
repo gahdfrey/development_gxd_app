@@ -9,6 +9,7 @@ export interface RequestRow {
   id: number;
   status: string;
   paymentStatus: string;
+  hasResult: boolean;
   createdAt: string | Date;
   patientId: number | null;
   patientFirstname: string | null;
@@ -152,13 +153,20 @@ export default function RequestsTable({
                 const row = props.row.original;
                 const isPaid = row.paymentStatus === "paid";
                 if (!isPaid) return null;
+                if (row.hasResult) {
+                  return (
+                    <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white border border-blue-600">
+                      Result Sent
+                    </span>
+                  );
+                }
                 return (
                   <button
                     onClick={() => {
                       setSelectedRow(row);
                       setUploadModalOpen(true);
                     }}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-300 hover:bg-blue-100 transition-colors"
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-yellow-50 text-yellow-800 border border-yellow-400 hover:bg-yellow-100 transition-colors"
                   >
                     Upload Result
                   </button>

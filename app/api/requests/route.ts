@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requests, patients, departments, labTests, users } from "@/lib/db/schema";
-import { eq, desc, ilike, and } from "drizzle-orm";
+import { requests, patients, departments, labTests, users, requestResults } from "@/lib/db/schema";
+import { eq, desc, ilike, and, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 
 // GET /api/requests?department=laboratory|radiography
@@ -38,6 +38,10 @@ export async function GET(request: NextRequest) {
         requestedById: requests.requestedBy,
         requestedByFirstname: users.firstname,
         requestedByLastname: users.lastname,
+        hasResult: sql<boolean>`EXISTS (
+          SELECT 1 FROM request_results
+          WHERE request_results.request_id = ${requests.id}
+        )`,
       })
       .from(requests)
       .leftJoin(patients, eq(requests.patientId, patients.id))
