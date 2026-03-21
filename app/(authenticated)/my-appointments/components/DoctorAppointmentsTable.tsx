@@ -5,6 +5,7 @@ import { mutate } from "swr";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
+import RaiseRequestModal from "./RaiseRequestModal";
 import type { Session } from "next-auth";
 import {
   formatTime,
@@ -46,6 +47,9 @@ export default function DoctorAppointmentsTable({
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [activeConsultation, setActiveConsultation] = useState(false);
+  const [isRaiseRequestModalOpen, setIsRaiseRequestModalOpen] = useState(false);
+  const [selectedRaiseRequestAppointment, setSelectedRaiseRequestAppointment] =
+    useState<Appointment | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -223,6 +227,16 @@ export default function DoctorAppointmentsTable({
                     {updatingId === appointment.id ? "..." : "Cancel"}
                   </button>
                 </div>
+              ) : appointment.status === "completed" ? (
+                <button
+                  onClick={() => {
+                    setSelectedRaiseRequestAppointment(appointment);
+                    setIsRaiseRequestModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  Raise Request
+                </button>
               ) : appointment.status !== "scheduled" ? (
                 <span className="text-xs text-gray-500 font-medium">
                   Status finalized
@@ -264,6 +278,16 @@ export default function DoctorAppointmentsTable({
           }}
           appointment={selectedAppointment}
           session={session}
+        />
+      )}
+
+      {selectedRaiseRequestAppointment && (
+        <RaiseRequestModal
+          isOpen={isRaiseRequestModalOpen}
+          onClose={() => {
+            setIsRaiseRequestModalOpen(false);
+            setSelectedRaiseRequestAppointment(null);
+          }}
         />
       )}
     </>
