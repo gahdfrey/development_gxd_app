@@ -26,13 +26,26 @@ interface RaiseRequestModalProps {
   onClose: () => void;
 }
 
-const calculateAge = (dob: string): number => {
+const formatAge = (dob: string): string => {
   const today = new Date();
   const birth = new Date(dob);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
+
+  let years = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth() - birth.getMonth();
+  let days = today.getDate() - birth.getDate();
+
+  if (days < 0) {
+    months--;
+    days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+  }
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  if (years >= 1) return `${years} ${years === 1 ? "year" : "years"}`;
+  if (months >= 1) return `${months} ${months === 1 ? "month" : "months"}`;
+  return `${days} ${days === 1 ? "day" : "days"}`;
 };
 
 const formatInsuranceType = (type: string): string => {
@@ -137,7 +150,7 @@ export default function RaiseRequestModal({
                 </label>
                 <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 select-none cursor-default">
                   {selectedPatient.dob
-                    ? `${calculateAge(selectedPatient.dob)} years`
+                    ? formatAge(selectedPatient.dob)
                     : "—"}
                 </div>
               </div>
