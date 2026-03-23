@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
 import { requestResults, requests, notifications, patients, departments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -77,19 +76,21 @@ export async function POST(
       );
     }
 
-    // Save file to public/uploads/results/
-    const uploadsDir = join(process.cwd(), "public", "uploads", "results");
-    await mkdir(uploadsDir, { recursive: true });
-
-    const ext = file.name.split(".").pop() ?? "bin";
+    // Upload file to Vercel Blob (works in serverless / production)
     const safeOriginal = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const fileName = `${requestId}-${Date.now()}-${safeOriginal}`;
-    const filePath = join(uploadsDir, fileName);
+    const blobName = `results/${requestId}-${Date.now()}-${safeOriginal}`;
 
-    const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
+    console.log("[upload] BLOB_READ_WRITE_TOKEN present:", !!process.env.BLOB_READ_WRITE_TOKEN);
+    console.log("[upload] uploading blob:", blobName, "type:", file.type, "size:", file.size);
 
-    const relativePath = `/uploads/results/${fileName}`;
+    const blob = await put(blobName, file, {
+      access: "public",
+      contentType: file.type,
+    });
+
+    console.log("[upload] blob upload successful:", blob.url);
+
+    const relativePath = blob.url;
 
     const uploadedById = (session.user as any).id;
 
@@ -143,9 +144,10 @@ export async function POST(
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error("Error uploading result:", error);
+    console.error("[upload] Error uploading result:", error);
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to upload result" },
+      { error: "Failed to upload result", detail: message },
       { status: 500 },
     );
   }
