@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { formatRelativeTime } from "@/lib/appointmentUtils";
 import { BellIcon } from "@heroicons/react/24/outline";
 import { BellAlertIcon } from "@heroicons/react/24/solid";
 
@@ -23,35 +24,6 @@ interface NotificationBellProps {
   userRole: string | null | undefined;
 }
 
-function formatRelativeTime(dateStr: string): string {
-  const now = new Date();
-  const then = new Date(dateStr);
-  const diffMs = now.getTime() - then.getTime();
-
-  // Treat future timestamps (clock drift, etc.) as "just now"
-  if (diffMs < 0) return "just now";
-
-  const diffSecs = Math.floor(diffMs / 1000);
-  if (diffSecs < 60) return "just now";
-
-  const diffMins = Math.floor(diffSecs / 60);
-  if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? "min" : "mins"} ago`;
-
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
-
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 5) return `${diffWeeks} ${diffWeeks === 1 ? "week" : "weeks"} ago`;
-
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) return `${diffMonths} ${diffMonths === 1 ? "month" : "months"} ago`;
-
-  const diffYears = Math.floor(diffDays / 365);
-  return `${diffYears} ${diffYears === 1 ? "year" : "years"} ago`;
-}
 
 export default function NotificationBell({ userRole }: NotificationBellProps) {
   const isDoctor = userRole?.toLowerCase().includes("doctor");
@@ -61,7 +33,7 @@ export default function NotificationBell({ userRole }: NotificationBellProps) {
   const { data, mutate } = useSWR<{ unreadCount: number; notifications: NotificationItem[] }>(
     isDoctor ? "/api/notifications?limit=5" : null,
     fetcher,
-    { refreshInterval: 30000 },
+    { refreshInterval: 900000 },
   );
 
   const unreadCount = data?.unreadCount ?? 0;

@@ -449,13 +449,13 @@ export default function SideMenu() {
           {/* Radiography Link */}
           {hasPermission("radiography", "view") && (
             <Link
-              href="/radiography"
+              href="/radiology"
               className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
-                isActive("/radiography")
+                isActive("/radiology")
                   ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
               }`}
-              aria-current={isActive("/radiography") ? "page" : undefined}
+              aria-current={isActive("/radiology") ? "page" : undefined}
             >
               <div className="shrink-0 relative p-1">
                 <svg
@@ -477,11 +477,11 @@ export default function SideMenu() {
                   isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
                 }`}
               >
-                Radiography
+                Radiology
               </span>
               {!isExpanded && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
-                  Radiography
+                  Radiology
                 </div>
               )}
             </Link>
