@@ -30,6 +30,15 @@ export const formatDate = (dateStr: string): string => {
 };
 
 /**
+ * Converts a private Vercel Blob URL into a proxied download URL that is
+ * accessible only to authenticated users via /api/blob/download.
+ * Use this wherever you display or link to uploaded result files.
+ */
+export function getBlobUrl(filePath: string): string {
+  return `/api/blob/download?url=${encodeURIComponent(filePath)}`;
+}
+
+/**
  * Formats a date string as a relative time (e.g., "2 mins ago", "3 days ago")
  * @param dateStr - Date string in ISO format
  * @returns Human-readable relative time string

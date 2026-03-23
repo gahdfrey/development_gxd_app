@@ -24,6 +24,7 @@ import {
   ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { getBlobUrl } from "@/lib/appointmentUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -233,7 +234,7 @@ function ResultViewerModal({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <a
-              href={result.filePath}
+              href={getBlobUrl(result.filePath)}
               download={result.fileName}
               target="_blank"
               rel="noopener noreferrer"
@@ -265,13 +266,13 @@ function ResultViewerModal({
         <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center min-h-0">
           {isImage ? (
             <img
-              src={result.filePath}
+              src={getBlobUrl(result.filePath)}
               alt={result.fileName}
               className="max-w-full max-h-full object-contain p-4"
             />
           ) : isPdf ? (
             <iframe
-              src={result.filePath}
+              src={getBlobUrl(result.filePath)}
               title={result.fileName}
               className="w-full h-full min-h-[500px] border-0"
             />
@@ -282,7 +283,7 @@ function ResultViewerModal({
                 Preview not available for this file type.
               </p>
               <a
-                href={result.filePath}
+                href={getBlobUrl(result.filePath)}
                 download={result.fileName}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -336,7 +337,7 @@ function ResultCard({ result }: { result: ResultEntry }) {
         </div>
         {isImage && (
           <img
-            src={result.filePath}
+            src={getBlobUrl(result.filePath)}
             alt={result.fileName}
             className="w-full max-h-32 object-contain rounded-lg border border-gray-100 mt-1 pointer-events-none"
           />

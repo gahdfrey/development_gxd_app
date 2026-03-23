@@ -22,6 +22,7 @@ import {
   ShieldExclamationIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import { getBlobUrl } from "@/lib/appointmentUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -273,7 +274,7 @@ function ResultViewerModal({ result, onClose }: { result: ResultEntry; onClose: 
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <a
-              href={result.filePath}
+              href={getBlobUrl(result.filePath)}
               download={result.fileName}
               target="_blank"
               rel="noopener noreferrer"
@@ -302,10 +303,10 @@ function ResultViewerModal({ result, onClose }: { result: ResultEntry; onClose: 
         {/* File viewer */}
         <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center min-h-0">
           {isImage ? (
-            <img src={result.filePath} alt={result.fileName} className="max-w-full max-h-full object-contain p-3 sm:p-4" />
+            <img src={getBlobUrl(result.filePath)} alt={result.fileName} className="max-w-full max-h-full object-contain p-3 sm:p-4" />
           ) : isPdf ? (
             <iframe
-              src={result.filePath}
+              src={getBlobUrl(result.filePath)}
               title={result.fileName}
               className="w-full h-full border-0"
               style={{ minHeight: "300px" }}
@@ -315,7 +316,7 @@ function ResultViewerModal({ result, onClose }: { result: ResultEntry; onClose: 
               <DocumentArrowDownIcon className="h-12 sm:h-14 w-12 sm:w-14 text-gray-300 mx-auto" />
               <p className="text-gray-500 text-sm">Preview not available for this file type.</p>
               <a
-                href={result.filePath}
+                href={getBlobUrl(result.filePath)}
                 download={result.fileName}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -357,7 +358,7 @@ function ResultCard({ result }: { result: ResultEntry }) {
         </div>
         {isImage && (
           <img
-            src={result.filePath}
+            src={getBlobUrl(result.filePath)}
             alt={result.fileName}
             className="w-full max-h-32 object-contain rounded-lg border border-gray-100 mt-1 pointer-events-none"
           />
