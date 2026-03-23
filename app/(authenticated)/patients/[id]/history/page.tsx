@@ -234,7 +234,7 @@ function ResultViewerModal({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <a
-              href={getBlobUrl(result.filePath)}
+              href={getBlobUrl(result.filePath, true)}
               download={result.fileName}
               target="_blank"
               rel="noopener noreferrer"
@@ -283,7 +283,7 @@ function ResultViewerModal({
                 Preview not available for this file type.
               </p>
               <a
-                href={getBlobUrl(result.filePath)}
+                href={getBlobUrl(result.filePath, true)}
                 download={result.fileName}
                 target="_blank"
                 rel="noopener noreferrer"

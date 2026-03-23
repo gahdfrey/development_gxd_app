@@ -274,7 +274,7 @@ function ResultViewerModal({ result, onClose }: { result: ResultEntry; onClose: 
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <a
-              href={getBlobUrl(result.filePath)}
+              href={getBlobUrl(result.filePath, true)}
               download={result.fileName}
               target="_blank"
               rel="noopener noreferrer"
@@ -316,7 +316,7 @@ function ResultViewerModal({ result, onClose }: { result: ResultEntry; onClose: 
               <DocumentArrowDownIcon className="h-12 sm:h-14 w-12 sm:w-14 text-gray-300 mx-auto" />
               <p className="text-gray-500 text-sm">Preview not available for this file type.</p>
               <a
-                href={getBlobUrl(result.filePath)}
+                href={getBlobUrl(result.filePath, true)}
                 download={result.fileName}
                 target="_blank"
                 rel="noopener noreferrer"

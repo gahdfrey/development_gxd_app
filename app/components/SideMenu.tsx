@@ -66,6 +66,9 @@ export default function SideMenu() {
     [pathname],
   );
 
+  // Hide the entire sidebar for patients — they only have My History / My Appointments
+  if (user?.userrole === "Patient") return null;
+
   return (
     <aside
       onMouseEnter={handleMouseEnter}

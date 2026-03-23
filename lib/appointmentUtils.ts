@@ -34,8 +34,9 @@ export const formatDate = (dateStr: string): string => {
  * accessible only to authenticated users via /api/blob/download.
  * Use this wherever you display or link to uploaded result files.
  */
-export function getBlobUrl(filePath: string): string {
-  return `/api/blob/download?url=${encodeURIComponent(filePath)}`;
+export function getBlobUrl(filePath: string, forceDownload = false): string {
+  const base = `/api/blob/download?url=${encodeURIComponent(filePath)}`;
+  return forceDownload ? `${base}&dl=1` : base;
 }
 
 /**
