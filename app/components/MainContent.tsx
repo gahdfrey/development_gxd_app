@@ -1,16 +1,26 @@
 'use client';
 
 import { useSidebar } from '@/app/contexts/SidebarContext';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 export default function MainContent({ children }: { children: React.ReactNode }) {
-    const { isLocked } = useSidebar();
+  const { isLocked } = useSidebar();
 
-    // Determine the left padding based on sidebar state
-    const sidebarWidth = (isLocked) ? 'pl-64' : 'pl-16';
+  const { data: user } = useSWR('/api/wai', fetcher, {
+    shouldRetryOnError: false,
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
 
-    return (
-        <main className={`pt-24 ${sidebarWidth} transition-all duration-500 ease-out`}>
-            {children}
-        </main>
-    );
+  // Patients have no sidebar — remove the sidebar offset entirely
+  const isPatient = user?.userrole === 'Patient';
+
+  const sidebarWidth = isPatient ? 'pl-0' : isLocked ? 'pl-64' : 'pl-16';
+
+  return (
+    <main className={`pt-24 ${sidebarWidth} transition-all duration-500 ease-out`}>
+      {children}
+    </main>
+  );
 }
