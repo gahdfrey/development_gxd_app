@@ -11,11 +11,17 @@ export function getDefaultRoute(permissions: any): string {
     return "/dashboard";
   }
 
-  // Priority order of routes to check
+  // Priority order of routes to check.
+  // Specialised modules come before general ones so role-specific users
+  // (lab, radiology, finance, doctor) land on their own section first.
   const routes = [
+    { path: "/my-history", module: "my-history" },
+    { path: "/my-appointments", module: "my-appointments" },
+    { path: "/laboratory", module: "laboratory" },
+    { path: "/radiology", module: "radiography" },
+    { path: "/finance", module: "finance" },
     { path: "/dashboard", module: "dashboard" },
     { path: "/appointments", module: "appointments" },
-    { path: "/my-appointments", module: "my-appointments" },
     { path: "/users", module: "users" },
     { path: "/roles", module: "roles" },
   ];

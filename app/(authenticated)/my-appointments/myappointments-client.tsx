@@ -16,6 +16,10 @@ interface Patient {
   dob: string;
   phone: string;
   countryCode: string;
+  insuranceType: string;
+  hmoId: number | null;
+  policyNumber: string | null;
+  hmoName: string | null;
 }
 
 interface Appointment {
@@ -26,6 +30,7 @@ interface Appointment {
   visitType: string;
   notes: string | null;
   patient: Patient | null;
+  hasRequest: boolean;
 }
 
 interface MyAppointmentsClientProps {

@@ -2,9 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { mutate } from "swr";
+import Link from "next/link";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
+import RaiseRequestModal from "./RaiseRequestModal";
 import type { Session } from "next-auth";
 import {
   formatTime,
@@ -20,6 +22,10 @@ interface Patient {
   dob: string;
   phone: string;
   countryCode: string;
+  insuranceType: string;
+  hmoId: number | null;
+  policyNumber: string | null;
+  hmoName: string | null;
 }
 
 interface Appointment {
@@ -30,6 +36,7 @@ interface Appointment {
   visitType: string;
   notes: string | null;
   patient: Patient | null;
+  hasRequest: boolean;
 }
 
 interface DoctorAppointmentsTableProps {
@@ -46,6 +53,9 @@ export default function DoctorAppointmentsTable({
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [activeConsultation, setActiveConsultation] = useState(false);
+  const [isRaiseRequestModalOpen, setIsRaiseRequestModalOpen] = useState(false);
+  const [selectedRaiseRequestAppointment, setSelectedRaiseRequestAppointment] =
+    useState<Appointment | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -122,9 +132,16 @@ export default function DoctorAppointmentsTable({
           const patient = info.getValue();
           return (
             <div>
-              <div className="text-sm font-medium text-gray-900">
-                {patient ? `${patient.firstname} ${patient.lastname}` : "N/A"}
-              </div>
+              {patient ? (
+                <Link
+                  href={`/patients/${patient.id}/history`}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  {patient.firstname} {patient.lastname}
+                </Link>
+              ) : (
+                <span className="text-sm font-medium text-gray-900">N/A</span>
+              )}
               {patient && (
                 <div className="text-xs text-gray-500">DOB: {patient.dob}</div>
               )}
@@ -223,6 +240,23 @@ export default function DoctorAppointmentsTable({
                     {updatingId === appointment.id ? "..." : "Cancel"}
                   </button>
                 </div>
+              ) : appointment.status === "completed" ? (
+                <button
+                  onClick={() => {
+                    if (appointment.hasRequest) return;
+                    setSelectedRaiseRequestAppointment(appointment);
+                    setIsRaiseRequestModalOpen(true);
+                  }}
+                  disabled={appointment.hasRequest}
+                  title={appointment.hasRequest ? "A request has already been raised for this appointment" : undefined}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    appointment.hasRequest
+                      ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                >
+                  {appointment.hasRequest ? "Request Raised" : "Raise Request"}
+                </button>
               ) : appointment.status !== "scheduled" ? (
                 <span className="text-xs text-gray-500 font-medium">
                   Status finalized
@@ -264,6 +298,27 @@ export default function DoctorAppointmentsTable({
           }}
           appointment={selectedAppointment}
           session={session}
+        />
+      )}
+
+      {selectedRaiseRequestAppointment && (
+        <RaiseRequestModal
+          isOpen={isRaiseRequestModalOpen}
+          onClose={() => {
+            setIsRaiseRequestModalOpen(false);
+            setSelectedRaiseRequestAppointment(null);
+          }}
+          appointmentId={selectedRaiseRequestAppointment.id}
+          prefilledPatient={selectedRaiseRequestAppointment.patient ?? undefined}
+          onSuccess={() => {
+            mutate(
+              (key) =>
+                typeof key === "string" &&
+                key.startsWith("/api/my-appointments"),
+              undefined,
+              { revalidate: true },
+            );
+          }}
         />
       )}
     </>

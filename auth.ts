@@ -40,6 +40,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           firstname: user.firstname,
           lastname: user.lastname,
           role: user.roleName || "User",
+          patientId: user.patientId ?? null,
         };
       },
     }),
