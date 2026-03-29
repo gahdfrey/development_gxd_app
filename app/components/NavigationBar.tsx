@@ -244,17 +244,21 @@ export default function NavigationBar({ session }: NavigationBarProps) {
         <div className="flex items-center justify-between px-6 h-full">
           <div className="flex items-center gap-4">
             <NavigationToggle isExpanded={isLocked} onToggle={toggleLock} />
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
                 G
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-linear-to-r from-blue-600 to-purple-600">
                 GXD App
               </span>
+            </div> */}
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold tracking-tight text-blue-600">Care<span className="text-black">Vault</span>
+              </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">Client Logo</div>
+          {/* <div className="flex items-center gap-4">Client Logo</div> */}
 
           <div className="flex items-center gap-4">
             <NotificationBell userRole={session?.user?.role} />
