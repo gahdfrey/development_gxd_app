@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients, users, roles } from "@/lib/db/schema";
-import { desc, asc, or, ilike, and, gte, lte, eq, isNull } from "drizzle-orm";
+import { desc, asc, or, ilike, and, gte, lte, eq, isNull, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export async function GET(request: Request) {
@@ -175,15 +175,27 @@ export async function POST(request: Request) {
         .where(ilike(roles.name, "patient"))
         .limit(1);
 
+      if (!email?.trim()) {
+        // No email — skip portal account creation silently
+        return;
+      }
+
       const hashedPassword = await bcrypt.hash("Password1", 10);
-      const username = phone.trim();
-      const portalEmail = email?.trim() || `${phone.trim()}@patients.local`;
+      const baseUsername = `${firstname.toLowerCase().trim()}.${lastname.toLowerCase().trim()}`;
+
+      // Ensure username is unique
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.username, baseUsername))
+        .limit(1);
+      const username = existing.length > 0 ? `${baseUsername}${newPatient.id}` : baseUsername;
 
       await db.insert(users).values({
         firstname,
         lastname,
         username,
-        email: portalEmail,
+        email: email.trim(),
         password: hashedPassword,
         roleId: patientRole?.id ?? null,
         patientId: newPatient.id,
