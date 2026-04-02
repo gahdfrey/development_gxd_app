@@ -95,7 +95,7 @@ export default function LoginForm() {
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
           Welcome Back
         </h1>
-        <p className="text-gray-500">Sign in to your EMS account</p>
+        <p className="text-gray-500">Sign in to your account</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -209,7 +209,7 @@ export default function LoginForm() {
         </button>
 
         <p className="text-center text-xs text-gray-500">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <a
             href="/signup"
             className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"

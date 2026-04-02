@@ -139,7 +139,7 @@ export default function CreateAppointmentModal({
           doctorId: selectedDoctor.id,
           appointmentDate: data.appointmentDate,
           appointmentTime: data.appointmentTime,
-          status: data.status,
+          status: "scheduled",
           visitType: data.visitType,
           notes: data.notes,
         }),
@@ -406,49 +406,6 @@ export default function CreateAppointmentModal({
               )}
             </div>
 
-            {/* Status */}
-            <div className="space-y-2">
-              <label
-                htmlFor="status"
-                className="flex items-center gap-2 text-sm font-semibold text-gray-700"
-              >
-                <CheckCircleIcon className="h-4 w-4" />
-                Status *
-              </label>
-              <div className="relative">
-                <select
-                  {...register("status", {
-                    required: "Status is required",
-                  })}
-                  id="status"
-                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none bg-gray-50 cursor-pointer ${
-                    errors.status
-                      ? "border-red-500 bg-red-50"
-                      : "border-gray-300"
-                  }`}
-                >
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="no-show">No-Show</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
 
             {/* Notes */}
             <div className="space-y-2">
