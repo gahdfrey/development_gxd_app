@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, roles } from "@/lib/db/schema";
 import bcrypt from "bcryptjs";
-import { desc, eq, or, ilike } from "drizzle-orm";
+import { desc, eq, or, ilike, and, not } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
+
+    // Exclude users whose role is "Patient" — they have their own endpoint
+    const notPatient = not(ilike(roles.name, "patient"));
 
     let query = db
       .select({
@@ -24,16 +27,20 @@ export async function GET(request: Request) {
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id));
 
-    // Add search filter if search parameter exists
     if (search && search.trim() !== "") {
       const searchTerm = `%${search.trim()}%`;
       query = query.where(
-        or(
-          ilike(users.firstname, searchTerm),
-          ilike(users.lastname, searchTerm),
-          ilike(users.email, searchTerm)
-        )
+        and(
+          notPatient,
+          or(
+            ilike(users.firstname, searchTerm),
+            ilike(users.lastname, searchTerm),
+            ilike(users.email, searchTerm),
+          ),
+        ),
       ) as any;
+    } else {
+      query = query.where(notPatient) as any;
     }
 
     const allUsers = await query.orderBy(desc(users.createdAt));

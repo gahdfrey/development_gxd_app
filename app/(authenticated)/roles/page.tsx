@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/app/contexts/ToastContext";
 import PermissionDenied from "@/app/components/ui/PermissionDenied";
 import { Role } from "@/lib/db/schema";
+import { RoleFormData } from "./components/schema";
 
 export default function RolesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +47,7 @@ export default function RolesPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleCreateRole = async (data: any) => {
+  const handleCreateRole = async (data: RoleFormData) => {
     const response = await fetch("/api/roles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,7 +65,7 @@ export default function RolesPage() {
     showToast("Role created successfully", "success");
   };
 
-  const handleUpdateRole = async (data: any) => {
+  const handleUpdateRole = async (data: RoleFormData) => {
     if (!selectedRole) return;
 
     const response = await fetch(`/api/roles/${selectedRole.id}`, {
