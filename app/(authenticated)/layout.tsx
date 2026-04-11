@@ -7,6 +7,7 @@ import Providers from "@/app/components/Providers";
 import ClientLayout from "@/app/components/ClientLayout";
 import MainContent from "../components/MainContent";
 import RouteGuard from "../components/RouteGuard";
+import DashboardLoadingOverlay from "@/app/components/DashboardLoadingOverlay";
 
 export default async function AuthenticatedLayout({
   children,
@@ -23,6 +24,7 @@ export default async function AuthenticatedLayout({
     <Providers>
       <ClientLayout>
         <div className="min-h-screen bg-gray-50">
+          <DashboardLoadingOverlay />
           <NavigationBar session={session} />
           <SideMenu />
           <MainContent><RouteGuard>{children}</RouteGuard></MainContent>

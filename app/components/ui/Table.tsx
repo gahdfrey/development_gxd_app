@@ -49,6 +49,10 @@ export default function Table<T>({
     initialState: { pagination: { pageSize: 7 } },
   });
 
+  useEffect(() => {
+    table.setPageIndex(0);
+  }, [data]);
+
   return (
     <div className="flex flex-col gap-4">
       {searchable && (
