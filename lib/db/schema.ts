@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   lastname: text("lastname").notNull(),
   password: text("password").notNull(), // Hashed with bcrypt
   roleId: integer("role_id").references(() => roles.id),
+  departmentId: integer("department_id").references(() => departments.id), // Department the user belongs to
   patientId: integer("patient_id"), // Links to patients table for patient portal accounts
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -246,3 +247,87 @@ export const notifications = pgTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+
+/**
+ * Inventory Items table schema
+ * Stores the central stock of supply items managed by admin/store
+ */
+export const inventoryItems = pgTable("inventory_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  unit: text("unit").notNull(), // e.g. "units", "boxes", "vials", "packs"
+  quantity: integer("quantity").notNull().default(0), // current stock level
+  reorderLevel: integer("reorder_level").notNull().default(10), // warn when stock <= this
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type InventoryItem = typeof inventoryItems.$inferSelect;
+export type NewInventoryItem = typeof inventoryItems.$inferInsert;
+
+/**
+ * Supply Orders table schema
+ * A supply order raised by a department requesting items from inventory
+ */
+export const supplyOrders = pgTable("supply_orders", {
+  id: serial("id").primaryKey(),
+  departmentOrderId: integer("department_order_id"), // groups all line-orders from the same dept requisition
+  departmentId: integer("department_id")
+    .notNull()
+    .references(() => departments.id),
+  requestedBy: integer("requested_by")
+    .notNull()
+    .references(() => users.id),
+  status: text("status").notNull().default("pending"), // pending | approved | delivered | cancelled
+  notes: text("notes"),
+  cancellationReason: text("cancellation_reason"), // required when status = cancelled
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SupplyOrder = typeof supplyOrders.$inferSelect;
+export type NewSupplyOrder = typeof supplyOrders.$inferInsert;
+
+/**
+ * Supply Order Items table schema
+ * The individual line items within a supply order.
+ * References products (new flow). inventoryItemId kept nullable for legacy data.
+ */
+export const supplyOrderItems = pgTable("supply_order_items", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id")
+    .notNull()
+    .references(() => supplyOrders.id),
+  inventoryItemId: integer("inventory_item_id")
+    .references(() => inventoryItems.id),
+  productId: integer("product_id")
+    .references(() => products.id),
+  quantityRequested: integer("quantity_requested").notNull(),
+  status: text("status").notNull().default("pending"), // pending | delivered
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SupplyOrderItem = typeof supplyOrderItems.$inferSelect;
+export type NewSupplyOrderItem = typeof supplyOrderItems.$inferInsert;
+
+/**
+ * Products table schema
+ * Tracks medical product stock using a case + loose-unit model.
+ * Total units = casesInStock × unitsPerCase + looseUnitsInStock
+ */
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  casesInStock: integer("cases_in_stock").notNull().default(0),
+  unitsPerCase: integer("units_per_case").notNull().default(1),
+  looseUnitsInStock: integer("loose_units_in_stock").notNull().default(0),
+  reorderLevel: integer("reorder_level").notNull().default(20), // threshold in total units
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Product = typeof products.$inferSelect;
+export type NewProduct = typeof products.$inferInsert;

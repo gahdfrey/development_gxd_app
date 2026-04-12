@@ -19,6 +19,10 @@ const ROUTE_MODULE_MAP: Record<string, string> = {
   '/radiology':        'radiography',
   '/setup':            'setup',
   '/my-history':       'my-history',
+  '/inventory/orders': 'supply-orders',
+  '/products':          'products',
+  '/product-inventory': 'products',
+  '/orders':           'orders',
 };
 
 function canViewModule(permissions: Record<string, unknown> | null | undefined, module: string): boolean {

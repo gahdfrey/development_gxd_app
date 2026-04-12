@@ -10,6 +10,9 @@ export const APP_MODULES = [
   { key: "laboratory", label: "Laboratory" },
   { key: "radiography", label: "Radiography" },
   { key: "my-history", label: "My History" },
+  { key: "supply-orders", label: "Supply Orders" },
+  { key: "products", label: "Products" },
+  { key: "orders", label: "Orders" },
 ];
 
 export const APP_PERMISSIONS = [

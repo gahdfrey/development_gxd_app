@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { users, roles } from "@/lib/db/schema";
+import { users, roles, departments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET() {
@@ -21,23 +21,21 @@ export async function GET() {
         roleId: users.roleId,
         userrole: roles.name,
         permissions: roles.permissions,
+        departmentId: users.departmentId,
+        departmentName: departments.name,
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(departments, eq(users.departmentId, departments.id))
       .where(eq(users.email, session.user.email))
       .limit(1);
 
     if (userDetails.length === 0) {
-      // User not found in database despite valid session - likely session corruption
       console.warn(
         `[/api/wai] User not found in database for session email: ${session.user.email}`,
       );
-      // Return null data instead of 404 to prevent SWR from repeatedly retrying
       return NextResponse.json(
-        {
-          user: null,
-          message: "User session exists but user not found in database",
-        },
+        { user: null, message: "User session exists but user not found in database" },
         { status: 200 },
       );
     }
@@ -52,12 +50,11 @@ export async function GET() {
       userrole: user.userrole,
       roleId: user.roleId,
       permissions: user.permissions,
+      departmentId: user.departmentId,
+      departmentName: user.departmentName,
     });
   } catch (error) {
     console.error("Error fetching user details:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
