@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { roles } from "@/lib/db/schema";
-import { eq, ilike } from "drizzle-orm";
+import { desc, eq, ilike } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       query = query.where(ilike(roles.name, searchTerm)) as any;
     }
 
-    const allRoles = await query;
+    const allRoles = await query.orderBy(desc(roles.createdAt));
 
     return NextResponse.json(allRoles);
   } catch (error) {

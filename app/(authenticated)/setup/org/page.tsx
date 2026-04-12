@@ -3,12 +3,14 @@
 import { useState } from "react";
 import DepartmentTab from "./components/DepartmentTab";
 import TestTab from "./components/TestTab";
+import ProductTab from "./components/ProductTab";
 
-type ActiveTab = "department" | "test";
+type ActiveTab = "department" | "test" | "product";
 
 const tabs: { key: ActiveTab; label: string }[] = [
   { key: "department", label: "Department" },
   { key: "test", label: "Test" },
+  { key: "product", label: "Products" },
 ];
 
 export default function OrgSetupPage() {
@@ -19,7 +21,7 @@ export default function OrgSetupPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Organisation Setup</h1>
         <p className="text-gray-600 text-sm mt-1">
-          Manage departments and lab tests
+          Manage departments, lab tests and products
         </p>
       </div>
 
@@ -42,7 +44,9 @@ export default function OrgSetupPage() {
         </nav>
       </div>
 
-      {activeTab === "department" ? <DepartmentTab /> : <TestTab />}
+      {activeTab === "department" && <DepartmentTab />}
+      {activeTab === "test" && <TestTab />}
+      {activeTab === "product" && <ProductTab />}
     </div>
   );
 }

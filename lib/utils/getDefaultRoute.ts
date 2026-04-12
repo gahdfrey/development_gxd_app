@@ -17,6 +17,7 @@ export function getDefaultRoute(permissions: any): string {
   const routes = [
     { path: "/my-history", module: "my-history" },
     { path: "/my-appointments", module: "my-appointments" },
+    { path: "/product-inventory", module: "products" },
     { path: "/laboratory", module: "laboratory" },
     { path: "/radiology", module: "radiography" },
     { path: "/finance", module: "finance" },

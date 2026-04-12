@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:recreate": "npx tsx lib/db/recreate.ts",
-    "db:seed": "npx tsx lib/db/seed.ts"
+    "db:seed": "npx tsx lib/db/seed.ts",
+    "db:fix-superadmin": "npx tsx lib/db/fix-superadmin-permissions.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

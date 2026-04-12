@@ -141,7 +141,7 @@ export default function CustomSignUpForm() {
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
           Get Started
         </h1>
-        <p className="text-gray-500">Create your EMS account in moments</p>
+        <p className="text-gray-500">Create your account in moments</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

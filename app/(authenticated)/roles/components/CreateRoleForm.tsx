@@ -7,16 +7,11 @@ import {
   getDefaultPermissions,
 } from "@/lib/constants";
 import ModulePermissionMatrix from "../../users/components/ModulePermissionMatrix";
+import { RoleFormData } from "./schema";
 
 interface CreateRoleFormProps {
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: RoleFormData) => Promise<void>;
   onCancel: () => void;
-}
-
-interface RoleFormData {
-  name: string;
-  description: string;
-  permissions: any;
 }
 
 export default function CreateRoleForm({
