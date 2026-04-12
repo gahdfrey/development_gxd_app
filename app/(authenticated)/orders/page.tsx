@@ -40,7 +40,8 @@ interface OrderItem {
 
 interface SupplyOrder {
   id: number;
-  status: string;
+  departmentStatus: string;
+  supplyStatus: string;
   notes: string | null;
   cancellationReason: string | null;
   createdAt: string;
@@ -63,16 +64,13 @@ interface CurrentUser {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  pending:   { label: "Pending",   className: "bg-yellow-100 text-yellow-800" },
-  approved:  { label: "Accepted",  className: "bg-blue-100 text-blue-800" },
-  delivered: { label: "Delivered", className: "bg-green-100 text-green-800" },
-  cancelled: { label: "Cancelled", className: "bg-red-100 text-red-700" },
+  pending:  { label: "Pending",  className: "bg-yellow-100 text-yellow-800" },
+  accepted: { label: "Accepted", className: "bg-blue-100 text-blue-800" },
 };
 
-const TABS = ["all", "pending", "approved", "delivered", "cancelled"] as const;
+const TABS = ["all", "pending", "accepted"] as const;
 const TAB_LABELS: Record<string, string> = {
-  all: "All", pending: "Pending", approved: "Accepted",
-  delivered: "Delivered", cancelled: "Cancelled",
+  all: "All", pending: "Pending", accepted: "Accepted",
 };
 type Tab = typeof TABS[number];
 
@@ -96,8 +94,8 @@ function ViewOrderModal({
   order: SupplyOrder;
   onClose: () => void;
 }) {
-  const badge = STATUS_BADGE[order.status] ?? {
-    label: order.status,
+  const badge = STATUS_BADGE[order.departmentStatus] ?? {
+    label: order.departmentStatus,
     className: "bg-gray-100 text-gray-600",
   };
 
@@ -152,7 +150,7 @@ function ViewOrderModal({
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Date Raised</p>
               <p className="text-gray-900">{formatDate(order.createdAt)}</p>
             </div>
-            {order.status === "delivered" && (
+            {order.supplyStatus === "delivered" && (
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Delivered On</p>
                 <p className="text-gray-900">{formatDate(order.updatedAt)}</p>
@@ -169,7 +167,7 @@ function ViewOrderModal({
             </div>
           )}
 
-          {order.status === "cancelled" && order.cancellationReason && (
+          {order.supplyStatus === "cancelled" && order.cancellationReason && (
             <div>
               <p className="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">Cancellation Reason</p>
               <p className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2 border border-red-100">
@@ -239,12 +237,12 @@ function OrderCard({
   onEdit: (order: SupplyOrder) => void;
   onView: (order: SupplyOrder) => void;
 }) {
-  const badge = STATUS_BADGE[order.status] ?? {
-    label: order.status,
+  const badge = STATUS_BADGE[order.departmentStatus] ?? {
+    label: order.departmentStatus,
     className: "bg-gray-100 text-gray-600",
   };
   const loading = actionLoading === order.id;
-  const isPending = order.status === "pending";
+  const isPending = order.departmentStatus === "pending";
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
@@ -337,7 +335,7 @@ export default function OrdersPage() {
   const apiUrl = useMemo(() => {
     const p = new URLSearchParams();
     if (userDeptId) p.set("departmentId", String(userDeptId));
-    if (tab !== "all") p.set("status", tab);
+    if (tab !== "all") p.set("departmentStatus", tab);
     return `/api/inventory/orders?${p.toString()}`;
   }, [userDeptId, tab]);
 
@@ -354,11 +352,9 @@ export default function OrdersPage() {
   const counts = useMemo(() => {
     const all = allOrders ?? [];
     return {
-      all: all.length,
-      pending:   all.filter((o) => o.status === "pending").length,
-      approved:  all.filter((o) => o.status === "approved").length,
-      delivered: all.filter((o) => o.status === "delivered").length,
-      cancelled: all.filter((o) => o.status === "cancelled").length,
+      all:      all.length,
+      pending:  all.filter((o) => o.departmentStatus === "pending").length,
+      accepted: all.filter((o) => o.departmentStatus === "accepted").length,
     };
   }, [allOrders]);
 
@@ -371,7 +367,7 @@ export default function OrdersPage() {
       const res = await fetch(`/api/inventory/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "approved" }),
+        body: JSON.stringify({ departmentStatus: "accepted" }),
       });
       if (res.ok) revalidate();
     } finally {
@@ -454,7 +450,7 @@ export default function OrdersPage() {
           <p className="text-sm font-medium text-gray-600">No orders found</p>
           <p className="text-xs text-gray-400 mt-1 max-w-xs">
             {tab !== "all"
-              ? `No ${TAB_LABELS[tab].toLowerCase()} orders`
+              ? `No ${(TAB_LABELS[tab] ?? tab).toLowerCase()} orders`
               : "No orders have been raised yet"}
             {userDeptName && ` for ${userDeptName}`}
           </p>
@@ -479,12 +475,12 @@ export default function OrdersPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {displayOrders.map((order) => {
-                    const badge = STATUS_BADGE[order.status] ?? {
-                      label: order.status,
+                    const badge = STATUS_BADGE[order.departmentStatus] ?? {
+                      label: order.departmentStatus,
                       className: "bg-gray-100 text-gray-600",
                     };
                     const loading = actionLoading === order.id;
-                    const isPending = order.status === "pending";
+                    const isPending = order.departmentStatus === "pending";
 
                     return (
                       <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">

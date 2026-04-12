@@ -39,7 +39,7 @@ interface OrderItem {
 interface SupplyOrder {
   id: number;
   departmentOrderId: number | null;
-  status: string;
+  supplyStatus: string;
   notes: string | null;
   cancellationReason: string | null;
   createdAt: string;
@@ -56,7 +56,7 @@ interface SupplyOrder {
 
 const ORDER_BADGE: Record<string, { label: string; className: string }> = {
   pending:   { label: "Pending",   className: "bg-yellow-100 text-yellow-800" },
-  approved:  { label: "Accepted",  className: "bg-blue-100 text-blue-800" },
+  accepted:  { label: "Accepted",  className: "bg-blue-100 text-blue-800" },
   delivered: { label: "Delivered", className: "bg-green-100 text-green-800" },
   cancelled: { label: "Cancelled", className: "bg-red-100 text-red-700" },
 };
@@ -64,7 +64,7 @@ const ORDER_BADGE: Record<string, { label: string; className: string }> = {
 const TABS = [
   { key: "all",       label: "All",       dbStatus: null        },
   { key: "pending",   label: "Pending",   dbStatus: "pending"   },
-  { key: "approved",  label: "Accepted",  dbStatus: "approved"  },
+  { key: "accepted",  label: "Accepted",  dbStatus: "accepted"  },
   { key: "delivered", label: "Delivered", dbStatus: "delivered" },
   { key: "cancelled", label: "Cancelled", dbStatus: "cancelled" },
 ] as const;
@@ -82,7 +82,7 @@ function getProduct(order: SupplyOrder) {
 // ── View Modal ────────────────────────────────────────────────────────────────
 
 function ViewOrderModal({ order, onClose }: { order: SupplyOrder; onClose: () => void }) {
-  const badge = ORDER_BADGE[order.status] ?? { label: order.status, className: "bg-gray-100 text-gray-600" };
+  const badge = ORDER_BADGE[order.supplyStatus] ?? { label: order.supplyStatus, className: "bg-gray-100 text-gray-600" };
   const product = getProduct(order);
 
   return (
@@ -135,7 +135,7 @@ function ViewOrderModal({ order, onClose }: { order: SupplyOrder; onClose: () =>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Date Raised</p>
               <p className="text-gray-900">{formatDate(order.createdAt)}</p>
             </div>
-            {order.status === "delivered" && (
+            {order.supplyStatus === "delivered" && (
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Delivered On</p>
                 <p className="text-gray-900">{formatDate(order.updatedAt)}</p>
@@ -150,7 +150,7 @@ function ViewOrderModal({ order, onClose }: { order: SupplyOrder; onClose: () =>
             </div>
           )}
 
-          {order.status === "cancelled" && order.cancellationReason && (
+          {order.supplyStatus === "cancelled" && order.cancellationReason && (
             <div>
               <p className="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">Cancellation Reason</p>
               <p className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2 border border-red-100">{order.cancellationReason}</p>
@@ -166,7 +166,7 @@ function ViewOrderModal({ order, onClose }: { order: SupplyOrder; onClose: () =>
                     <tr>
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Name</th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Qty Requested</th>
-                      {order.status !== "delivered" && (
+                      {order.supplyStatus !== "delivered" && (
                         <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">In Stock</th>
                       )}
                     </tr>
@@ -175,7 +175,7 @@ function ViewOrderModal({ order, onClose }: { order: SupplyOrder; onClose: () =>
                     <tr className="bg-white">
                       <td className="px-4 py-3 text-gray-800 font-medium">{product.itemName ?? "—"}</td>
                       <td className="px-4 py-3 text-right text-gray-700 tabular-nums">{product.quantityRequested}</td>
-                      {order.status !== "delivered" && (
+                      {order.supplyStatus !== "delivered" && (
                         <td className="px-4 py-3 text-right tabular-nums">
                           <span className={`font-medium ${
                             (product.itemTotalUnits ?? 0) === 0 ? "text-red-600"
@@ -246,7 +246,7 @@ function OrderCard({ order, actionLoading, onAccept, onDeliver, onCancel, onView
   onAccept: (id: number) => void; onDeliver: (id: number) => void;
   onCancel: (o: SupplyOrder) => void; onView: (o: SupplyOrder) => void;
 }) {
-  const badge = ORDER_BADGE[order.status] ?? { label: order.status, className: "bg-gray-100 text-gray-600" };
+  const badge = ORDER_BADGE[order.supplyStatus] ?? { label: order.supplyStatus, className: "bg-gray-100 text-gray-600" };
   const busy = actionLoading === order.id;
   const product = getProduct(order);
 
@@ -275,7 +275,7 @@ function OrderCard({ order, actionLoading, onAccept, onDeliver, onCancel, onView
       )}
 
       <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100">
-        {order.status === "pending" && (
+        {order.supplyStatus === "pending" && (
           <>
             <button onClick={() => onAccept(order.id)} disabled={busy}
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
@@ -287,7 +287,7 @@ function OrderCard({ order, actionLoading, onAccept, onDeliver, onCancel, onView
             </button>
           </>
         )}
-        {order.status === "approved" && (
+        {order.supplyStatus === "accepted" && (
           <button onClick={() => onDeliver(order.id)} disabled={busy}
             className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
             <TruckIcon className="h-3.5 w-3.5" />{busy ? "Processing…" : "Deliver"}
@@ -316,7 +316,7 @@ export default function SupplyOrdersPage() {
   const activeTab = TABS.find((t) => t.key === tab)!;
 
   const url = useMemo(() => {
-    if (activeTab.dbStatus) return `/api/inventory/orders?status=${activeTab.dbStatus}`;
+    if (activeTab.dbStatus) return `/api/inventory/orders?supplyStatus=${activeTab.dbStatus}`;
     return "/api/inventory/orders";
   }, [activeTab]);
 
@@ -327,24 +327,24 @@ export default function SupplyOrdersPage() {
     const all = allRaw ?? [];
     return {
       all:       all.length,
-      pending:   all.filter((o) => o.status === "pending").length,
-      approved:  all.filter((o) => o.status === "approved").length,
-      delivered: all.filter((o) => o.status === "delivered").length,
-      cancelled: all.filter((o) => o.status === "cancelled").length,
+      pending:   all.filter((o) => o.supplyStatus === "pending").length,
+      accepted:  all.filter((o) => o.supplyStatus === "accepted").length,
+      delivered: all.filter((o) => o.supplyStatus === "delivered").length,
+      cancelled: all.filter((o) => o.supplyStatus === "cancelled").length,
     };
   }, [allRaw]);
 
   const displayOrders = orders ?? [];
   const revalidate = () => { mutate(); mutateAll(); };
 
-  // PATCH orderId → approved
+  // PATCH orderId → accepted
   const handleAccept = async (orderId: number) => {
     setActionLoading(orderId);
     try {
       const res = await fetch(`/api/inventory/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "approved" }),
+        body: JSON.stringify({ supplyStatus: "accepted" }),
       });
       if (res.ok) revalidate();
     } finally { setActionLoading(null); }
@@ -357,7 +357,7 @@ export default function SupplyOrdersPage() {
       const res = await fetch(`/api/inventory/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "delivered" }),
+        body: JSON.stringify({ supplyStatus: "delivered" }),
       });
       if (res.ok) revalidate();
     } finally { setActionLoading(null); }
@@ -373,7 +373,7 @@ export default function SupplyOrdersPage() {
       const res = await fetch(`/api/inventory/orders/${cancelOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "cancelled", cancellationReason: cancelReason }),
+        body: JSON.stringify({ supplyStatus: "cancelled", cancellationReason: cancelReason }),
       });
       if (res.ok) { revalidate(); setCancelOrder(null); }
       else { const d = await res.json(); setCancelError(d.error ?? "Failed to cancel order."); }
@@ -420,7 +420,7 @@ export default function SupplyOrdersPage() {
           <p className="text-sm font-medium text-gray-600">No orders found</p>
           <p className="text-xs text-gray-400 mt-1 max-w-xs">
             {tab === "pending" ? "No orders currently pending"
-              : tab === "approved" ? "No accepted orders awaiting delivery"
+              : tab === "accepted" ? "No accepted orders awaiting delivery"
               : tab !== "all" ? `No ${TABS.find((t) => t.key === tab)?.label.toLowerCase()} orders`
               : "No orders have been raised yet"}
           </p>
@@ -445,7 +445,7 @@ export default function SupplyOrdersPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {displayOrders.map((order) => {
-                    const badge = ORDER_BADGE[order.status] ?? { label: order.status, className: "bg-gray-100 text-gray-600" };
+                    const badge = ORDER_BADGE[order.supplyStatus] ?? { label: order.supplyStatus, className: "bg-gray-100 text-gray-600" };
                     const busy = actionLoading === order.id;
                     const product = getProduct(order);
 
@@ -496,7 +496,7 @@ export default function SupplyOrdersPage() {
                         {/* Actions — full set on every row */}
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-end gap-2 flex-wrap">
-                            {order.status === "pending" && (
+                            {order.supplyStatus === "pending" && (
                               <>
                                 <button onClick={() => handleAccept(order.id)} disabled={busy}
                                   className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap">
@@ -508,7 +508,7 @@ export default function SupplyOrdersPage() {
                                 </button>
                               </>
                             )}
-                            {order.status === "approved" && (
+                            {order.supplyStatus === "accepted" && (
                               <button onClick={() => handleDeliver(order.id)} disabled={busy}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap">
                                 <TruckIcon className="h-3.5 w-3.5" />{busy ? "Processing…" : "Deliver"}

@@ -9,6 +9,7 @@ export interface ProductForm {
   unitsPerCase: number;
   looseUnitsInStock: number;
   reorderLevel: number;
+  price: number;
 }
 
 interface Product {
@@ -19,6 +20,7 @@ interface Product {
   unitsPerCase: number;
   looseUnitsInStock: number;
   reorderLevel: number;
+  price: number;
 }
 
 interface Props {
@@ -35,6 +37,7 @@ const BLANK: ProductForm = {
   unitsPerCase: 10,
   looseUnitsInStock: 0,
   reorderLevel: 20,
+  price: 0,
 };
 
 export default function ProductFormModal({ open, initial, onClose, onSave }: Props) {
@@ -53,6 +56,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               unitsPerCase: initial.unitsPerCase,
               looseUnitsInStock: initial.looseUnitsInStock,
               reorderLevel: initial.reorderLevel,
+              price: initial.price ?? 0,
             }
           : BLANK
       );
@@ -117,6 +121,27 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               placeholder="Optional description"
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Price per Unit
+              <span className="ml-1 text-xs text-gray-400 font-normal">(price charged per single unit)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-medium text-gray-500 pointer-events-none select-none">
+                ₦
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.price === 0 ? "" : form.price}
+                onChange={(e) => setForm({ ...form, price: Math.max(0, parseInt(e.target.value) || 0) })}
+                placeholder="0"
+                className="w-full pl-7 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           {/* Case/unit configuration */}

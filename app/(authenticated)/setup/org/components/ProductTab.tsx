@@ -18,7 +18,17 @@ interface Product {
   looseUnitsInStock: number;
   totalUnits: number;
   reorderLevel: number;
+  price: number;
   createdAt: string;
+}
+
+function formatPrice(naira: number) {
+  if (naira === 0) return <span className="text-gray-400 text-xs">—</span>;
+  return (
+    <span className="font-medium text-gray-800">
+      ₦ {naira.toLocaleString("en-NG")}
+    </span>
+  );
 }
 
 function StockBadge({ totalUnits, reorderLevel }: { totalUnits: number; reorderLevel: number }) {
@@ -117,6 +127,10 @@ export default function ProductTab() {
       columnHelper.accessor("reorderLevel", {
         header: "Reorder At",
         cell: (info) => <span className="text-gray-600">{info.getValue()} units</span>,
+      }),
+      columnHelper.accessor("price", {
+        header: "Price / Unit",
+        cell: (info) => formatPrice(info.getValue()),
       }),
       columnHelper.display({
         id: "actions",

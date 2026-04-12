@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
         reorderLevel: products.reorderLevel,
+        price: products.price,
         totalUnits: sql<number>`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
@@ -41,13 +42,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel } = body;
+    const { name, description, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "Product name is required" }, { status: 400 });
     }
     if (!unitsPerCase || unitsPerCase < 1) {
       return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
+    }
+    if (price !== undefined && (isNaN(price) || price < 0)) {
+      return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
     }
 
     const [product] = await db
@@ -59,6 +63,7 @@ export async function POST(request: NextRequest) {
         unitsPerCase,
         looseUnitsInStock: looseUnitsInStock ?? 0,
         reorderLevel: reorderLevel ?? 20,
+        price: price ?? 0,
       })
       .returning();
 

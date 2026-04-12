@@ -11,24 +11,31 @@ import { eq, and, inArray, ilike, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 
 // ─── GET /api/inventory/orders ────────────────────────────────────────────────
-// Optional query params: ?departmentId=1 | ?department=laboratory | ?status=pending
+// Query params:
+//   ?departmentId=1
+//   ?department=laboratory
+//   ?departmentStatus=pending|accepted          ← dept page filter
+//   ?supplyStatus=pending|accepted|delivered|cancelled  ← supply page filter
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const departmentId = searchParams.get("departmentId");
-    const departmentName = searchParams.get("department");
-    const status = searchParams.get("status");
+    const departmentId    = searchParams.get("departmentId");
+    const departmentName  = searchParams.get("department");
+    const departmentStatus = searchParams.get("departmentStatus");
+    const supplyStatus    = searchParams.get("supplyStatus");
 
     const conditions = [];
-    if (departmentId) conditions.push(eq(supplyOrders.departmentId, parseInt(departmentId)));
-    if (departmentName) conditions.push(ilike(departments.name, departmentName));
-    if (status) conditions.push(eq(supplyOrders.status, status));
+    if (departmentId)     conditions.push(eq(supplyOrders.departmentId, parseInt(departmentId)));
+    if (departmentName)   conditions.push(ilike(departments.name, departmentName));
+    if (departmentStatus) conditions.push(eq(supplyOrders.departmentStatus, departmentStatus));
+    if (supplyStatus)     conditions.push(eq(supplyOrders.supplyStatus, supplyStatus));
 
     const orders = await db
       .select({
         id: supplyOrders.id,
         departmentOrderId: supplyOrders.departmentOrderId,
-        status: supplyOrders.status,
+        departmentStatus: supplyOrders.departmentStatus,
+        supplyStatus: supplyOrders.supplyStatus,
         notes: supplyOrders.notes,
         cancellationReason: supplyOrders.cancellationReason,
         createdAt: supplyOrders.createdAt,
@@ -72,11 +79,7 @@ export async function GET(request: NextRequest) {
       {}
     );
 
-    const result = orders.map((o) => ({
-      ...o,
-      items: itemsByOrder[o.id] ?? [],
-    }));
-
+    const result = orders.map((o) => ({ ...o, items: itemsByOrder[o.id] ?? [] }));
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error("Error fetching supply orders:", error);
@@ -85,9 +88,8 @@ export async function GET(request: NextRequest) {
 }
 
 // ─── POST /api/inventory/orders ───────────────────────────────────────────────
-// Creates one supplyOrder per product so each has its own orderId.
+// Creates one supplyOrder per product (each gets its own id).
 // All orders from the same requisition share a departmentOrderId.
-//
 // Body: { departmentId, notes?, items: [{ productId, quantityRequested }] }
 export async function POST(request: NextRequest) {
   try {
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Stock check across all requested products
+    // Stock check
     const productIds = items.map((i: { productId: number }) => i.productId);
     const stockRows = await db
       .select({
@@ -144,28 +146,18 @@ export async function POST(request: NextRequest) {
       })
       .map((item: { productId: number; quantityRequested: number }) => {
         const stock = stockMap[item.productId];
-        return {
-          name: stock?.name ?? "Unknown product",
-          available: stock?.totalUnits ?? 0,
-          requested: item.quantityRequested,
-        };
+        return { name: stock?.name ?? "Unknown product", available: stock?.totalUnits ?? 0, requested: item.quantityRequested };
       });
 
     if (insufficient.length > 0) {
-      return NextResponse.json(
-        { error: "insufficient_stock", items: insufficient },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "insufficient_stock", items: insufficient }, { status: 400 });
     }
 
-    // Create one order per product, all sharing the same departmentOrderId.
-    // The first order's id becomes the departmentOrderId for the whole batch.
+    // Create one order per product, all sharing the same departmentOrderId
     const createdOrders: typeof supplyOrders.$inferSelect[] = [];
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i] as { productId: number; quantityRequested: number };
-
-      // departmentOrderId = first order's id; for the first order we set it after insert
       const departmentOrderId = createdOrders.length > 0 ? createdOrders[0].id : null;
 
       const [order] = await db
@@ -175,11 +167,12 @@ export async function POST(request: NextRequest) {
           requestedBy: currentUser.id,
           notes: notes?.trim() || null,
           status: "pending",
+          departmentStatus: "pending",
+          supplyStatus: "pending",
           departmentOrderId,
         })
         .returning();
 
-      // For the very first order, set its own id as the departmentOrderId
       if (i === 0) {
         await db
           .update(supplyOrders)
@@ -188,7 +181,6 @@ export async function POST(request: NextRequest) {
         order.departmentOrderId = order.id;
       }
 
-      // Insert the single line item for this order
       await db.insert(supplyOrderItems).values({
         orderId: order.id,
         productId: item.productId,
@@ -199,11 +191,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      {
-        departmentOrderId: createdOrders[0].id,
-        orders: createdOrders.map((o) => o.id),
-        count: createdOrders.length,
-      },
+      { departmentOrderId: createdOrders[0].id, orders: createdOrders.map((o) => o.id), count: createdOrders.length },
       { status: 201 }
     );
   } catch (error) {

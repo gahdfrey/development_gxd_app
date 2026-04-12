@@ -22,6 +22,7 @@ export async function GET(
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
         reorderLevel: products.reorderLevel,
+        price: products.price,
         totalUnits: sql<number>`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
@@ -48,10 +49,13 @@ export async function PATCH(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const body = await request.json();
-    const { name, description, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel } = body;
+    const { name, description, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
 
     if (unitsPerCase !== undefined && unitsPerCase < 1) {
       return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
+    }
+    if (price !== undefined && (isNaN(price) || price < 0)) {
+      return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
     }
 
     const [updated] = await db
@@ -63,6 +67,7 @@ export async function PATCH(
         ...(unitsPerCase !== undefined && { unitsPerCase }),
         ...(looseUnitsInStock !== undefined && { looseUnitsInStock }),
         ...(reorderLevel !== undefined && { reorderLevel }),
+        ...(price !== undefined && { price }),
         updatedAt: new Date(),
       })
       .where(eq(products.id, id))

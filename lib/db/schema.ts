@@ -279,9 +279,11 @@ export const supplyOrders = pgTable("supply_orders", {
   requestedBy: integer("requested_by")
     .notNull()
     .references(() => users.id),
-  status: text("status").notNull().default("pending"), // pending | approved | delivered | cancelled
+  status: text("status").notNull().default("pending"), // legacy — kept for old data
+  departmentStatus: text("department_status").notNull().default("pending"), // dept view: pending | accepted
+  supplyStatus: text("supply_status").notNull().default("pending"),         // supply view: pending | accepted | delivered | cancelled
   notes: text("notes"),
-  cancellationReason: text("cancellation_reason"), // required when status = cancelled
+  cancellationReason: text("cancellation_reason"), // set by supply team when supplyStatus = cancelled
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -325,6 +327,7 @@ export const products = pgTable("products", {
   unitsPerCase: integer("units_per_case").notNull().default(1),
   looseUnitsInStock: integer("loose_units_in_stock").notNull().default(0),
   reorderLevel: integer("reorder_level").notNull().default(20), // threshold in total units
+  price: integer("price").notNull().default(0), // price in naira (whole units)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
