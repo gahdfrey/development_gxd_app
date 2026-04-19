@@ -44,6 +44,13 @@ export default function ModulePermissionMatrix({
         }
       });
       setLocalPermissions(mergedPermissions);
+      // If any module from APP_MODULES is missing in the incoming permissions
+      // (e.g. a new module was added after the role was created), notify the
+      // parent so the form value stays in sync with what's displayed on screen.
+      const hasNewModules = APP_MODULES.some((m) => !(m.key in permissions));
+      if (hasNewModules) {
+        onChange(mergedPermissions);
+      }
     } else if (Object.keys(localPermissions).length === 0) {
       // No permissions provided and local is empty - use defaults
       setLocalPermissions(DEFAULT_PERMISSIONS);

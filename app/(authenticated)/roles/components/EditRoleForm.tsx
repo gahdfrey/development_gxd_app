@@ -46,10 +46,18 @@ export default function EditRoleForm({
 
   useEffect(() => {
     if (role) {
+      // Merge stored permissions with defaults so any module added after the
+      // role was created automatically gets view: true without needing a toggle.
+      const defaults = getDefaultPermissions();
+      const stored = (role.permissions || {}) as Record<string, Record<string, boolean>>;
+      const merged = { ...defaults };
+      Object.keys(stored).forEach((key) => {
+        if (merged[key]) merged[key] = { ...merged[key], ...stored[key] };
+      });
       reset({
         name: role.name,
         description: role.description || "",
-        permissions: role.permissions || getDefaultPermissions(),
+        permissions: merged,
       });
     }
   }, [role, reset]);

@@ -334,3 +334,24 @@ export const products = pgTable("products", {
 
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
+
+// ─── Prescriptions ────────────────────────────────────────────────────────────
+// One row per drug prescribed. Multiple drugs from the same appointment
+// are separate rows (mirrors how `requests` works for lab tests).
+
+export const prescriptions = pgTable("prescriptions", {
+  id: serial("id").primaryKey(),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  requestedBy: integer("requested_by").notNull().references(() => users.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  dosage: text("dosage").notNull(),
+  paymentStatus: text("payment_status").notNull().default("not_paid"), // not_paid | paid
+  status: text("status").notNull().default("pending"),                 // pending | dispatched | cancelled
+  cancellationReason: text("cancellation_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Prescription = typeof prescriptions.$inferSelect;
+export type NewPrescription = typeof prescriptions.$inferInsert;

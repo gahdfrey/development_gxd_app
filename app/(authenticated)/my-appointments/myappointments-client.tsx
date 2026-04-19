@@ -31,6 +31,7 @@ interface Appointment {
   notes: string | null;
   patient: Patient | null;
   hasRequest: boolean;
+  hasPrescription: boolean;
 }
 
 interface MyAppointmentsClientProps {
