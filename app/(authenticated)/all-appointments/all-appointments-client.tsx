@@ -1,6 +1,6 @@
 "use client";
 
-import {useMemo, useState} from "react";
+import {useMemo, useState, type ComponentType} from "react";
 import {Session} from "next-auth";
 import useSWR from "swr";
 import {fetcher} from "@/lib/fetcher";
@@ -30,6 +30,14 @@ interface AllAppointmentsClientProps {
     session: Session;
 }
 
+interface StatusConfig {
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    gradient: string;
+    bg: string;
+    text: string;
+}
+
 const STATUS_COLORS = {
     scheduled: "bg-blue-100 text-blue-800 border-blue-300",
     completed: "bg-green-100 text-green-800 border-green-300",
@@ -42,11 +50,17 @@ export default function AllAppointmentsClient({session} : AllAppointmentsClientP
 
     const [selectedStatus, setSelectedStatus] = useState < string | null > (null);
 
+    const apiUrl = useMemo(() => {
+        const params = new URLSearchParams(queryString ? queryString.slice(1) : "");
+        params.set("orderDate", "desc");
+        return `/api/all-appointments?${params.toString()}`;
+    }, [queryString]);
+
     const {
         data: appointments = [],
         error,
         isLoading
-    } = useSWR < AllAppointment[] > (`/api/all-appointments${queryString}`, fetcher);
+    } = useSWR < AllAppointment[] > (apiUrl, fetcher);
 
     const columnHelper = createColumnHelper < AllAppointment > ();
 
@@ -147,8 +161,7 @@ export default function AllAppointmentsClient({session} : AllAppointmentsClientP
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {
                 (() => { // Define known status configurations
-                    const statusConfig: Record < string,
-                        any > = {
+                    const statusConfig: Record<string, StatusConfig> = {
                             scheduled: {
                                 label: "Scheduled",
                                 icon: CalendarIcon,

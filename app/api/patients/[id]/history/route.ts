@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
   patients, hmos, appointments, visits, requests,
-  requestResults, users, departments, labTests,
+  requestResults, users, departments, labTests, prescriptions, products,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
@@ -123,6 +123,23 @@ export async function GET(
       resultRows = allResults;
     }
 
+    // 5. Prescriptions for this patient
+    const prescriptionRows = await db
+      .select({
+        id: prescriptions.id,
+        appointmentId: prescriptions.appointmentId,
+        productId: prescriptions.productId,
+        productName: products.name,
+        dosage: prescriptions.dosage,
+        paymentStatus: prescriptions.paymentStatus,
+        status: prescriptions.status,
+        createdAt: prescriptions.createdAt,
+      })
+      .from(prescriptions)
+      .leftJoin(products, eq(prescriptions.productId, products.id))
+      .where(eq(prescriptions.patientId, patientId))
+      .orderBy(desc(prescriptions.createdAt));
+
     // Build a map: requestId -> results[]
     const resultsByRequest: Record<number, typeof resultRows> = {};
     for (const r of resultRows) {
@@ -139,6 +156,15 @@ export async function GET(
         requestsByAppointment[r.appointmentId].push(r);
       } else {
         unlinkedRequests.push(r);
+      }
+    }
+
+    // Build a map: appointmentId -> prescriptions[]
+    const prescriptionsByAppointment: Record<number, typeof prescriptionRows> = {};
+    for (const p of prescriptionRows) {
+      if (p.appointmentId) {
+        if (!prescriptionsByAppointment[p.appointmentId]) prescriptionsByAppointment[p.appointmentId] = [];
+        prescriptionsByAppointment[p.appointmentId].push(p);
       }
     }
 
@@ -167,6 +193,7 @@ export async function GET(
         ...req,
         results: resultsByRequest[req.id] ?? [],
       })),
+      prescriptions: (prescriptionsByAppointment[appt.id] ?? []),
     }));
 
     // Stats

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { appointments, patients, users, requests, hmos } from "@/lib/db/schema";
+import { appointments, patients, users, requests, hmos, prescriptions } from "@/lib/db/schema";
 import { desc, asc, eq, or, ilike, and, gte, lte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 
@@ -59,6 +59,10 @@ export async function GET(request: Request) {
         hasRequest: sql<boolean>`EXISTS (
           SELECT 1 FROM requests
           WHERE requests.appointment_id = ${appointments.id}
+        )`,
+        hasPrescription: sql<boolean>`EXISTS (
+          SELECT 1 FROM prescriptions
+          WHERE prescriptions.appointment_id = ${appointments.id}
         )`,
       })
       .from(appointments)

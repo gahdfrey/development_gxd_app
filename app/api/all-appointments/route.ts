@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     // Check permission - supports both formats:
     // Array: { "all-appointments": ["view", "add"] }
     // Object: { "all-appointments": { "view": true } }
-    const permissions = user.permissions as Record<string, any> | null;
+    const permissions = user.permissions as Record<string, string[] | Record<string, boolean>> | null;
     let hasPermission = false;
     if (permissions && "all-appointments" in permissions) {
       const modulePerm = permissions["all-appointments"];
@@ -70,6 +70,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const status = searchParams.get("status");
+    const orderDate = searchParams.get("orderDate"); // "desc" | "asc" — defaults to desc
 
     // Base query conditions
     const conditions = [isNotNull(appointments.id)];
@@ -119,8 +120,8 @@ export async function GET(request: Request) {
       .innerJoin(users, eq(appointments.doctorId, users.id))
       .where(and(...conditions))
       .orderBy(
-        asc(appointments.appointmentDate),
-        asc(appointments.appointmentTime),
+        orderDate === "asc" ? asc(appointments.appointmentDate) : desc(appointments.appointmentDate),
+        orderDate === "asc" ? asc(appointments.appointmentTime) : desc(appointments.appointmentTime),
       );
 
     // Format the response

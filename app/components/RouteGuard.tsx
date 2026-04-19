@@ -23,6 +23,7 @@ const ROUTE_MODULE_MAP: Record<string, string> = {
   '/products':          'products',
   '/product-inventory': 'products',
   '/orders':           'orders',
+  '/pharmacy':         'pharmacy',
 };
 
 function canViewModule(permissions: Record<string, unknown> | null | undefined, module: string): boolean {

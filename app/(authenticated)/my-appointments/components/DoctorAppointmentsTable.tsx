@@ -7,6 +7,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
 import RaiseRequestModal from "./RaiseRequestModal";
+import PrescriptionModal from "./PrescriptionModal";
 import type { Session } from "next-auth";
 import {
   formatTime,
@@ -37,6 +38,7 @@ interface Appointment {
   notes: string | null;
   patient: Patient | null;
   hasRequest: boolean;
+  hasPrescription?: boolean;
 }
 
 interface DoctorAppointmentsTableProps {
@@ -55,6 +57,9 @@ export default function DoctorAppointmentsTable({
   const [activeConsultation, setActiveConsultation] = useState(false);
   const [isRaiseRequestModalOpen, setIsRaiseRequestModalOpen] = useState(false);
   const [selectedRaiseRequestAppointment, setSelectedRaiseRequestAppointment] =
+    useState<Appointment | null>(null);
+  const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
+  const [selectedPrescriptionAppointment, setSelectedPrescriptionAppointment] =
     useState<Appointment | null>(null);
 
   const getStatusColor = (status: string) => {
@@ -241,22 +246,36 @@ export default function DoctorAppointmentsTable({
                   </button>
                 </div>
               ) : appointment.status === "completed" ? (
-                <button
-                  onClick={() => {
-                    if (appointment.hasRequest) return;
-                    setSelectedRaiseRequestAppointment(appointment);
-                    setIsRaiseRequestModalOpen(true);
-                  }}
-                  disabled={appointment.hasRequest}
-                  title={appointment.hasRequest ? "A request has already been raised for this appointment" : undefined}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                    appointment.hasRequest
-                      ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-                >
-                  {appointment.hasRequest ? "Request Raised" : "Raise Request"}
-                </button>
+                <div className="flex flex-col gap-1.5">
+                  <select
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      e.target.value = ""; // reset
+                      if (val === "test") {
+                        if (appointment.hasRequest) return;
+                        setSelectedRaiseRequestAppointment(appointment);
+                        setIsRaiseRequestModalOpen(true);
+                      } else if (val === "prescription") {
+                        setSelectedPrescriptionAppointment(appointment);
+                        setIsPrescriptionModalOpen(true);
+                      }
+                    }}
+                    defaultValue=""
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="" disabled>Select Action</option>
+                    <option value="test" disabled={appointment.hasRequest}>
+                      {appointment.hasRequest ? "Test (Raised)" : "Raise Test Request"}
+                    </option>
+                    <option value="prescription">Write Prescription</option>
+                  </select>
+                  {appointment.hasRequest && (
+                    <span className="text-xs text-gray-400 text-center">Test request raised</span>
+                  )}
+                  {appointment.hasPrescription && (
+                    <span className="text-xs text-green-600 text-center font-medium">Rx ✓</span>
+                  )}
+                </div>
               ) : appointment.status !== "scheduled" ? (
                 <span className="text-xs text-gray-500 font-medium">
                   Status finalized
@@ -310,6 +329,27 @@ export default function DoctorAppointmentsTable({
           }}
           appointmentId={selectedRaiseRequestAppointment.id}
           prefilledPatient={selectedRaiseRequestAppointment.patient ?? undefined}
+          onSuccess={() => {
+            mutate(
+              (key) =>
+                typeof key === "string" &&
+                key.startsWith("/api/my-appointments"),
+              undefined,
+              { revalidate: true },
+            );
+          }}
+        />
+      )}
+
+      {selectedPrescriptionAppointment && (
+        <PrescriptionModal
+          isOpen={isPrescriptionModalOpen}
+          onClose={() => {
+            setIsPrescriptionModalOpen(false);
+            setSelectedPrescriptionAppointment(null);
+          }}
+          appointmentId={selectedPrescriptionAppointment.id}
+          prefilledPatient={selectedPrescriptionAppointment.patient ?? undefined}
           onSuccess={() => {
             mutate(
               (key) =>

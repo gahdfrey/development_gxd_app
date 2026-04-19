@@ -10,6 +10,8 @@ import {
   users,
   departments,
   labTests,
+  prescriptions,
+  products,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
@@ -133,6 +135,23 @@ export async function GET(_req: NextRequest) {
         .where(inArray(requestResults.requestId, requestIds));
     }
 
+    // 5. All prescriptions for this patient (all statuses shown in patient portal)
+    const prescriptionRows = await db
+      .select({
+        id: prescriptions.id,
+        appointmentId: prescriptions.appointmentId,
+        productId: prescriptions.productId,
+        productName: products.name,
+        dosage: prescriptions.dosage,
+        paymentStatus: prescriptions.paymentStatus,
+        status: prescriptions.status,
+        createdAt: prescriptions.createdAt,
+      })
+      .from(prescriptions)
+      .leftJoin(products, eq(prescriptions.productId, products.id))
+      .where(eq(prescriptions.patientId, patientId))
+      .orderBy(desc(prescriptions.createdAt));
+
     // Build maps
     const resultsByRequest: Record<number, typeof resultRows> = {};
     for (const r of resultRows) {
@@ -149,6 +168,16 @@ export async function GET(_req: NextRequest) {
         requestsByAppointment[r.appointmentId].push(r);
       } else {
         unlinkedRequests.push(r);
+      }
+    }
+
+    // Build a map: appointmentId -> prescriptions[]
+    const prescriptionsByAppointment: Record<number, typeof prescriptionRows> = {};
+    for (const p of prescriptionRows) {
+      if (p.appointmentId) {
+        if (!prescriptionsByAppointment[p.appointmentId])
+          prescriptionsByAppointment[p.appointmentId] = [];
+        prescriptionsByAppointment[p.appointmentId].push(p);
       }
     }
 
@@ -179,6 +208,7 @@ export async function GET(_req: NextRequest) {
         ...req,
         results: resultsByRequest[req.id] ?? [],
       })),
+      prescriptions: (prescriptionsByAppointment[appt.id] ?? []),
     }));
 
     // Stats

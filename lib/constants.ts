@@ -13,6 +13,7 @@ export const APP_MODULES = [
   { key: "supply-orders", label: "Supply Orders" },
   { key: "products", label: "Products" },
   { key: "orders", label: "Orders" },
+  { key: "pharmacy", label: "Pharmacy" },
 ];
 
 export const APP_PERMISSIONS = [
