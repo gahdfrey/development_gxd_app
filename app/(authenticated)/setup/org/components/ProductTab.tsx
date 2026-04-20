@@ -7,12 +7,13 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { PencilSquareIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 import Table from "@/app/components/ui/Table";
 import Modal from "@/app/components/ui/Modal";
-import ProductFormModal, { type ProductForm } from "./ProductFormModal";
+import ProductFormModal, { type ProductForm, type ProductCategory } from "./ProductFormModal";
 
 interface Product {
   id: number;
   name: string;
   description: string | null;
+  category: ProductCategory;
   casesInStock: number;
   unitsPerCase: number;
   looseUnitsInStock: number;
@@ -22,13 +23,35 @@ interface Product {
   createdAt: string;
 }
 
-function formatPrice(naira: number) {
-  if (naira === 0) return <span className="text-gray-400 text-xs">—</span>;
+// ── Category config ───────────────────────────────────────────────────────────
+type TabKey = "all" | ProductCategory;
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "all",        label: "All" },
+  { key: "pharmacy",   label: "Pharmacy" },
+  { key: "laboratory", label: "Laboratory" },
+  { key: "radiology",  label: "Radiology" },
+  { key: "general",    label: "General" },
+];
+
+const CATEGORY_BADGE: Record<ProductCategory, string> = {
+  pharmacy:   "bg-green-100 text-green-800",
+  laboratory: "bg-blue-100 text-blue-800",
+  radiology:  "bg-purple-100 text-purple-800",
+  general:    "bg-gray-100 text-gray-700",
+};
+
+function CategoryBadge({ category }: { category: ProductCategory }) {
   return (
-    <span className="font-medium text-gray-800">
-      ₦ {naira.toLocaleString("en-NG")}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${CATEGORY_BADGE[category] ?? "bg-gray-100 text-gray-700"}`}>
+      {category}
     </span>
   );
+}
+
+function formatPrice(naira: number) {
+  if (naira === 0) return <span className="text-gray-400 text-xs">—</span>;
+  return <span className="font-medium text-gray-800">₦ {naira.toLocaleString("en-NG")}</span>;
 }
 
 function StockBadge({ totalUnits, reorderLevel }: { totalUnits: number; reorderLevel: number }) {
@@ -42,6 +65,7 @@ function StockBadge({ totalUnits, reorderLevel }: { totalUnits: number; reorderL
 export default function ProductTab() {
   const { data: products, error, mutate } = useSWR<Product[]>("/api/products", fetcher);
 
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -80,6 +104,25 @@ export default function ProductTab() {
     setDeleting(null);
   };
 
+  // Filtered products by active tab
+  const filtered = useMemo(() => {
+    if (!products) return [];
+    if (activeTab === "all") return products;
+    return products.filter((p) => p.category === activeTab);
+  }, [products, activeTab]);
+
+  // Tab counts
+  const counts = useMemo(() => {
+    const all = products ?? [];
+    return {
+      all:       all.length,
+      pharmacy:  all.filter((p) => p.category === "pharmacy").length,
+      laboratory:all.filter((p) => p.category === "laboratory").length,
+      radiology: all.filter((p) => p.category === "radiology").length,
+      general:   all.filter((p) => p.category === "general").length,
+    } as Record<TabKey, number>;
+  }, [products]);
+
   const columnHelper = createColumnHelper<Product>();
 
   const columns = useMemo(
@@ -94,6 +137,10 @@ export default function ProductTab() {
             )}
           </div>
         ),
+      }),
+      columnHelper.accessor("category", {
+        header: "Category",
+        cell: (info) => <CategoryBadge category={info.getValue()} />,
       }),
       columnHelper.accessor("unitsPerCase", {
         header: "Units / Case",
@@ -155,7 +202,8 @@ export default function ProductTab() {
         ),
       }),
     ],
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   if (error) {
@@ -168,7 +216,11 @@ export default function ProductTab() {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-gray-500">
+          {products ? `${filtered.length} of ${products.length} products` : "Loading…"}
+        </p>
         <button
           onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
@@ -178,13 +230,49 @@ export default function ProductTab() {
         </button>
       </div>
 
+      {/* Category tabs */}
+      <div className="border-b border-gray-200 mb-4">
+        <nav className="-mb-px flex gap-1 overflow-x-auto scrollbar-none">
+          {TABS.map((t) => {
+            const count = counts[t.key] ?? 0;
+            const isActive = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  isActive
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {t.label}
+                {count > 0 && (
+                  <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold ${
+                    isActive ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Table */}
       {!products ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
-      ) : products.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-gray-500 mb-4">No products yet. Add your first one!</p>
+          <p className="text-gray-500 mb-4">
+            {activeTab === "all"
+              ? "No products yet."
+              : `No ${activeTab} products yet.`}{" "}
+            Add your first one!
+          </p>
           <button
             onClick={openCreate}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -194,7 +282,7 @@ export default function ProductTab() {
           </button>
         </div>
       ) : (
-        <Table data={products} columns={columns} />
+        <Table data={filtered} columns={columns} />
       )}
 
       <ProductFormModal

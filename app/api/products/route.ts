@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
-import { asc, ilike, sql } from "drizzle-orm";
+import { asc, ilike, eq, and, sql } from "drizzle-orm";
 
 // GET /api/products
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
+    const category = searchParams.get("category"); // optional filter
+
+    const conditions = [];
+    if (search) conditions.push(ilike(products.name, `%${search}%`));
+    if (category && category !== "all") conditions.push(eq(products.category, category));
 
     const query = db
       .select({
         id: products.id,
         name: products.name,
         description: products.description,
+        category: products.category,
         casesInStock: products.casesInStock,
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
@@ -25,10 +31,8 @@ export async function GET(request: NextRequest) {
       })
       .from(products);
 
-    const rows = search
-      ? await query
-          .where(ilike(products.name, `%${search}%`))
-          .orderBy(asc(products.name))
+    const rows = conditions.length
+      ? await query.where(and(...conditions)).orderBy(asc(products.name))
       : await query.orderBy(asc(products.name));
 
     return NextResponse.json(rows, { status: 200 });
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "Product name is required" }, { status: 400 });
@@ -54,11 +58,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
     }
 
+    const VALID_CATEGORIES = ["pharmacy", "laboratory", "radiology", "general"];
+    if (category && !VALID_CATEGORIES.includes(category)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    }
+
     const [product] = await db
       .insert(products)
       .values({
         name: name.trim(),
         description: description?.trim() || null,
+        category: category ?? "general",
         casesInStock: casesInStock ?? 0,
         unitsPerCase,
         looseUnitsInStock: looseUnitsInStock ?? 0,

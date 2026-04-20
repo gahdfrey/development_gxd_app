@@ -77,9 +77,9 @@ export default function SideMenu() {
         isExpanded ? "w-50" : "w-16"
       }`}
     >
-      <div className="flex flex-col h-full py-4 px-2 ">
+      <div className="flex flex-col h-full py-4 px-2 overflow-hidden">
         {/* Menu Items */}
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-none">
           {/* Dashboard Link */}
           {hasPermission("dashboard", "view") && (
             <Link

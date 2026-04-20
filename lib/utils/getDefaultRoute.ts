@@ -12,17 +12,18 @@ export function getDefaultRoute(permissions: any): string {
   }
 
   // Priority order of routes to check.
-  // Specialised modules come before general ones so role-specific users
-  // (lab, radiology, finance, doctor) land on their own section first.
+  // Dashboard is first so superadmin (all permissions) always lands there.
+  // Specialised modules follow so role-specific users land on their own section.
   const routes = [
-    { path: "/my-history", module: "my-history" },
+    { path: "/dashboard", module: "dashboard" },
     { path: "/my-appointments", module: "my-appointments" },
-    { path: "/product-inventory", module: "products" },
+    { path: "/my-history", module: "my-history" },
+    { path: "/appointments", module: "appointments" },
     { path: "/laboratory", module: "laboratory" },
     { path: "/radiology", module: "radiography" },
     { path: "/finance", module: "finance" },
-    { path: "/dashboard", module: "dashboard" },
-    { path: "/appointments", module: "appointments" },
+    { path: "/pharmacy", module: "pharmacy" },
+    { path: "/product-inventory", module: "products" },
     { path: "/users", module: "users" },
     { path: "/roles", module: "roles" },
   ];

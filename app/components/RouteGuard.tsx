@@ -26,9 +26,9 @@ const ROUTE_MODULE_MAP: Record<string, string> = {
   '/pharmacy':         'pharmacy',
 };
 
-function canViewModule(permissions: Record<string, unknown> | null | undefined, module: string): boolean {
+function canViewModule(permissions: Record<string, unknown> | null | undefined, moduleKey: string): boolean {
   if (!permissions) return false;
-  const perm = permissions[module];
+  const perm = permissions[moduleKey];
   if (!perm) return false;
   if (typeof perm === 'object' && !Array.isArray(perm)) {
     return (perm as Record<string, boolean>).view === true;
@@ -51,7 +51,7 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   });
 
   // Compute access synchronously — no useEffect/useState so there's no stale render
-  const module = Object.entries(ROUTE_MODULE_MAP).find(([route]) =>
+  const matchedModule = Object.entries(ROUTE_MODULE_MAP).find(([route]) =>
     pathname === route || pathname.startsWith(route + '/')
   )?.[1];
 
@@ -61,7 +61,7 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   if (isLoading || !user) return null;
 
   // Route has a module guard and user lacks view permission
-  const isDenied = !!module && !canViewModule(permissions, module);
+  const isDenied = !!matchedModule && !canViewModule(permissions, matchedModule);
 
   if (isDenied) {
     return (

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 
+const VALID_CATEGORIES = ["pharmacy", "laboratory", "radiology", "general"];
+
 // GET /api/products/[id]
 export async function GET(
   _request: NextRequest,
@@ -18,6 +20,7 @@ export async function GET(
         id: products.id,
         name: products.name,
         description: products.description,
+        category: products.category,
         casesInStock: products.casesInStock,
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
@@ -49,7 +52,7 @@ export async function PATCH(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const body = await request.json();
-    const { name, description, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
 
     if (unitsPerCase !== undefined && unitsPerCase < 1) {
       return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
@@ -57,12 +60,16 @@ export async function PATCH(
     if (price !== undefined && (isNaN(price) || price < 0)) {
       return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
     }
+    if (category !== undefined && !VALID_CATEGORIES.includes(category)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    }
 
     const [updated] = await db
       .update(products)
       .set({
         ...(name !== undefined && { name: name.trim() }),
         ...(description !== undefined && { description: description?.trim() || null }),
+        ...(category !== undefined && { category }),
         ...(casesInStock !== undefined && { casesInStock }),
         ...(unitsPerCase !== undefined && { unitsPerCase }),
         ...(looseUnitsInStock !== undefined && { looseUnitsInStock }),
