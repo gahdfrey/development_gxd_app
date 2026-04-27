@@ -13,8 +13,19 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // Build base query
-    let query = db.select().from(patients);
+    // Build base query — select only columns needed by the list view
+    let query = db.select({
+      id: patients.id,
+      firstname: patients.firstname,
+      lastname: patients.lastname,
+      gender: patients.gender,
+      dob: patients.dob,
+      countryCode: patients.countryCode,
+      phone: patients.phone,
+      insuranceType: patients.insuranceType,
+      createdAt: patients.createdAt,
+      updatedAt: patients.updatedAt,
+    }).from(patients);
 
     // Build WHERE conditions
     const conditions = [];
@@ -143,6 +154,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // Reject early if email is already tied to a portal account
+    if (email?.trim()) {
+      const [existingPortalUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email.trim()))
+        .limit(1);
+      if (existingPortalUser) {
+        return NextResponse.json(
+          { error: "This email is already registered. Use a different email or leave the field blank." },
+          { status: 409 },
+        );
+      }
+    }
+
     const [newPatient] = await db
       .insert(patients)
       .values({
@@ -167,43 +193,31 @@ export async function POST(request: Request) {
       .returning();
 
     // Auto-create a portal login for the patient
-    try {
-      // Find the "Patient" role
-      const [patientRole] = await db
-        .select({ id: roles.id })
-        .from(roles)
-        .where(ilike(roles.name, "patient"))
-        .limit(1);
+    if (email?.trim()) {
+      try {
+        const baseUsername = `${firstname.toLowerCase().trim()}.${lastname.toLowerCase().trim()}`;
 
-      if (!email?.trim()) {
-        // No email — skip portal account creation silently
-        return;
+        // Run role lookup, username check, and password hash in parallel
+        const [patientRole, existingUsername, hashedPassword] = await Promise.all([
+          db.select({ id: roles.id }).from(roles).where(ilike(roles.name, "patient")).limit(1).then(r => r[0]),
+          db.select({ id: users.id }).from(users).where(eq(users.username, baseUsername)).limit(1).then(r => r[0]),
+          bcrypt.hash("Password1", 10),
+        ]);
+
+        const username = existingUsername ? `${baseUsername}${newPatient.id}` : baseUsername;
+
+        await db.insert(users).values({
+          firstname,
+          lastname,
+          username,
+          email: email.trim(),
+          password: hashedPassword,
+          roleId: patientRole?.id ?? null,
+          patientId: newPatient.id,
+        });
+      } catch (portalErr) {
+        console.warn("Could not create patient portal account:", portalErr);
       }
-
-      const hashedPassword = await bcrypt.hash("Password1", 10);
-      const baseUsername = `${firstname.toLowerCase().trim()}.${lastname.toLowerCase().trim()}`;
-
-      // Ensure username is unique
-      const existing = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.username, baseUsername))
-        .limit(1);
-      const username = existing.length > 0 ? `${baseUsername}${newPatient.id}` : baseUsername;
-
-      await db.insert(users).values({
-        firstname,
-        lastname,
-        username,
-        email: email.trim(),
-        password: hashedPassword,
-        roleId: patientRole?.id ?? null,
-        patientId: newPatient.id,
-      });
-    } catch (portalErr) {
-      // Don't fail patient creation if portal account creation fails
-      // (e.g. duplicate username — patient may have been re-registered)
-      console.warn("Could not create patient portal account:", portalErr);
     }
 
     return NextResponse.json(newPatient, { status: 201 });
