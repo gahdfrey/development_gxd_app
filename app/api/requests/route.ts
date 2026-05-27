@@ -3,25 +3,23 @@ import { db } from "@/lib/db";
 import { requests, patients, departments, labTests, users, requestResults } from "@/lib/db/schema";
 import { eq, desc, ilike, and, sql } from "drizzle-orm";
 import { auth } from "@/auth";
+import { getOrgId } from "@/lib/org";
 
-// GET /api/requests?department=laboratory|radiology
-// Omit ?department to return all (finance view)
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const departmentFilter = searchParams.get("department");
 
-    const conditions = [];
-    if (departmentFilter) {
-      conditions.push(ilike(departments.name, `%${departmentFilter}%`));
-    }
+    const conditions: any[] = [eq(requests.organisationId, orgId)];
+    if (departmentFilter) conditions.push(ilike(departments.name, `%${departmentFilter}%`));
 
-    const query = db
+    const allRequests = await db
       .select({
         id: requests.id,
         status: requests.status,
@@ -48,61 +46,40 @@ export async function GET(request: NextRequest) {
       .leftJoin(departments, eq(requests.departmentId, departments.id))
       .leftJoin(labTests, eq(requests.testId, labTests.id))
       .leftJoin(users, eq(requests.requestedBy, users.id))
+      .where(and(...conditions))
       .orderBy(desc(requests.createdAt));
-
-    const allRequests =
-      conditions.length > 0
-        ? await query.where(and(...conditions))
-        : await query;
 
     return NextResponse.json(allRequests, { status: 200 });
   } catch (error) {
     console.error("Error fetching requests:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch requests" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch requests" }, { status: 500 });
   }
 }
 
-// POST /api/requests - Create a new request
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const requestedBy = (session.user as any).id;
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const requestedBy = parseInt(session.user.id);
     const body = await request.json();
     const { patientId, departmentId, testId, appointmentId } = body;
 
-    if (!patientId) {
-      return NextResponse.json(
-        { error: "Patient is required" },
-        { status: 400 },
-      );
-    }
-    if (!departmentId) {
-      return NextResponse.json(
-        { error: "Department is required" },
-        { status: 400 },
-      );
-    }
-    if (!testId) {
-      return NextResponse.json(
-        { error: "Test is required" },
-        { status: 400 },
-      );
-    }
+    if (!patientId) return NextResponse.json({ error: "Patient is required" }, { status: 400 });
+    if (!departmentId) return NextResponse.json({ error: "Department is required" }, { status: 400 });
+    if (!testId) return NextResponse.json({ error: "Test is required" }, { status: 400 });
 
     const [newRequest] = await db
       .insert(requests)
       .values({
+        organisationId: orgId,
         patientId: parseInt(patientId),
         departmentId: parseInt(departmentId),
         testId: parseInt(testId),
-        requestedBy: parseInt(requestedBy),
+        requestedBy,
         appointmentId: appointmentId ? parseInt(appointmentId) : null,
         status: "pending",
         paymentStatus: "not_paid",
@@ -112,15 +89,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error: any) {
     console.error("Error creating request:", error);
-    if (error.code === "23503") {
-      return NextResponse.json(
-        { error: "Invalid patient, department, or test reference" },
-        { status: 400 },
-      );
-    }
-    return NextResponse.json(
-      { error: "Failed to create request" },
-      { status: 500 },
-    );
+    if (error.code === "23503") return NextResponse.json({ error: "Invalid patient, department, or test reference" }, { status: 400 });
+    return NextResponse.json({ error: "Failed to create request" }, { status: 500 });
   }
 }

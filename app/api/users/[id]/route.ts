@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, roles, departments } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id } = await params;
     const userId = parseInt(id);
     const user = await db
@@ -28,7 +32,7 @@ export async function GET(
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
       .leftJoin(departments, eq(users.departmentId, departments.id))
-      .where(eq(users.id, userId));
+      .where(and(eq(users.id, userId), eq(users.organisationId, orgId)));
 
     if (!user.length) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -46,6 +50,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id } = await params;
     const userId = parseInt(id);
     const body = await request.json();
@@ -68,19 +75,18 @@ export async function PUT(
     const updatedUser = await db
       .update(users)
       .set(updateData)
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), eq(users.organisationId, orgId)))
       .returning();
 
     if (!updatedUser.length) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Update role permissions if provided
     if (permissions && roleId) {
       await db
         .update(roles)
         .set({ permissions, updatedAt: new Date() })
-        .where(eq(roles.id, roleId));
+        .where(and(eq(roles.id, roleId), eq(roles.organisationId, orgId)));
     }
 
     const { password: _, ...safeUser } = updatedUser[0];
@@ -96,11 +102,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id } = await params;
     const userId = parseInt(id);
     const deletedUser = await db
       .delete(users)
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), eq(users.organisationId, orgId)))
       .returning();
 
     if (!deletedUser.length) {

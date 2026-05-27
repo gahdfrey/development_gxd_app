@@ -6,6 +6,7 @@ export type SessionUser = {
     username: string;
     firstname?: string;
     lastname?: string;
+    organisationId: number;
 };
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -21,6 +22,7 @@ export async function getSession(): Promise<SessionUser | null> {
         username: session.user.username as string,
         firstname: session.user.firstname as string,
         lastname: session.user.lastname as string,
+        organisationId: session.user.organisationId as number,
     };
 }
 

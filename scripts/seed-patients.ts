@@ -2,6 +2,8 @@ import "dotenv/config";
 import { db } from "../lib/db/index";
 import { patients } from "../lib/db/schema";
 
+const ORG_ID = 1;
+
 const samplePatients = [
   {
     firstname: "Emily",
@@ -150,7 +152,7 @@ async function seedPatients() {
     console.log("Starting to seed patients...");
 
     for (const patient of samplePatients) {
-      await db.insert(patients).values(patient);
+      await db.insert(patients).values({ ...patient, organisationId: ORG_ID });
       console.log(
         `✓ Created patient: ${patient.firstname} ${patient.lastname}`
       );

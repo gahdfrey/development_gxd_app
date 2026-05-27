@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { prescriptions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getOrgId } from "@/lib/org";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: idStr } = await params;
     const id = parseInt(idStr);
@@ -19,16 +19,18 @@ export async function PATCH(
     const body = await req.json();
     const { paymentStatus, status, cancellationReason } = body;
 
+    const orgFilter = eq(prescriptions.organisationId, orgId);
+
     // ── Finance: mark paid (one-way) ────────────────────────────────────────
     if (paymentStatus === "paid") {
       const [updated] = await db
         .update(prescriptions)
         .set({ paymentStatus: "paid", updatedAt: new Date() })
-        .where(and(eq(prescriptions.id, id), eq(prescriptions.paymentStatus, "not_paid")))
+        .where(and(eq(prescriptions.id, id), eq(prescriptions.paymentStatus, "not_paid"), orgFilter))
         .returning({ id: prescriptions.id });
 
       if (!updated) {
-        const [exists] = await db.select({ id: prescriptions.id }).from(prescriptions).where(eq(prescriptions.id, id));
+        const [exists] = await db.select({ id: prescriptions.id }).from(prescriptions).where(and(eq(prescriptions.id, id), orgFilter));
         if (!exists) return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
         return NextResponse.json({ error: "Already paid" }, { status: 400 });
       }
@@ -40,7 +42,7 @@ export async function PATCH(
       const [current] = await db
         .select({ paymentStatus: prescriptions.paymentStatus, status: prescriptions.status })
         .from(prescriptions)
-        .where(eq(prescriptions.id, id));
+        .where(and(eq(prescriptions.id, id), orgFilter));
 
       if (!current) return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
       if (current.paymentStatus !== "paid") return NextResponse.json({ error: "Cannot dispatch before payment is confirmed." }, { status: 400 });
@@ -48,7 +50,7 @@ export async function PATCH(
 
       await db.update(prescriptions)
         .set({ status: "dispatched", updatedAt: new Date() })
-        .where(eq(prescriptions.id, id));
+        .where(and(eq(prescriptions.id, id), orgFilter));
 
       return NextResponse.json({ success: true }, { status: 200 });
     }
@@ -62,11 +64,11 @@ export async function PATCH(
       const [updated] = await db
         .update(prescriptions)
         .set({ status: "cancelled", cancellationReason: cancellationReason.trim(), updatedAt: new Date() })
-        .where(and(eq(prescriptions.id, id), eq(prescriptions.status, "pending")))
+        .where(and(eq(prescriptions.id, id), eq(prescriptions.status, "pending"), orgFilter))
         .returning({ id: prescriptions.id });
 
       if (!updated) {
-        const [exists] = await db.select({ id: prescriptions.id }).from(prescriptions).where(eq(prescriptions.id, id));
+        const [exists] = await db.select({ id: prescriptions.id }).from(prescriptions).where(and(eq(prescriptions.id, id), orgFilter));
         if (!exists) return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
         return NextResponse.json({ error: "Prescription is already finalised." }, { status: 400 });
       }

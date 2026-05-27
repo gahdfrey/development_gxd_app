@@ -8,12 +8,11 @@ import {
   users,
 } from "@/lib/db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 /**
  * Deplete product stock when an order is delivered.
  * Strategy: drain loose units first, then break cases (leftover → loose).
- *
- * Optimised: single batch SELECT for all products, then parallel UPDATEs.
  */
 async function depleteProductStock(orderId: number): Promise<void> {
   const lineItems = await db
@@ -27,7 +26,6 @@ async function depleteProductStock(orderId: number): Promise<void> {
   const validLines = lineItems.filter((l) => l.productId != null);
   if (validLines.length === 0) return;
 
-  // Batch-fetch all products in one query
   const productIds = validLines.map((l) => l.productId as number);
   const prodRows = await db
     .select({
@@ -41,7 +39,6 @@ async function depleteProductStock(orderId: number): Promise<void> {
 
   const prodMap = new Map(prodRows.map((p) => [p.id, p]));
 
-  // Compute new stock levels, then update all products in parallel
   const updates = validLines.flatMap((line) => {
     const prod = prodMap.get(line.productId as number);
     if (!prod) return [];
@@ -74,7 +71,6 @@ async function depleteProductStock(orderId: number): Promise<void> {
   await Promise.all(updates);
 }
 
-/** Select shape reused across all three response points in PATCH */
 const orderSelectShape = {
   id: supplyOrders.id,
   departmentOrderId: supplyOrders.departmentOrderId,
@@ -91,13 +87,13 @@ const orderSelectShape = {
   requestedByLastname: users.lastname,
 };
 
-async function fetchOrder(id: number) {
+async function fetchOrder(id: number, orgId: number) {
   const [row] = await db
     .select(orderSelectShape)
     .from(supplyOrders)
     .leftJoin(departments, eq(supplyOrders.departmentId, departments.id))
     .leftJoin(users, eq(supplyOrders.requestedBy, users.id))
-    .where(eq(supplyOrders.id, id));
+    .where(and(eq(supplyOrders.id, id), eq(supplyOrders.organisationId, orgId)));
   return row ?? null;
 }
 
@@ -107,11 +103,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
 
-    const order = await fetchOrder(id);
+    const order = await fetchOrder(id, orgId);
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
     const lineItems = await db
@@ -136,30 +135,14 @@ export async function GET(
 }
 
 // ─── PATCH /api/inventory/orders/[id] ────────────────────────────────────────
-//
-// Two independent status fields — only the one sent in the body is touched:
-//
-//   { departmentStatus: "accepted" }
-//     → dept page accepts the order (pending → accepted)
-//
-//   { supplyStatus: "accepted" | "delivered" | "cancelled", cancellationReason? }
-//     → supply page manages its own workflow
-//
-//   { items: [...], notes? }
-//     → edit product lines (only when departmentStatus = "pending")
-//
-// Performance notes:
-//   • Simple status updates combine SELECT + UPDATE into a conditional UPDATE
-//     (one round trip instead of two) and return { success: true } — the
-//     frontend only checks res.ok and then revalidates, so the full JOIN is
-//     never needed here.
-//   • depleteProductStock uses a single batch SELECT + parallel UPDATEs.
-//
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
@@ -171,8 +154,9 @@ export async function PATCH(
     const cancellationReason: string | undefined = body.cancellationReason;
     const items: { productId: number; quantityRequested: number }[] | undefined = body.items;
 
-    // ── Department status update (dept page only) ──────────────────────────
-    // Combines existence check + transition guard + update into one query.
+    const orgFilter = eq(supplyOrders.organisationId, orgId);
+
+    // ── Department status update ───────────────────────────────────────────
     if (newDeptStatus !== undefined) {
       const DEPT_FROM: Record<string, string> = { accepted: "pending" };
       const requiredFrom = DEPT_FROM[newDeptStatus];
@@ -183,12 +167,11 @@ export async function PATCH(
       const [updated] = await db
         .update(supplyOrders)
         .set({ departmentStatus: newDeptStatus, updatedAt: new Date() })
-        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.departmentStatus, requiredFrom)))
+        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.departmentStatus, requiredFrom), orgFilter))
         .returning({ id: supplyOrders.id });
 
       if (!updated) {
-        // Distinguish "not found" vs "wrong current state"
-        const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(eq(supplyOrders.id, id));
+        const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(and(eq(supplyOrders.id, id), orgFilter));
         if (!exists) return NextResponse.json({ error: "Order not found" }, { status: 404 });
         return NextResponse.json({ error: `Order is not in '${requiredFrom}' status.` }, { status: 400 });
       }
@@ -196,28 +179,27 @@ export async function PATCH(
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ── Supply status update (supply page only) ────────────────────────────
+    // ── Supply status update ───────────────────────────────────────────────
     if (newSupplyStatus !== undefined) {
       const SUPPLY_FROM: Record<string, string> = {
         accepted:  "pending",
         delivered: "accepted",
-        cancelled: "pending",   // will also allow from accepted — handled below
+        cancelled: "pending",
       };
 
       if (newSupplyStatus === "cancelled" && !cancellationReason?.trim()) {
         return NextResponse.json({ error: "A cancellation reason is required." }, { status: 400 });
       }
 
-      // Cancellation is valid from both pending and accepted
       if (newSupplyStatus === "cancelled") {
         const [updated] = await db
           .update(supplyOrders)
           .set({ supplyStatus: "cancelled", cancellationReason: (cancellationReason as string).trim(), updatedAt: new Date() })
-          .where(and(eq(supplyOrders.id, id), inArray(supplyOrders.supplyStatus, ["pending", "accepted"])))
+          .where(and(eq(supplyOrders.id, id), inArray(supplyOrders.supplyStatus, ["pending", "accepted"]), orgFilter))
           .returning({ id: supplyOrders.id });
 
         if (!updated) {
-          const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(eq(supplyOrders.id, id));
+          const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(and(eq(supplyOrders.id, id), orgFilter));
           if (!exists) return NextResponse.json({ error: "Order not found" }, { status: 404 });
           return NextResponse.json({ error: "Order cannot be cancelled in its current state." }, { status: 400 });
         }
@@ -230,37 +212,34 @@ export async function PATCH(
       }
 
       if (newSupplyStatus === "delivered") {
-        // Must fetch current status first to guard, then deplete + update in parallel
         const [current] = await db
           .select({ supplyStatus: supplyOrders.supplyStatus })
           .from(supplyOrders)
-          .where(eq(supplyOrders.id, id));
+          .where(and(eq(supplyOrders.id, id), orgFilter));
 
         if (!current) return NextResponse.json({ error: "Order not found" }, { status: 404 });
         if (current.supplyStatus !== "accepted") {
           return NextResponse.json({ error: "Order must be accepted before it can be delivered." }, { status: 400 });
         }
 
-        // Deplete stock and mark delivered in parallel
         await Promise.all([
           depleteProductStock(id),
           db.update(supplyOrders)
             .set({ supplyStatus: "delivered", updatedAt: new Date() })
-            .where(eq(supplyOrders.id, id)),
+            .where(and(eq(supplyOrders.id, id), orgFilter)),
         ]);
 
         return NextResponse.json({ success: true }, { status: 200 });
       }
 
-      // accepted (pending → accepted)
       const [updated] = await db
         .update(supplyOrders)
         .set({ supplyStatus: newSupplyStatus, updatedAt: new Date() })
-        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.supplyStatus, requiredFrom)))
+        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.supplyStatus, requiredFrom), orgFilter))
         .returning({ id: supplyOrders.id });
 
       if (!updated) {
-        const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(eq(supplyOrders.id, id));
+        const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(and(eq(supplyOrders.id, id), orgFilter));
         if (!exists) return NextResponse.json({ error: "Order not found" }, { status: 404 });
         return NextResponse.json({ error: `Order is not in '${requiredFrom}' status.` }, { status: 400 });
       }
@@ -268,7 +247,7 @@ export async function PATCH(
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ── Edit items (dept page, pending orders only) ────────────────────────
+    // ── Edit items (pending orders only) ──────────────────────────────────
     if (items !== undefined) {
       if (!Array.isArray(items) || items.length === 0) {
         return NextResponse.json({ error: "At least one item is required." }, { status: 400 });
@@ -279,11 +258,10 @@ export async function PATCH(
         }
       }
 
-      // Must be pending to edit
       const [current] = await db
         .select({ departmentStatus: supplyOrders.departmentStatus })
         .from(supplyOrders)
-        .where(eq(supplyOrders.id, id));
+        .where(and(eq(supplyOrders.id, id), orgFilter));
 
       if (!current) return NextResponse.json({ error: "Order not found" }, { status: 404 });
       if (current.departmentStatus !== "pending") {
@@ -298,7 +276,7 @@ export async function PATCH(
           totalUnits: sql<number>`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`,
         })
         .from(products)
-        .where(inArray(products.id, productIds));
+        .where(and(inArray(products.id, productIds), eq(products.organisationId, orgId)));
 
       const stockMap = Object.fromEntries(stockRows.map((s) => [s.id, s]));
       const insufficient = items
@@ -309,7 +287,6 @@ export async function PATCH(
         return NextResponse.json({ error: "insufficient_stock", items: insufficient }, { status: 400 });
       }
 
-      // Replace items + update notes in parallel
       await Promise.all([
         db.delete(supplyOrderItems).where(eq(supplyOrderItems.orderId, id))
           .then(() => db.insert(supplyOrderItems).values(
@@ -318,23 +295,23 @@ export async function PATCH(
         notes !== undefined
           ? db.update(supplyOrders)
               .set({ notes: notes ? notes.trim() || null : null, updatedAt: new Date() })
-              .where(eq(supplyOrders.id, id))
+              .where(and(eq(supplyOrders.id, id), orgFilter))
           : Promise.resolve(),
       ]);
 
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ── Notes-only update ──────────────────────────────────────────────────
+    // ── Notes-only update ─────────────────────────────────────────────────
     if (notes !== undefined) {
       const [updated] = await db
         .update(supplyOrders)
         .set({ notes: notes ? notes.trim() || null : null, updatedAt: new Date() })
-        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.departmentStatus, "pending")))
+        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.departmentStatus, "pending"), orgFilter))
         .returning({ id: supplyOrders.id });
 
       if (!updated) {
-        const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(eq(supplyOrders.id, id));
+        const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(and(eq(supplyOrders.id, id), orgFilter));
         if (!exists) return NextResponse.json({ error: "Order not found" }, { status: 404 });
         return NextResponse.json({ error: "Notes can only be edited on pending orders." }, { status: 400 });
       }
@@ -355,6 +332,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
@@ -362,7 +342,7 @@ export async function DELETE(
     const [order] = await db
       .select({ id: supplyOrders.id, departmentStatus: supplyOrders.departmentStatus })
       .from(supplyOrders)
-      .where(eq(supplyOrders.id, id));
+      .where(and(eq(supplyOrders.id, id), eq(supplyOrders.organisationId, orgId)));
 
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 

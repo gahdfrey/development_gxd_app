@@ -1,11 +1,10 @@
-
 import 'dotenv/config';
 import { db } from './index';
 import { roles, hmos } from './schema';
 
-async function seed() {
-    // console.log('Seeding roles...');
+const ORG_ID = 1; // Dleventh Clinic
 
+async function seed() {
     const defaultRoles = [
         {
             name: 'Doctor',
@@ -53,9 +52,9 @@ async function seed() {
 
     for (const role of defaultRoles) {
         await db.insert(roles)
-            .values(role)
+            .values({ ...role, organisationId: ORG_ID })
             .onConflictDoUpdate({
-                target: roles.name,
+                target: [roles.name, roles.organisationId],
                 set: {
                     permissions: role.permissions,
                     description: role.description,
@@ -65,20 +64,10 @@ async function seed() {
 
     console.log('Roles seeded successfully.');
 
-    // Seed HMOs
     const defaultHmos = [
-        {
-            name: 'Leadway Health',
-            description: 'Leadway Health HMO - comprehensive health coverage',
-        },
-        {
-            name: 'Hygeia HMO',
-            description: 'Hygeia HMO - quality healthcare services',
-        },
-        {
-            name: 'Reliance HMO',
-            description: 'Reliance HMO - affordable health insurance',
-        },
+        { name: 'Leadway Health',  description: 'Leadway Health HMO - comprehensive health coverage' },
+        { name: 'Hygeia HMO',      description: 'Hygeia HMO - quality healthcare services' },
+        { name: 'Reliance HMO',    description: 'Reliance HMO - affordable health insurance' },
     ];
 
     for (const hmo of defaultHmos) {
@@ -86,9 +75,7 @@ async function seed() {
             .values(hmo)
             .onConflictDoUpdate({
                 target: hmos.name,
-                set: {
-                    description: hmo.description,
-                },
+                set: { description: hmo.description },
             });
     }
 

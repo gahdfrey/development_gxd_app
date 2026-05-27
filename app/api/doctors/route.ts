@@ -1,60 +1,39 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, roles } from "@/lib/db/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(request: Request) {
   try {
-    // Get orderBy query parameter (optional)
-    const { searchParams } = new URL(request.url);
-    const orderBy = searchParams.get("orderBy"); // 'asc' or 'desc'
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Build query based on orderBy parameter
+    const { searchParams } = new URL(request.url);
+    const orderBy = searchParams.get("orderBy");
+
+    const whereClause = and(eq(roles.name, "Doctor"), eq(users.organisationId, orgId));
+
+    const baseQuery = db
+      .select({
+        id: users.id,
+        firstname: users.firstname,
+        lastname: users.lastname,
+        email: users.email,
+        username: users.username,
+      })
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .where(whereClause);
+
     const doctors =
-      orderBy === "asc"
-        ? await db
-            .select({
-              id: users.id,
-              firstname: users.firstname,
-              lastname: users.lastname,
-              email: users.email,
-              username: users.username,
-            })
-            .from(users)
-            .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(eq(roles.name, "Doctor"))
-            .orderBy(asc(users.firstname))
-        : orderBy === "desc"
-        ? await db
-            .select({
-              id: users.id,
-              firstname: users.firstname,
-              lastname: users.lastname,
-              email: users.email,
-              username: users.username,
-            })
-            .from(users)
-            .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(eq(roles.name, "Doctor"))
-            .orderBy(desc(users.firstname))
-        : await db
-            .select({
-              id: users.id,
-              firstname: users.firstname,
-              lastname: users.lastname,
-              email: users.email,
-              username: users.username,
-            })
-            .from(users)
-            .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(eq(roles.name, "Doctor"));
+      orderBy === "asc" ? await baseQuery.orderBy(asc(users.firstname))
+      : orderBy === "desc" ? await baseQuery.orderBy(desc(users.firstname))
+      : await baseQuery;
 
     return NextResponse.json(doctors);
   } catch (error) {
     console.error("Error fetching doctors:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch doctors" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch doctors" }, { status: 500 });
   }
 }

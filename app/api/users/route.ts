@@ -3,14 +3,18 @@ import { db } from "@/lib/db";
 import { users, roles, departments } from "@/lib/db/schema";
 import bcrypt from "bcryptjs";
 import { desc, eq, or, ilike, and, not } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(request: Request) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
-    // Exclude users whose role is "Patient"
     const notPatient = not(ilike(roles.name, "patient"));
+    const inOrg = eq(users.organisationId, orgId);
 
     let query = db
       .select({
@@ -32,18 +36,13 @@ export async function GET(request: Request) {
 
     if (search && search.trim() !== "") {
       const searchTerm = `%${search.trim()}%`;
-      query = query.where(
-        and(
-          notPatient,
-          or(
-            ilike(users.firstname, searchTerm),
-            ilike(users.lastname, searchTerm),
-            ilike(users.email, searchTerm),
-          ),
-        ),
-      ) as any;
+      query = query.where(and(inOrg, notPatient, or(
+        ilike(users.firstname, searchTerm),
+        ilike(users.lastname, searchTerm),
+        ilike(users.email, searchTerm),
+      ))) as any;
     } else {
-      query = query.where(notPatient) as any;
+      query = query.where(and(inOrg, notPatient)) as any;
     }
 
     const allUsers = await query.orderBy(desc(users.createdAt));
@@ -56,6 +55,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await request.json();
     const { username, email, firstname, lastname, password, roleId, departmentId } = body;
 
@@ -68,10 +70,8 @@ export async function POST(request: Request) {
     const newUser = await db
       .insert(users)
       .values({
-        username,
-        email,
-        firstname,
-        lastname,
+        organisationId: orgId,
+        username, email, firstname, lastname,
         password: hashedPassword,
         roleId: roleId || null,
         departmentId: departmentId || null,

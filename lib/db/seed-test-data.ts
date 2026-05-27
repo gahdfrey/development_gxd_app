@@ -1,10 +1,11 @@
 import 'dotenv/config';
 import { db } from './index';
 import { users, roles, patients, appointments, hmos } from './schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
-// ─── Helpers ────────────────────────────────────────────────
+const ORG_ID = 1; // Dleventh Clinic
+
 function randomItem<T>(arr: T[]): T {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -28,7 +29,7 @@ function formatDate(d: Date): string {
 }
 
 function randomTime(): string {
-    const hour = randomInt(8, 17); // 8 AM to 5 PM
+    const hour = randomInt(8, 17);
     const minute = randomItem([0, 15, 30, 45]);
     return `${padZero(hour)}:${padZero(minute)}`;
 }
@@ -44,7 +45,6 @@ function randomDOB(): string {
     return `${year}-${padZero(month)}-${padZero(day)}`;
 }
 
-// ─── Data ────────────────────────────────────────────────────
 const firstNames = [
     'Adaeze', 'Chinedu', 'Fatima', 'Ibrahim', 'Ngozi', 'Oluwaseun', 'Yusuf', 'Amina',
     'Emeka', 'Halima', 'Obiora', 'Rashida', 'Tunde', 'Zainab', 'Chidera', 'Musa',
@@ -76,56 +76,57 @@ const appointmentNotes = [
     'Lab results review', 'Referred by Dr. for specialist consultation', 'Chronic pain management',
     'Diabetes management review', 'Prenatal checkup', 'Vaccination appointment',
     'Wound dressing change', 'Eye examination referral', 'Chest pain evaluation',
-    null, null, null, // some with no notes
+    null, null, null,
 ];
 
-const doctors = [
+const doctorData = [
     { username: 'dr.adebayo', email: 'adebayo@gxdapp.com', firstname: 'Adebayo', lastname: 'Ogundimu' },
     { username: 'dr.amina', email: 'amina@gxdapp.com', firstname: 'Amina', lastname: 'Bello' },
     { username: 'dr.chukwu', email: 'chukwu@gxdapp.com', firstname: 'Chukwuemeka', lastname: 'Obi' },
 ];
 
-// ─── Main Seed ──────────────────────────────────────────────
 async function seedTestData() {
-    console.log('🌱 Starting test data seed...\n');
+    console.log('🌱 Starting test data seed for Dleventh Clinic (org 1)...\n');
 
-    // 1. Get doctor role ID
-    const doctorRole = await db.select().from(roles).where(eq(roles.name, 'Doctor'));
-    if (doctorRole.length === 0) {
-        console.error('❌ Doctor role not found. Run the main seed first: npm run db:seed');
+    const [doctorRole] = await db
+        .select()
+        .from(roles)
+        .where(and(eq(roles.name, 'Doctor'), eq(roles.organisationId, ORG_ID)));
+
+    if (!doctorRole) {
+        console.error('❌ Doctor role not found for org 1. Create it first via /setup.');
         process.exit(1);
     }
-    const doctorRoleId = doctorRole[0].id;
 
-    // 2. Get HMO IDs
     const allHmos = await db.select().from(hmos);
     const hmoIds = allHmos.map(h => h.id);
 
-    // 3. Create 3 doctors
     console.log('👨‍⚕️ Creating 3 doctors...');
     const hashedPassword = await bcrypt.hash('Doctor@123', 10);
     const doctorIds: number[] = [];
 
-    for (const doc of doctors) {
-        const existing = await db.select().from(users).where(eq(users.username, doc.username));
+    for (const doc of doctorData) {
+        const existing = await db.select().from(users)
+            .where(and(eq(users.username, doc.username), eq(users.organisationId, ORG_ID)));
+
         if (existing.length > 0) {
             doctorIds.push(existing[0].id);
             console.log(`   ✓ Doctor ${doc.firstname} ${doc.lastname} already exists (id: ${existing[0].id})`);
         } else {
             const [newDoc] = await db.insert(users).values({
+                organisationId: ORG_ID,
                 username: doc.username,
                 email: doc.email,
                 firstname: doc.firstname,
                 lastname: doc.lastname,
                 password: hashedPassword,
-                roleId: doctorRoleId,
+                roleId: doctorRole.id,
             }).returning();
             doctorIds.push(newDoc.id);
             console.log(`   ✓ Created Dr. ${doc.firstname} ${doc.lastname} (id: ${newDoc.id})`);
         }
     }
 
-    // 4. Create 50 patients
     console.log('\n🏥 Creating 50 patients...');
     const patientIds: number[] = [];
     const usedNames = new Set<string>();
@@ -133,13 +134,8 @@ async function seedTestData() {
     for (let i = 0; i < 50; i++) {
         let firstname: string, lastname: string, key: string;
         do {
-            firstname = firstNames[i % firstNames.length];
-            lastname = lastNames[i % lastNames.length];
-            if (i >= firstNames.length) {
-                // Add a suffix for uniqueness
-                firstname = firstNames[randomInt(0, firstNames.length - 1)];
-                lastname = lastNames[randomInt(0, lastNames.length - 1)];
-            }
+            firstname = i < firstNames.length ? firstNames[i] : firstNames[randomInt(0, firstNames.length - 1)];
+            lastname = i < lastNames.length ? lastNames[i] : lastNames[randomInt(0, lastNames.length - 1)];
             key = `${firstname}-${lastname}`;
         } while (usedNames.has(key));
         usedNames.add(key);
@@ -149,6 +145,7 @@ async function seedTestData() {
         const isHmo = insurance === 'hmo' && hmoIds.length > 0;
 
         const [patient] = await db.insert(patients).values({
+            organisationId: ORG_ID,
             firstname,
             lastname,
             gender,
@@ -171,7 +168,6 @@ async function seedTestData() {
     }
     console.log(`   ✓ Created ${patientIds.length} patients`);
 
-    // 5. Create 200 appointments spread across the next 5 months
     console.log('\n📅 Creating 200 appointments across the next 5 months...');
 
     const today = new Date();
@@ -182,18 +178,16 @@ async function seedTestData() {
 
     for (let i = 0; i < 200; i++) {
         const appointmentDay = randomDate(today, fiveMonthsLater);
-        // Skip weekends
         if (appointmentDay.getDay() === 0) appointmentDay.setDate(appointmentDay.getDate() + 1);
         if (appointmentDay.getDay() === 6) appointmentDay.setDate(appointmentDay.getDate() + 2);
 
-        const status = randomItem(statuses);
-
         await db.insert(appointments).values({
+            organisationId: ORG_ID,
             patientId: randomItem(patientIds),
             doctorId: randomItem(doctorIds),
             appointmentDate: formatDate(appointmentDay),
             appointmentTime: randomTime(),
-            status,
+            status: randomItem(statuses),
             visitType: randomItem(visitTypes),
             notes: randomItem(appointmentNotes),
         });
@@ -202,8 +196,6 @@ async function seedTestData() {
     }
 
     console.log(`   ✓ Created ${createdCount} appointments`);
-
-    // Summary
     console.log('\n✅ Seed complete!');
     console.log(`   • 3 doctors (password: Doctor@123)`);
     console.log(`   • ${patientIds.length} patients`);

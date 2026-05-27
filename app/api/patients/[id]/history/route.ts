@@ -5,17 +5,15 @@ import {
   requestResults, users, departments, labTests, prescriptions, products,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: idParam } = await params;
     const patientId = parseInt(idParam);
@@ -48,7 +46,7 @@ export async function GET(
       })
       .from(patients)
       .leftJoin(hmos, eq(patients.hmoId, hmos.id))
-      .where(and(eq(patients.id, patientId), isNull(patients.deletedAt)))
+      .where(and(eq(patients.id, patientId), isNull(patients.deletedAt), eq(patients.organisationId, orgId)))
       .limit(1);
 
     if (patientRows.length === 0) {

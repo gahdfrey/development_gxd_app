@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryItems } from "@/lib/db/schema";
-import { asc, ilike } from "drizzle-orm";
+import { asc, ilike, eq, and } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
-// GET /api/inventory/items
 export async function GET(request: NextRequest) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
-    const query = db.select().from(inventoryItems);
+    const conditions: any[] = [eq(inventoryItems.organisationId, orgId)];
+    if (search) conditions.push(ilike(inventoryItems.name, `%${search}%`));
 
-    const rows = search
-      ? await query.where(ilike(inventoryItems.name, `%${search}%`)).orderBy(asc(inventoryItems.name))
-      : await query.orderBy(asc(inventoryItems.name));
+    const rows = await db.select().from(inventoryItems)
+      .where(and(...conditions))
+      .orderBy(asc(inventoryItems.name));
 
     return NextResponse.json(rows, { status: 200 });
   } catch (error) {
@@ -22,9 +26,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/inventory/items
 export async function POST(request: NextRequest) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await request.json();
     const { name, description, unit, quantity, reorderLevel } = body;
 
@@ -32,16 +38,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name and unit are required" }, { status: 400 });
     }
 
-    const [item] = await db
-      .insert(inventoryItems)
-      .values({
-        name: name.trim(),
-        description: description?.trim() || null,
-        unit: unit.trim(),
-        quantity: quantity ?? 0,
-        reorderLevel: reorderLevel ?? 10,
-      })
-      .returning();
+    const [item] = await db.insert(inventoryItems).values({
+      organisationId: orgId,
+      name: name.trim(),
+      description: description?.trim() || null,
+      unit: unit.trim(),
+      quantity: quantity ?? 0,
+      reorderLevel: reorderLevel ?? 10,
+    }).returning();
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {

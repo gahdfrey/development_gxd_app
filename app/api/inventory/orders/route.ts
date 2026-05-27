@@ -1,30 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import {
-  supplyOrders,
-  supplyOrderItems,
-  products,
-  departments,
-  users,
-} from "@/lib/db/schema";
+import { supplyOrders, supplyOrderItems, products, departments, users } from "@/lib/db/schema";
 import { eq, and, inArray, ilike, sql } from "drizzle-orm";
 import { auth } from "@/auth";
+import { getOrgId } from "@/lib/org";
 
-// ─── GET /api/inventory/orders ────────────────────────────────────────────────
-// Query params:
-//   ?departmentId=1
-//   ?department=laboratory
-//   ?departmentStatus=pending|accepted          ← dept page filter
-//   ?supplyStatus=pending|accepted|delivered|cancelled  ← supply page filter
 export async function GET(request: NextRequest) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const departmentId    = searchParams.get("departmentId");
     const departmentName  = searchParams.get("department");
     const departmentStatus = searchParams.get("departmentStatus");
     const supplyStatus    = searchParams.get("supplyStatus");
 
-    const conditions = [];
+    const conditions: any[] = [eq(supplyOrders.organisationId, orgId)];
     if (departmentId)     conditions.push(eq(supplyOrders.departmentId, parseInt(departmentId)));
     if (departmentName)   conditions.push(ilike(departments.name, departmentName));
     if (departmentStatus) conditions.push(eq(supplyOrders.departmentStatus, departmentStatus));
@@ -49,7 +41,7 @@ export async function GET(request: NextRequest) {
       .from(supplyOrders)
       .leftJoin(departments, eq(supplyOrders.departmentId, departments.id))
       .leftJoin(users, eq(supplyOrders.requestedBy, users.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(and(...conditions))
       .orderBy(sql`${supplyOrders.createdAt} DESC`);
 
     if (orders.length === 0) return NextResponse.json([], { status: 200 });
@@ -70,63 +62,42 @@ export async function GET(request: NextRequest) {
       .leftJoin(products, eq(supplyOrderItems.productId, products.id))
       .where(inArray(supplyOrderItems.orderId, orderIds));
 
-    const itemsByOrder = lineItems.reduce<Record<number, typeof lineItems>>(
-      (acc, item) => {
-        if (!acc[item.orderId]) acc[item.orderId] = [];
-        acc[item.orderId].push(item);
-        return acc;
-      },
-      {}
-    );
+    const itemsByOrder = lineItems.reduce<Record<number, typeof lineItems>>((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {});
 
-    const result = orders.map((o) => ({ ...o, items: itemsByOrder[o.id] ?? [] }));
-    return NextResponse.json(result, { status: 200 });
+    return NextResponse.json(orders.map((o) => ({ ...o, items: itemsByOrder[o.id] ?? [] })), { status: 200 });
   } catch (error) {
     console.error("Error fetching supply orders:", error);
     return NextResponse.json({ error: "Failed to fetch supply orders" }, { status: 500 });
   }
 }
 
-// ─── POST /api/inventory/orders ───────────────────────────────────────────────
-// Creates one supplyOrder per product (each gets its own id).
-// All orders from the same requisition share a departmentOrderId.
-// Body: { departmentId, notes?, items: [{ productId, quantityRequested }] }
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const requestedBy = parseInt(session.user.id);
     const body = await request.json();
     const { departmentId, notes, items } = body;
 
     if (!departmentId || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json(
-        { error: "departmentId and at least one item are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "departmentId and at least one item are required" }, { status: 400 });
     }
 
     for (const item of items) {
       if (!item.productId || !item.quantityRequested || item.quantityRequested < 1) {
-        return NextResponse.json(
-          { error: "Each item must have productId and quantityRequested >= 1" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Each item must have productId and quantityRequested >= 1" }, { status: 400 });
       }
     }
 
-    const [currentUser] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, session.user.email));
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Stock check
+    // Stock check — scoped to this org's products
     const productIds = items.map((i: { productId: number }) => i.productId);
     const stockRows = await db
       .select({
@@ -135,7 +106,7 @@ export async function POST(request: NextRequest) {
         totalUnits: sql<number>`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`,
       })
       .from(products)
-      .where(inArray(products.id, productIds));
+      .where(and(inArray(products.id, productIds), eq(products.organisationId, orgId)));
 
     const stockMap = Object.fromEntries(stockRows.map((s) => [s.id, s]));
 
@@ -153,31 +124,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "insufficient_stock", items: insufficient }, { status: 400 });
     }
 
-    // Create one order per product, all sharing the same departmentOrderId
     const createdOrders: typeof supplyOrders.$inferSelect[] = [];
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i] as { productId: number; quantityRequested: number };
       const departmentOrderId = createdOrders.length > 0 ? createdOrders[0].id : null;
 
-      const [order] = await db
-        .insert(supplyOrders)
-        .values({
-          departmentId,
-          requestedBy: currentUser.id,
-          notes: notes?.trim() || null,
-          status: "pending",
-          departmentStatus: "pending",
-          supplyStatus: "pending",
-          departmentOrderId,
-        })
-        .returning();
+      const [order] = await db.insert(supplyOrders).values({
+        organisationId: orgId,
+        departmentId,
+        requestedBy,
+        notes: notes?.trim() || null,
+        status: "pending",
+        departmentStatus: "pending",
+        supplyStatus: "pending",
+        departmentOrderId,
+      }).returning();
 
       if (i === 0) {
-        await db
-          .update(supplyOrders)
-          .set({ departmentOrderId: order.id })
-          .where(eq(supplyOrders.id, order.id));
+        await db.update(supplyOrders).set({ departmentOrderId: order.id }).where(eq(supplyOrders.id, order.id));
         order.departmentOrderId = order.id;
       }
 
@@ -192,7 +157,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { departmentOrderId: createdOrders[0].id, orders: createdOrders.map((o) => o.id), count: createdOrders.length },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error creating supply order:", error);

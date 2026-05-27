@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { appointments, patients, users } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 export async function GET() {
   try {
-    // Fetch all appointments with patient and doctor information
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const allAppointments = await db
       .select({
         id: appointments.id,
@@ -31,73 +34,45 @@ export async function GET() {
       .from(appointments)
       .leftJoin(patients, eq(appointments.patientId, patients.id))
       .leftJoin(users, eq(appointments.doctorId, users.id))
-      .orderBy(
-        desc(appointments.appointmentDate),
-        desc(appointments.appointmentTime),
-      );
+      .where(eq(appointments.organisationId, orgId))
+      .orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
 
     return NextResponse.json(allAppointments);
   } catch (error) {
     console.error("Error fetching appointments:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch appointments" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const {
-      patientId,
-      doctorId,
-      appointmentDate,
-      appointmentTime,
-      status,
-      visitType,
-      notes,
-    } = body;
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Validate required fields
+    const body = await request.json();
+    const { patientId, doctorId, appointmentDate, appointmentTime, status, visitType, notes } = body;
+
     if (!patientId || !doctorId || !appointmentDate || !appointmentTime) {
       return NextResponse.json(
-        {
-          error:
-            "Missing required fields: patientId, doctorId, appointmentDate, appointmentTime",
-        },
+        { error: "Missing required fields: patientId, doctorId, appointmentDate, appointmentTime" },
         { status: 400 },
       );
     }
 
-    // Validate time format (HH:MM)
     const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timeRegex.test(appointmentTime)) {
-      return NextResponse.json(
-        { error: "Invalid time format. Use HH:MM (24-hour format)" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid time format. Use HH:MM (24-hour format)" }, { status: 400 });
     }
 
-    // Validate visit type
-    const validVisitTypes = [
-      "new visit",
-      "follow up",
-      "review",
-      "first visit after discharge",
-      "drug refill",
-    ];
+    const validVisitTypes = ["new visit", "follow up", "review", "first visit after discharge", "drug refill"];
     if (visitType && !validVisitTypes.includes(visitType)) {
-      return NextResponse.json(
-        { error: "Invalid visit type" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid visit type" }, { status: 400 });
     }
 
-    // Create new appointment
     const newAppointment = await db
       .insert(appointments)
       .values({
+        organisationId: orgId,
         patientId: parseInt(patientId),
         doctorId: parseInt(doctorId),
         appointmentDate,
@@ -108,7 +83,6 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    // Fetch the complete appointment with patient and doctor details
     const appointment = await db
       .select({
         id: appointments.id,
@@ -139,9 +113,6 @@ export async function POST(request: Request) {
     return NextResponse.json(appointment[0], { status: 201 });
   } catch (error) {
     console.error("Error creating appointment:", error);
-    return NextResponse.json(
-      { error: "Failed to create appointment" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
   }
 }
