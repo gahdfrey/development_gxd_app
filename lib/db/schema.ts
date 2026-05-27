@@ -328,6 +328,8 @@ export const products = pgTable("products", {
   looseUnitsInStock: integer("loose_units_in_stock").notNull().default(0),
   reorderLevel: integer("reorder_level").notNull().default(20), // threshold in total units
   price: integer("price").notNull().default(0), // price in naira (whole units)
+  category: text("category").notNull().default("general"), // pharmacy | laboratory | radiology | general
+  isPrescribable: boolean("is_prescribable").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -15,6 +15,7 @@ interface Product {
   looseUnitsInStock: number;
   totalUnits: number;
   reorderLevel: number;
+  isPrescribable: boolean;
   updatedAt: string;
 }
 
@@ -89,6 +90,15 @@ export default function ProductsPage() {
     setAdjustOpen(true);
   };
 
+  const togglePrescribable = async (product: Product) => {
+    await fetch(`/api/products/${product.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPrescribable: !product.isPrescribable }),
+    });
+    mutate();
+  };
+
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
@@ -153,6 +163,7 @@ export default function ProductsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakdown</th>
                 {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th> */}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reorder At</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prescribable</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -160,7 +171,7 @@ export default function ProductsPage() {
             <tbody className="bg-white divide-y divide-gray-100">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">
                     {search ? "No products match your search." : "No products yet. Add them in Setup → Organisation → Products."}
                   </td>
                 </tr>
@@ -189,6 +200,15 @@ export default function ProductsPage() {
                       <StockBadge totalUnits={p.totalUnits} reorderLevel={p.reorderLevel} />
                     </td> */}
                     <td className="px-6 py-4 text-sm text-gray-500">{p.reorderLevel} units</td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => togglePrescribable(p)}
+                        title={p.isPrescribable ? "Click to remove from prescribable drugs" : "Click to mark as prescribable drug"}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${p.isPrescribable ? "bg-green-500" : "bg-gray-200"}`}
+                      >
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${p.isPrescribable ? "translate-x-4" : "translate-x-0"}`} />
+                      </button>
+                    </td>
                     <td className="px-6 py-4 text-xs text-gray-400">{formatDate(p.updatedAt)}</td>
                     <td className="px-6 py-4 text-right">
                       <button

@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react";
 
+export type ProductCategory = "pharmacy" | "laboratory" | "radiology" | "general";
+
 export interface ProductForm {
   name: string;
   description: string;
+  category: ProductCategory;
   casesInStock: number;
   unitsPerCase: number;
   looseUnitsInStock: number;
@@ -16,6 +19,7 @@ interface Product {
   id: number;
   name: string;
   description: string | null;
+  category: ProductCategory;
   casesInStock: number;
   unitsPerCase: number;
   looseUnitsInStock: number;
@@ -30,9 +34,17 @@ interface Props {
   onSave: (data: ProductForm, id?: number) => Promise<void>;
 }
 
+const CATEGORY_OPTIONS: { value: ProductCategory; label: string; color: string }[] = [
+  { value: "pharmacy",   label: "Pharmacy",   color: "bg-green-100 text-green-800" },
+  { value: "laboratory", label: "Laboratory", color: "bg-blue-100 text-blue-800" },
+  { value: "radiology",  label: "Radiology",  color: "bg-purple-100 text-purple-800" },
+  { value: "general",    label: "General",    color: "bg-gray-100 text-gray-700" },
+];
+
 const BLANK: ProductForm = {
   name: "",
   description: "",
+  category: "general",
   casesInStock: 0,
   unitsPerCase: 10,
   looseUnitsInStock: 0,
@@ -52,13 +64,14 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
           ? {
               name: initial.name,
               description: initial.description ?? "",
+              category: initial.category ?? "general",
               casesInStock: initial.casesInStock,
               unitsPerCase: initial.unitsPerCase,
               looseUnitsInStock: initial.looseUnitsInStock,
               reorderLevel: initial.reorderLevel,
               price: initial.price ?? 0,
             }
-          : BLANK
+          : BLANK,
       );
       setError("");
     }
@@ -78,12 +91,14 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
     try {
       await onSave(form, initial?.id);
       onClose();
-    } catch (err: any) {
-      setError(err.message ?? "Something went wrong.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSaving(false);
     }
   };
+
+  const selectedCategory = CATEGORY_OPTIONS.find((c) => c.value === form.category)!;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -99,6 +114,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
 
+          {/* Product name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Product Name <span className="text-red-500">*</span>
@@ -112,6 +128,36 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
             />
           </div>
 
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {CATEGORY_OPTIONS.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setForm({ ...form, category: cat.value })}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg border-2 transition-all ${
+                    form.category === cat.value
+                      ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-gray-500">
+              Selected:{" "}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${selectedCategory.color}`}>
+                {selectedCategory.label}
+              </span>
+            </p>
+          </div>
+
+          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <input
@@ -123,6 +169,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
             />
           </div>
 
+          {/* Price */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Price per Unit
@@ -144,7 +191,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
             </div>
           </div>
 
-          {/* Case/unit configuration */}
+          {/* Stock */}
           <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 space-y-3">
             <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
               Stock Quantity
@@ -153,7 +200,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Units per Case <span className="text-red-500">*</span>
-                <span className="ml-1 text-xs text-gray-400 font-normal">(how many units are in one full case)</span>
+                <span className="ml-1 text-xs text-gray-400 font-normal">(units in one full case)</span>
               </label>
               <input
                 type="number"
@@ -166,9 +213,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cases in Stock
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cases in Stock</label>
                 <input
                   type="number"
                   min={0}
@@ -180,7 +225,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Loose Units
-                  <span className="ml-1 text-xs text-gray-400 font-normal">(open/partial case)</span>
+                  <span className="ml-1 text-xs text-gray-400 font-normal">(open/partial)</span>
                 </label>
                 <input
                   type="number"
@@ -192,7 +237,6 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               </div>
             </div>
 
-            {/* Live total */}
             <div className="flex items-center justify-between pt-1 border-t border-blue-200">
               <span className="text-xs text-blue-600 font-medium">Total units in stock</span>
               <span className="text-sm font-bold text-blue-700">
@@ -202,10 +246,11 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
             </div>
           </div>
 
+          {/* Reorder level */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Reorder Level
-              <span className="ml-1 text-xs text-gray-400 font-normal">(total units — warn when stock at or below this)</span>
+              <span className="ml-1 text-xs text-gray-400 font-normal">(warn when stock ≤ this)</span>
             </label>
             <input
               type="number"

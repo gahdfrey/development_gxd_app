@@ -15,7 +15,6 @@ interface PrescriptionRow {
   requestedByLastname: string | null;
   productName: string | null;
   productPrice: number | null;
-  dosage: string;
   paymentStatus: string;
   status: string;
   createdAt: string;
@@ -213,7 +212,7 @@ export default function FinancePage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      {["Patient", "Age", "Doctor", "Drug", "Dosage", "Price (₦)", "Payment Status", "Actions"].map((h) => (
+                      {["Patient", "Age", "Doctor", "Drug",  "Price (₦)", "Payment Status", "Actions"].map((h) => (
                         <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -237,9 +236,9 @@ export default function FinancePage() {
                           <td className="px-5 py-4 text-sm font-medium text-gray-800 whitespace-nowrap">
                             {row.productName ?? "—"}
                           </td>
-                          <td className="px-5 py-4 text-sm text-gray-600 max-w-[160px]">
+                          {/* <td className="px-5 py-4 text-sm text-gray-600 max-w-[160px]">
                             <span className="line-clamp-2">{row.dosage}</span>
-                          </td>
+                          </td> */}
                           <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                             {row.productPrice != null ? `₦${row.productPrice.toLocaleString()}` : "—"}
                           </td>
