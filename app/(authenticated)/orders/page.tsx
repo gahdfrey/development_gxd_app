@@ -80,9 +80,18 @@ function formatDate(iso: string) {
   });
 }
 
-function isSuperAdmin(user: CurrentUser | undefined): boolean {
+/**
+ * Returns true for users who should see ALL departments' orders:
+ *   - Superadmins
+ *   - Inventory managers (role contains "inventory")
+ *   - Any user with no department assigned
+ * Everyone else (pharmacy, lab, radiology staff) sees only their own dept.
+ */
+function canSeeAllDepts(user: CurrentUser | undefined): boolean {
   if (!user) return false;
-  return (user.userrole ?? "").toLowerCase().includes("super") || !user.departmentId;
+  const role = (user.userrole ?? "").toLowerCase();
+  if (role.includes("super") || role.includes("inventory")) return true;
+  return !user.departmentId; // no dept set → no restriction
 }
 
 // ── View Modal ────────────────────────────────────────────────────────────────
@@ -330,22 +339,25 @@ export default function OrdersPage() {
 
   const userDeptId = currentUser?.departmentId ?? null;
   const userDeptName = currentUser?.departmentName ?? null;
-  const isAdmin = isSuperAdmin(currentUser);
+  // isAdmin: inventory managers and superadmins see all depts; dept staff see only theirs
+  const isAdmin = canSeeAllDepts(currentUser);
 
+  // Dept staff always get their departmentId injected; admins/managers get no filter → all depts
   const apiUrl = useMemo(() => {
     const p = new URLSearchParams();
-    if (userDeptId) p.set("departmentId", String(userDeptId));
+    if (!isAdmin && userDeptId) p.set("departmentId", String(userDeptId));
     if (tab !== "all") p.set("departmentStatus", tab);
     return `/api/inventory/orders?${p.toString()}`;
-  }, [userDeptId, tab]);
+  }, [isAdmin, userDeptId, tab]);
 
   const { data: orders, isLoading, mutate } = useSWR<SupplyOrder[]>(apiUrl, fetcher);
 
+  // Unfiltered-by-tab URL for tab counts (still dept-scoped when appropriate)
   const allUrl = useMemo(() => {
     const p = new URLSearchParams();
-    if (userDeptId) p.set("departmentId", String(userDeptId));
+    if (!isAdmin && userDeptId) p.set("departmentId", String(userDeptId));
     return `/api/inventory/orders?${p.toString()}`;
-  }, [userDeptId]);
+  }, [isAdmin, userDeptId]);
 
   const { data: allOrders, mutate: mutateAll } = useSWR<SupplyOrder[]>(allUrl, fetcher);
 

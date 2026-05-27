@@ -21,6 +21,7 @@ export async function GET(
         name: products.name,
         description: products.description,
         category: products.category,
+        isPrescribable: products.isPrescribable,
         casesInStock: products.casesInStock,
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
@@ -52,7 +53,7 @@ export async function PATCH(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const body = await request.json();
-    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable } = body;
 
     if (unitsPerCase !== undefined && unitsPerCase < 1) {
       return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
@@ -75,6 +76,7 @@ export async function PATCH(
         ...(looseUnitsInStock !== undefined && { looseUnitsInStock }),
         ...(reorderLevel !== undefined && { reorderLevel }),
         ...(price !== undefined && { price }),
+        ...(isPrescribable !== undefined && { isPrescribable }),
         updatedAt: new Date(),
       })
       .where(eq(products.id, id))

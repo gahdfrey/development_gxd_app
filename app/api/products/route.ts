@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
-import { asc, ilike, eq, and, sql } from "drizzle-orm";
+import { asc, ilike, eq, and, sql, SQL } from "drizzle-orm";
 
 // GET /api/products
 export async function GET(request: NextRequest) {
@@ -9,10 +9,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const category = searchParams.get("category"); // optional filter
+    const prescribable = searchParams.get("prescribable"); // "true" = drugs only
 
-    const conditions = [];
+    const conditions: SQL[] = [];
     if (search) conditions.push(ilike(products.name, `%${search}%`));
     if (category && category !== "all") conditions.push(eq(products.category, category));
+    if (prescribable === "true") conditions.push(eq(products.isPrescribable, true));
 
     const query = db
       .select({
@@ -20,6 +22,7 @@ export async function GET(request: NextRequest) {
         name: products.name,
         description: products.description,
         category: products.category,
+        isPrescribable: products.isPrescribable,
         casesInStock: products.casesInStock,
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
@@ -46,7 +49,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "Product name is required" }, { status: 400 });
@@ -69,6 +72,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         category: category ?? "general",
+        isPrescribable: isPrescribable ?? false,
         casesInStock: casesInStock ?? 0,
         unitsPerCase,
         looseUnitsInStock: looseUnitsInStock ?? 0,
