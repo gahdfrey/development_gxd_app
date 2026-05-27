@@ -1,4 +1,4 @@
-import { db } from "/Users/tiito/Desktop/development_gxd_app/lib/db/index";
+import { db } from "./index";
 import { sql } from "drizzle-orm";
 
 async function migrate() {
