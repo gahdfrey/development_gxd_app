@@ -55,6 +55,7 @@ async function createAppointments() {
     // Create appointments
     for (let i = 0; i < 10; i++) {
       const appointment = {
+        organisationId: 1,
         patientId: allPatients[i].id,
         doctorId: doctorId,
         appointmentDate: appointmentDate,

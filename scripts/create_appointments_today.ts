@@ -53,6 +53,7 @@ async function createAppointmentsForDoctor() {
       const randomTime = appointmentTimes[i % appointmentTimes.length];
 
       appointmentsToCreate.push({
+        organisationId: 1,
         doctorId: 11,
         patientId: randomPatient.id,
         appointmentDate: today,

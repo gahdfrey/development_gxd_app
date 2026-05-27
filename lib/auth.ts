@@ -12,12 +12,11 @@ export async function createUser(data: {
   username: string;
   email: string;
   password: string;
+  organisationId: number;
   roleId?: number;
 }) {
-  // Hash password
   const hashedPassword = await bcrypt.hash(data.password, 10);
 
-  // Insert user into database
   const [user] = await db
     .insert(users)
     .values({
@@ -26,6 +25,7 @@ export async function createUser(data: {
       username: data.username,
       email: data.email,
       password: hashedPassword,
+      organisationId: data.organisationId,
       roleId: data.roleId || null,
     })
     .returning();
@@ -47,6 +47,8 @@ export async function getUserByEmail(email: string) {
       password: users.password,
       roleId: users.roleId,
       patientId: users.patientId,
+      organisationId: users.organisationId,
+      isPlatformAdmin: users.isPlatformAdmin,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
       roleName: roles.name,

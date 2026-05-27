@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { supplyOrders, supplyOrderItems, products } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 /**
  * Deplete stock for a single order item (loose-first, then break cases).
@@ -23,7 +24,6 @@ async function depleteItemStock(productId: number, qty: number) {
   let newLoose = prod.looseUnitsInStock;
   let newCases = prod.casesInStock;
 
-  // Step 1 — drain loose units first
   if (newLoose >= remaining) {
     newLoose -= remaining;
     remaining = 0;
@@ -32,7 +32,6 @@ async function depleteItemStock(productId: number, qty: number) {
     newLoose = 0;
   }
 
-  // Step 2 — break cases if still needed
   if (remaining > 0 && newCases > 0) {
     const casesNeeded = Math.ceil(remaining / prod.unitsPerCase);
     const casesToBreak = Math.min(casesNeeded, newCases);
@@ -53,13 +52,14 @@ async function depleteItemStock(productId: number, qty: number) {
 }
 
 // ─── PATCH /api/inventory/orders/[id]/items/[itemId] ─────────────────────────
-// Delivers a single line item. If all items in the order become delivered,
-// the parent order is also flipped to "delivered".
 export async function PATCH(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr, itemId: itemIdStr } = await params;
     const orderId = parseInt(idStr);
     const itemId = parseInt(itemIdStr);
@@ -68,11 +68,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
-    // Validate parent order exists and is approved
+    // Validate parent order exists, belongs to this org, and is approved
     const [order] = await db
       .select({ id: supplyOrders.id, status: supplyOrders.status })
       .from(supplyOrders)
-      .where(eq(supplyOrders.id, orderId));
+      .where(and(eq(supplyOrders.id, orderId), eq(supplyOrders.organisationId, orgId)));
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
@@ -84,7 +84,6 @@ export async function PATCH(
       );
     }
 
-    // Validate the item belongs to this order and is still pending
     const [item] = await db
       .select({
         id: supplyOrderItems.id,
@@ -93,46 +92,29 @@ export async function PATCH(
         status: supplyOrderItems.status,
       })
       .from(supplyOrderItems)
-      .where(
-        and(
-          eq(supplyOrderItems.id, itemId),
-          eq(supplyOrderItems.orderId, orderId)
-        )
-      );
+      .where(and(eq(supplyOrderItems.id, itemId), eq(supplyOrderItems.orderId, orderId)));
 
     if (!item) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
     if (item.status === "delivered") {
-      return NextResponse.json(
-        { error: "Item has already been delivered." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Item has already been delivered." }, { status: 400 });
     }
 
-    // Deplete stock for this item
     if (item.productId) {
       await depleteItemStock(item.productId, item.quantityRequested);
     }
 
-    // Mark this item as delivered
     await db
       .update(supplyOrderItems)
       .set({ status: "delivered", deliveredAt: new Date() })
       .where(eq(supplyOrderItems.id, itemId));
 
-    // Check if ALL items in the order are now delivered
     const remaining = await db
       .select({ id: supplyOrderItems.id })
       .from(supplyOrderItems)
-      .where(
-        and(
-          eq(supplyOrderItems.orderId, orderId),
-          eq(supplyOrderItems.status, "pending")
-        )
-      );
+      .where(and(eq(supplyOrderItems.orderId, orderId), eq(supplyOrderItems.status, "pending")));
 
-    // If nothing pending left, close the order
     if (remaining.length === 0) {
       await db
         .update(supplyOrders)
@@ -143,9 +125,6 @@ export async function PATCH(
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("[PATCH /api/inventory/orders/[id]/items/[itemId]]", error);
-    return NextResponse.json(
-      { error: "Failed to deliver item" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to deliver item" }, { status: 500 });
   }
 }

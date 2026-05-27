@@ -8,24 +8,12 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
 import * as schema from "./schema";
-import { isNull, ilike, eq } from "drizzle-orm";
+import { isNull, ilike, eq, and } from "drizzle-orm";
 
 const client = postgres(process.env.DATABASE_URL!);
 const db = drizzle(client, { schema });
 
 async function main() {
-  // Get Patient role
-  const [patientRole] = await db
-    .select({ id: schema.roles.id })
-    .from(schema.roles)
-    .where(ilike(schema.roles.name, "patient"))
-    .limit(1);
-
-  if (!patientRole) {
-    console.error('❌ No "Patient" role found. Run db:seed first.');
-    process.exit(1);
-  }
-
   // Get all patients with an email and no linked user account
   const allPatients = await db.select().from(schema.patients).where(isNull(schema.patients.deletedAt));
 
@@ -41,15 +29,28 @@ async function main() {
   let skipped = 0;
 
   for (const patient of toCreate) {
-    // Build a unique username: firstname.lastname, lowercased
+    const orgId = patient.organisationId;
+
+    // Find the Patient role scoped to this org
+    const [patientRole] = await db
+      .select({ id: schema.roles.id })
+      .from(schema.roles)
+      .where(and(ilike(schema.roles.name, "patient"), eq(schema.roles.organisationId, orgId)))
+      .limit(1);
+
+    if (!patientRole) {
+      console.warn(`  ⚠️  No "Patient" role for org ${orgId} — skipping patient ${patient.id}`);
+      skipped++;
+      continue;
+    }
+
     const base = `${patient.firstname.toLowerCase()}.${patient.lastname.toLowerCase()}`;
     let username = base;
 
-    // Check for username collision and suffix with patient id if needed
     const existing = await db
       .select({ id: schema.users.id })
       .from(schema.users)
-      .where(eq(schema.users.username, username))
+      .where(and(eq(schema.users.username, username), eq(schema.users.organisationId, orgId)))
       .limit(1);
 
     if (existing.length > 0) {
@@ -63,6 +64,7 @@ async function main() {
         username,
         email: patient.email!,
         password: hashedPassword,
+        organisationId: orgId,
         roleId: patientRole.id,
         patientId: patient.id,
       });
@@ -74,7 +76,7 @@ async function main() {
   }
 
   console.log(`✅ Created ${created} portal accounts.`);
-  if (skipped) console.log(`⚠️  Skipped ${skipped} (duplicate email in users table).`);
+  if (skipped) console.log(`⚠️  Skipped ${skipped} (no Patient role for org or duplicate email).`);
 
   await client.end();
   process.exit(0);

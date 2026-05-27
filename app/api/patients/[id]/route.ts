@@ -2,25 +2,26 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: paramId } = await params;
     const id = parseInt(paramId);
     if (isNaN(id)) {
-      return NextResponse.json(
-        { error: "Invalid patient ID" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid patient ID" }, { status: 400 });
     }
 
     const patient = await db
       .select()
       .from(patients)
-      .where(and(eq(patients.id, id), isNull(patients.deletedAt)))
+      .where(and(eq(patients.id, id), isNull(patients.deletedAt), eq(patients.organisationId, orgId)))
       .limit(1);
 
     if (patient.length === 0) {
@@ -30,10 +31,7 @@ export async function GET(
     return NextResponse.json(patient[0]);
   } catch (error) {
     console.error("Error fetching patient:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch patient" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch patient" }, { status: 500 });
   }
 }
 
@@ -42,13 +40,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: paramId } = await params;
     const id = parseInt(paramId);
     if (isNaN(id)) {
-      return NextResponse.json(
-        { error: "Invalid patient ID" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid patient ID" }, { status: 400 });
     }
 
     const body = await request.json();
@@ -71,45 +69,23 @@ export async function PUT(
       nextOfKinEmail,
     } = body;
 
-    if (
-      !firstname ||
-      !lastname ||
-      !gender ||
-      !dob ||
-      !countryCode ||
-      !phone ||
-      !insuranceType
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+    if (!firstname || !lastname || !gender || !dob || !countryCode || !phone || !insuranceType) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Validate HMO fields when insurance type is "hmo"
     if (insuranceType === "hmo") {
       if (!hmoId) {
-        return NextResponse.json(
-          { error: "HMO selection is required for HMO insurance type" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "HMO selection is required for HMO insurance type" }, { status: 400 });
       }
       if (!policyNumber || policyNumber.trim() === "") {
-        return NextResponse.json(
-          { error: "Policy number is required for HMO insurance type" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Policy number is required for HMO insurance type" }, { status: 400 });
       }
     }
 
-    // Validate next of kin email format if provided
     if (nextOfKinEmail && nextOfKinEmail.trim() !== "") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(nextOfKinEmail)) {
-        return NextResponse.json(
-          { error: "Invalid next of kin email address" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Invalid next of kin email address" }, { status: 400 });
       }
     }
 
@@ -134,7 +110,7 @@ export async function PUT(
         nextOfKinEmail: nextOfKinEmail || null,
         updatedAt: new Date(),
       })
-      .where(eq(patients.id, id))
+      .where(and(eq(patients.id, id), eq(patients.organisationId, orgId)))
       .returning();
 
     if (updatedPatient.length === 0) {
@@ -144,10 +120,7 @@ export async function PUT(
     return NextResponse.json(updatedPatient[0]);
   } catch (error) {
     console.error("Error updating patient:", error);
-    return NextResponse.json(
-      { error: "Failed to update patient" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to update patient" }, { status: 500 });
   }
 }
 
@@ -156,20 +129,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: paramId } = await params;
     const id = parseInt(paramId);
     if (isNaN(id)) {
-      return NextResponse.json(
-        { error: "Invalid patient ID" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid patient ID" }, { status: 400 });
     }
 
-    // Soft delete: set deletedAt timestamp instead of actually deleting
     const deletedPatient = await db
       .update(patients)
       .set({ deletedAt: new Date() })
-      .where(and(eq(patients.id, id), isNull(patients.deletedAt)))
+      .where(and(eq(patients.id, id), isNull(patients.deletedAt), eq(patients.organisationId, orgId)))
       .returning();
 
     if (deletedPatient.length === 0) {
@@ -179,9 +151,6 @@ export async function DELETE(
     return NextResponse.json({ message: "Patient deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting patient:", error);
-    return NextResponse.json(
-      { error: "Failed to delete patient" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to delete patient" }, { status: 500 });
   }
 }

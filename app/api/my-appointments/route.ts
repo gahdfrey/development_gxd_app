@@ -1,39 +1,38 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { appointments, patients, users, requests, hmos, prescriptions } from "@/lib/db/schema";
+import { appointments, patients, hmos, prescriptions } from "@/lib/db/schema";
 import { desc, asc, eq, or, ilike, and, gte, lte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(request: Request) {
   try {
-    // Get the logged-in user's session
     const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!session || !session.user || !session.user.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Get the user's ID from their email
-    const currentUser = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, session.user.email))
-      .limit(1);
+    const doctorId = parseInt(session.user.id);
 
-    if (currentUser.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const doctorId = currentUser[0].id;
-
-    // Get query parameters
     const { searchParams } = new URL(request.url);
     const orderBy = searchParams.get("orderBy") || "desc";
     const search = searchParams.get("search");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // Build base query
+    const conditions: any[] = [
+      eq(appointments.doctorId, doctorId),
+      eq(appointments.organisationId, orgId),
+    ];
+
+    if (startDate) conditions.push(gte(appointments.appointmentDate, startDate));
+    if (endDate) conditions.push(lte(appointments.appointmentDate, endDate));
+    if (search && search.trim() !== "") {
+      const searchTerm = `%${search.trim()}%`;
+      conditions.push(or(ilike(patients.firstname, searchTerm), ilike(patients.lastname, searchTerm)));
+    }
+
     let queryBuilder = db
       .select({
         id: appointments.id,
@@ -67,49 +66,17 @@ export async function GET(request: Request) {
       })
       .from(appointments)
       .leftJoin(patients, eq(appointments.patientId, patients.id))
-      .leftJoin(hmos, eq(patients.hmoId, hmos.id));
+      .leftJoin(hmos, eq(patients.hmoId, hmos.id))
+      .where(and(...conditions)) as any;
 
-    // Build WHERE conditions
-    const conditions = [eq(appointments.doctorId, doctorId)];
-
-    // Add date range filtering
-    if (startDate) {
-      conditions.push(gte(appointments.appointmentDate, startDate) as any);
-    }
-    if (endDate) {
-      conditions.push(lte(appointments.appointmentDate, endDate) as any);
-    }
-
-    if (search && search.trim() !== "") {
-      const searchTerm = `%${search.trim()}%`;
-      conditions.push(
-        or(
-          ilike(patients.firstname, searchTerm),
-          ilike(patients.lastname, searchTerm),
-        ) as any,
-      );
-    }
-
-    queryBuilder = queryBuilder.where(and(...conditions)) as any;
-
-    // Apply ordering
     const doctorAppointments =
       orderBy === "asc"
-        ? await queryBuilder.orderBy(
-            asc(appointments.appointmentDate),
-            asc(appointments.appointmentTime),
-          )
-        : await queryBuilder.orderBy(
-            desc(appointments.appointmentDate),
-            desc(appointments.appointmentTime),
-          );
+        ? await queryBuilder.orderBy(asc(appointments.appointmentDate), asc(appointments.appointmentTime))
+        : await queryBuilder.orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
 
     return NextResponse.json(doctorAppointments);
   } catch (error) {
     console.error("Error fetching doctor's appointments:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch appointments" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 });
   }
 }

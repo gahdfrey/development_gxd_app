@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
-import { asc, ilike, eq, and, sql, SQL } from "drizzle-orm";
+import { asc, ilike, eq, and, sql } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
-// GET /api/products
 export async function GET(request: NextRequest) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
-    const category = searchParams.get("category"); // optional filter
-    const prescribable = searchParams.get("prescribable"); // "true" = drugs only
+    const category = searchParams.get("category");
+    const prescribable = searchParams.get("prescribable");
 
-    const conditions: SQL[] = [];
+    const conditions: any[] = [eq(products.organisationId, orgId)];
     if (search) conditions.push(ilike(products.name, `%${search}%`));
     if (category && category !== "all") conditions.push(eq(products.category, category));
     if (prescribable === "true") conditions.push(eq(products.isPrescribable, true));
 
-    const query = db
+    const rows = await db
       .select({
         id: products.id,
         name: products.name,
@@ -32,11 +35,9 @@ export async function GET(request: NextRequest) {
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
       })
-      .from(products);
-
-    const rows = conditions.length
-      ? await query.where(and(...conditions)).orderBy(asc(products.name))
-      : await query.orderBy(asc(products.name));
+      .from(products)
+      .where(and(...conditions))
+      .orderBy(asc(products.name));
 
     return NextResponse.json(rows, { status: 200 });
   } catch (error) {
@@ -45,30 +46,25 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/products
 export async function POST(request: NextRequest) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await request.json();
     const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable } = body;
 
-    if (!name?.trim()) {
-      return NextResponse.json({ error: "Product name is required" }, { status: 400 });
-    }
-    if (!unitsPerCase || unitsPerCase < 1) {
-      return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
-    }
-    if (price !== undefined && (isNaN(price) || price < 0)) {
-      return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
-    }
+    if (!name?.trim()) return NextResponse.json({ error: "Product name is required" }, { status: 400 });
+    if (!unitsPerCase || unitsPerCase < 1) return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
+    if (price !== undefined && (isNaN(price) || price < 0)) return NextResponse.json({ error: "Price must be a positive number" }, { status: 400 });
 
     const VALID_CATEGORIES = ["pharmacy", "laboratory", "radiology", "general"];
-    if (category && !VALID_CATEGORIES.includes(category)) {
-      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
-    }
+    if (category && !VALID_CATEGORIES.includes(category)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
 
     const [product] = await db
       .insert(products)
       .values({
+        organisationId: orgId,
         name: name.trim(),
         description: description?.trim() || null,
         category: category ?? "general",

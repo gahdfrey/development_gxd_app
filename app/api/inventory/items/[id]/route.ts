@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryItems } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
-// PATCH /api/inventory/items/[id]
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) {
@@ -28,7 +31,7 @@ export async function PATCH(
         ...(reorderLevel !== undefined && { reorderLevel }),
         updatedAt: new Date(),
       })
-      .where(eq(inventoryItems.id, id))
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.organisationId, orgId)))
       .returning();
 
     if (!updated) {
@@ -42,12 +45,14 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/inventory/items/[id]
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) {
@@ -56,7 +61,7 @@ export async function DELETE(
 
     const [deleted] = await db
       .delete(inventoryItems)
-      .where(eq(inventoryItems.id, id))
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.organisationId, orgId)))
       .returning();
 
     if (!deleted) {

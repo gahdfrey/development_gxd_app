@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requests } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { auth } from "@/auth";
+import { eq, and } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
-// PATCH /api/requests/[id] - Update payment status
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: idParam } = await params;
     const id = parseInt(idParam);
@@ -32,11 +29,12 @@ export async function PATCH(
       );
     }
 
-    // Fetch current record — prevent reverting a paid status
+    const orgFilter = and(eq(requests.id, id), eq(requests.organisationId, orgId));
+
     const [existing] = await db
       .select({ paymentStatus: requests.paymentStatus })
       .from(requests)
-      .where(eq(requests.id, id))
+      .where(orgFilter)
       .limit(1);
 
     if (!existing) {
@@ -53,7 +51,7 @@ export async function PATCH(
     const [updated] = await db
       .update(requests)
       .set({ paymentStatus: "paid", updatedAt: new Date() })
-      .where(eq(requests.id, id))
+      .where(orgFilter)
       .returning();
 
     if (!updated) {
@@ -63,9 +61,6 @@ export async function PATCH(
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {
     console.error("Error updating request:", error);
-    return NextResponse.json(
-      { error: "Failed to update request" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to update request" }, { status: 500 });
   }
 }

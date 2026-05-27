@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 const VALID_CATEGORIES = ["pharmacy", "laboratory", "radiology", "general"];
 
-// GET /api/products/[id]
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -32,7 +35,7 @@ export async function GET(
         updatedAt: products.updatedAt,
       })
       .from(products)
-      .where(eq(products.id, id));
+      .where(and(eq(products.id, id), eq(products.organisationId, orgId)));
 
     if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
     return NextResponse.json(product, { status: 200 });
@@ -42,12 +45,14 @@ export async function GET(
   }
 }
 
-// PATCH /api/products/[id]
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -79,7 +84,7 @@ export async function PATCH(
         ...(isPrescribable !== undefined && { isPrescribable }),
         updatedAt: new Date(),
       })
-      .where(eq(products.id, id))
+      .where(and(eq(products.id, id), eq(products.organisationId, orgId)))
       .returning();
 
     if (!updated) return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -90,19 +95,21 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/products/[id]
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const [deleted] = await db
       .delete(products)
-      .where(eq(products.id, id))
+      .where(and(eq(products.id, id), eq(products.organisationId, orgId)))
       .returning();
 
     if (!deleted) return NextResponse.json({ error: "Product not found" }, { status: 404 });

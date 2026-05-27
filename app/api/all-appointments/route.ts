@@ -2,88 +2,55 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { appointments, patients, users, roles } from "@/lib/db/schema";
-import {
-  eq,
-  and,
-  or,
-  isNotNull,
-  asc,
-  desc,
-  ilike,
-  gte,
-  lte,
-} from "drizzle-orm";
+import { eq, and, or, isNotNull, asc, desc, ilike, gte, lte } from "drizzle-orm";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(request: Request) {
   try {
     const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Fetch user with permissions
-    const userDetails = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        permissions: roles.permissions,
-      })
+    const userId = parseInt(session.user.id);
+
+    const [userDetails] = await db
+      .select({ permissions: roles.permissions })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .where(eq(users.email, session.user.email))
+      .where(and(eq(users.id, userId), eq(users.organisationId, orgId)))
       .limit(1);
 
-    if (userDetails.length === 0 || !userDetails[0]) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    if (!userDetails) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const user = userDetails[0];
-
-    // Check permission - supports both formats:
-    // Array: { "all-appointments": ["view", "add"] }
-    // Object: { "all-appointments": { "view": true } }
-    const permissions = user.permissions as Record<string, string[] | Record<string, boolean>> | null;
+    const permissions = userDetails.permissions as Record<string, string[] | Record<string, boolean>> | null;
     let hasPermission = false;
     if (permissions && "all-appointments" in permissions) {
       const modulePerm = permissions["all-appointments"];
-      if (Array.isArray(modulePerm)) {
-        hasPermission = modulePerm.includes("view");
-      } else if (typeof modulePerm === "object" && modulePerm !== null) {
-        hasPermission = modulePerm["view"] === true;
-      }
+      if (Array.isArray(modulePerm)) hasPermission = modulePerm.includes("view");
+      else if (typeof modulePerm === "object" && modulePerm !== null) hasPermission = modulePerm["view"] === true;
     }
 
     if (!hasPermission) {
-      return NextResponse.json(
-        {
-          error:
-            "Forbidden: You do not have permission to view all appointments",
-        },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Forbidden: You do not have permission to view all appointments" }, { status: 403 });
     }
 
-    // Parse query parameters
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const status = searchParams.get("status");
-    const orderDate = searchParams.get("orderDate"); // "desc" | "asc" — defaults to desc
+    const orderDate = searchParams.get("orderDate");
 
-    // Base query conditions
-    const conditions = [isNotNull(appointments.id)];
+    const conditions: any[] = [
+      isNotNull(appointments.id),
+      eq(appointments.organisationId, orgId),
+    ];
 
-    if (startDate) {
-      conditions.push(gte(appointments.appointmentDate, startDate));
-    }
-    if (endDate) {
-      conditions.push(lte(appointments.appointmentDate, endDate));
-    }
-    if (status) {
-      conditions.push(eq(appointments.status, status));
-    }
+    if (startDate) conditions.push(gte(appointments.appointmentDate, startDate));
+    if (endDate) conditions.push(lte(appointments.appointmentDate, endDate));
+    if (status) conditions.push(eq(appointments.status, status));
     if (search) {
       const searchLower = `%${search.toLowerCase()}%`;
       const searchCondition = or(
@@ -92,12 +59,9 @@ export async function GET(request: Request) {
         ilike(users.firstname, searchLower),
         ilike(users.lastname, searchLower),
       );
-      if (searchCondition) {
-        conditions.push(searchCondition);
-      }
+      if (searchCondition) conditions.push(searchCondition);
     }
 
-    // Fetch all appointments with patient and doctor details, ordered by date (earliest first)
     const allAppointments = await db
       .select({
         id: appointments.id,
@@ -124,26 +88,23 @@ export async function GET(request: Request) {
         orderDate === "asc" ? asc(appointments.appointmentTime) : desc(appointments.appointmentTime),
       );
 
-    // Format the response
-    const formattedAppointments = allAppointments.map((apt) => ({
-      id: apt.id,
-      patientName: `${apt.patientFirstname} ${apt.patientLastname}`,
-      patientGender: apt.patientGender,
-      doctorName: `Dr. ${apt.doctorFirstname} ${apt.doctorLastname}`,
-      status: apt.status,
-      visitType: apt.visitType,
-      appointmentDate: apt.appointmentDate,
-      appointmentTime: apt.appointmentTime,
-      notes: apt.notes,
-      createdAt: apt.createdAt,
-    }));
-
-    return NextResponse.json(formattedAppointments, { status: 200 });
+    return NextResponse.json(
+      allAppointments.map((apt) => ({
+        id: apt.id,
+        patientName: `${apt.patientFirstname} ${apt.patientLastname}`,
+        patientGender: apt.patientGender,
+        doctorName: `Dr. ${apt.doctorFirstname} ${apt.doctorLastname}`,
+        status: apt.status,
+        visitType: apt.visitType,
+        appointmentDate: apt.appointmentDate,
+        appointmentTime: apt.appointmentTime,
+        notes: apt.notes,
+        createdAt: apt.createdAt,
+      })),
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Error fetching all appointments:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch appointments" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 });
   }
 }

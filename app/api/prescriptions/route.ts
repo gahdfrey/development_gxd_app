@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { prescriptions, patients, users, products, appointments } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { prescriptions, patients, users, products } from "@/lib/db/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { auth } from "@/auth";
+import { getOrgId } from "@/lib/org";
 
 export async function GET(_req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const rows = await db
       .select({
@@ -34,6 +35,7 @@ export async function GET(_req: NextRequest) {
       .leftJoin(patients, eq(prescriptions.patientId, patients.id))
       .leftJoin(users, eq(prescriptions.requestedBy, users.id))
       .leftJoin(products, eq(prescriptions.productId, products.id))
+      .where(eq(prescriptions.organisationId, orgId))
       .orderBy(desc(prescriptions.createdAt));
 
     return NextResponse.json(rows, { status: 200 });
@@ -46,15 +48,12 @@ export async function GET(_req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [doctor] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, session.user.email));
+    const orgId = await getOrgId();
+    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!doctor) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
+    const doctorId = parseInt(session.user.id);
     const body = await req.json();
     const { appointmentId, patientId, items } = body;
 
@@ -72,9 +71,10 @@ export async function POST(req: NextRequest) {
       .insert(prescriptions)
       .values(
         items.map((item: { productId: number; dosage: string }) => ({
+          organisationId: orgId,
           appointmentId: appointmentId ?? null,
           patientId,
-          requestedBy: doctor.id,
+          requestedBy: doctorId,
           productId: item.productId,
           dosage: item.dosage.trim(),
         }))

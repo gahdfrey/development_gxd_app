@@ -9,6 +9,8 @@ declare module 'next-auth' {
         lastname: string;
         role: string;
         patientId?: number | null;
+        organisationId: number;
+        isPlatformAdmin: boolean;
     }
 
     interface Session {
@@ -20,6 +22,8 @@ declare module 'next-auth' {
             lastname: string;
             role: string;
             patientId?: number | null;
+            organisationId: number;
+            isPlatformAdmin: boolean;
         };
     }
 }
@@ -32,5 +36,7 @@ declare module 'next-auth/jwt' {
         lastname: string;
         role: string;
         patientId?: number | null;
+        organisationId: number;
+        isPlatformAdmin: boolean;
     }
 }

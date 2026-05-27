@@ -133,6 +133,7 @@ function buildPatients() {
     const nokLast = Math.random() > 0.5 ? lastname : pick(lastNames);
 
     records.push({
+      organisationId: 1,
       firstname,
       lastname,
       gender,

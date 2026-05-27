@@ -6,39 +6,41 @@ import {
   serial,
   integer,
   boolean,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-/**
- * Users table schema
- * Stores user authentication and profile information
- */
-export const users = pgTable("users", {
+// ─── Organisations ────────────────────────────────────────────────────────────
+export const organisations = pgTable("organisations", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  email: text("email").notNull().unique(),
-  firstname: text("firstname").notNull(),
-  lastname: text("lastname").notNull(),
-  password: text("password").notNull(), // Hashed with bcrypt
-  roleId: integer("role_id").references(() => roles.id),
-  departmentId: integer("department_id").references(() => departments.id), // Department the user belongs to
-  patientId: integer("patient_id"), // Links to patients table for patient portal accounts
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export type Organisation = typeof organisations.$inferSelect;
+export type NewOrganisation = typeof organisations.$inferInsert;
+
+// ─── Roles ────────────────────────────────────────────────────────────────────
 export const roles = pgTable("roles", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  name: text("name").notNull(),
   description: text("description"),
   permissions: json("permissions"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  nameOrgUnique: uniqueIndex("roles_name_org_idx").on(t.name, t.organisationId),
+}));
 
-/**
- * HMO table schema
- * Stores Health Maintenance Organization information
- */
+export type Role = typeof roles.$inferSelect;
+export type NewRole = typeof roles.$inferInsert;
+
+// ─── HMOs (shared across all orgs) ───────────────────────────────────────────
 export const hmos = pgTable("hmos", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
@@ -50,20 +52,59 @@ export const hmos = pgTable("hmos", {
 export type HMO = typeof hmos.$inferSelect;
 export type NewHMO = typeof hmos.$inferInsert;
 
+// ─── Departments ──────────────────────────────────────────────────────────────
+export const departments = pgTable("departments", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  nameOrgUnique: uniqueIndex("departments_name_org_idx").on(t.name, t.organisationId),
+}));
+
+export type Department = typeof departments.$inferSelect;
+export type NewDepartment = typeof departments.$inferInsert;
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  username: text("username").notNull(),
+  email: text("email").notNull(),
+  firstname: text("firstname").notNull(),
+  lastname: text("lastname").notNull(),
+  password: text("password").notNull(),
+  roleId: integer("role_id").references(() => roles.id),
+  departmentId: integer("department_id").references(() => departments.id),
+  patientId: integer("patient_id"),
+  isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  emailOrgUnique: uniqueIndex("users_email_org_idx").on(t.email, t.organisationId),
+  usernameOrgUnique: uniqueIndex("users_username_org_idx").on(t.username, t.organisationId),
+}));
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type UserWithRole = User & { roleName: string | null };
+
+// ─── Patients ─────────────────────────────────────────────────────────────────
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   firstname: text("firstname").notNull(),
   lastname: text("lastname").notNull(),
   gender: text("gender").notNull(),
   dob: text("dob").notNull(),
   maidenName: text("maiden_name"),
-  email: text("email"), // Patient's own email — used for portal login
+  email: text("email"),
   countryCode: text("country_code").notNull(),
   phone: text("phone").notNull(),
-  insuranceType: text("insurance_type").notNull(), // "private", "hmo", "corporate"
-  hmoId: integer("hmo_id").references(() => hmos.id), // Required when insuranceType is "hmo"
-  policyNumber: text("policy_number"), // Required when insuranceType is "hmo"
-  // Next of Kin fields
+  insuranceType: text("insurance_type").notNull(),
+  hmoId: integer("hmo_id").references(() => hmos.id),
+  policyNumber: text("policy_number"),
   nextOfKinFirstname: text("next_of_kin_firstname"),
   nextOfKinLastname: text("next_of_kin_lastname"),
   nextOfKinRelationship: text("next_of_kin_relationship"),
@@ -72,45 +113,37 @@ export const patients = pgTable("patients", {
   nextOfKinEmail: text("next_of_kin_email"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  deletedAt: timestamp("deleted_at", { withTimezone: true }), // Soft delete: null = active, timestamp = deleted
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-/**
- * Appointments table schema
- * Stores scheduled appointments between patients and doctors
- */
+export type Patient = typeof patients.$inferSelect;
+export type NewPatient = typeof patients.$inferInsert;
+
+// ─── Appointments ─────────────────────────────────────────────────────────────
 export const appointments = pgTable("appointments", {
   id: serial("id").primaryKey(),
-  patientId: integer("patient_id")
-    .notNull()
-    .references(() => patients.id),
-  doctorId: integer("doctor_id")
-    .notNull()
-    .references(() => users.id),
-  appointmentDate: text("appointment_date").notNull(), // Format: YYYY-MM-DD
-  appointmentTime: text("appointment_time").notNull(), // Format: HH:MM (24-hour)
-  status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled, no-show
-  visitType: text("visit_type").notNull().default("new visit"), // new visit, follow up, review, first visit after discharge, drug refill
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  doctorId: integer("doctor_id").notNull().references(() => users.id),
+  appointmentDate: text("appointment_date").notNull(),
+  appointmentTime: text("appointment_time").notNull(),
+  status: text("status").notNull().default("scheduled"),
+  visitType: text("visit_type").notNull().default("new visit"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * Visits table schema
- * Stores consultation records with duration and doctor notes
- */
+export type Appointment = typeof appointments.$inferSelect;
+export type NewAppointment = typeof appointments.$inferInsert;
+
+// ─── Visits ───────────────────────────────────────────────────────────────────
 export const visits = pgTable("visits", {
   id: serial("id").primaryKey(),
-  appointmentId: integer("appointment_id")
-    .notNull()
-    .references(() => appointments.id),
-  patientId: integer("patient_id")
-    .notNull()
-    .references(() => patients.id),
-  doctorId: integer("doctor_id")
-    .notNull()
-    .references(() => users.id),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  appointmentId: integer("appointment_id").notNull().references(() => appointments.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  doctorId: integer("doctor_id").notNull().references(() => users.id),
   doctorNotes: text("doctor_notes"),
   durationMinutes: integer("duration_minutes").notNull(),
   startTime: timestamp("start_time", { withTimezone: true }).notNull(),
@@ -119,83 +152,35 @@ export const visits = pgTable("visits", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Type inference for TypeScript
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-
-export type Role = typeof roles.$inferSelect;
-export type NewRole = typeof roles.$inferInsert;
-
-export type Patient = typeof patients.$inferSelect;
-export type NewPatient = typeof patients.$inferInsert;
-
-export type Appointment = typeof appointments.$inferSelect;
-export type NewAppointment = typeof appointments.$inferInsert;
-
 export type Visit = typeof visits.$inferSelect;
 export type NewVisit = typeof visits.$inferInsert;
 
-
-
-// User with role name joined
-export type UserWithRole = User & { roleName: string | null };
-
-/**
- * Departments table schema
- * Stores laboratory/clinical departments
- */
-export const departments = pgTable("departments", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export type Department = typeof departments.$inferSelect;
-export type NewDepartment = typeof departments.$inferInsert;
-
-/**
- * Lab Tests table schema
- * Stores tests/investigations linked to a department
- */
+// ─── Lab Tests ────────────────────────────────────────────────────────────────
 export const labTests = pgTable("lab_tests", {
   id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   name: text("name").notNull(),
-  price: integer("price").notNull(), // stored in smallest currency unit (e.g. kobo)
-  departmentId: integer("department_id")
-    .notNull()
-    .references(() => departments.id),
+  price: integer("price").notNull(),
+  departmentId: integer("department_id").notNull().references(() => departments.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type LabTest = typeof labTests.$inferSelect;
 export type NewLabTest = typeof labTests.$inferInsert;
-
-// Lab test with department name joined
 export type LabTestWithDepartment = LabTest & { departmentName: string };
 
-/**
- * Requests table schema
- * Stores lab/test requests raised by doctors after a consultation
- */
+// ─── Requests ─────────────────────────────────────────────────────────────────
 export const requests = pgTable("requests", {
   id: serial("id").primaryKey(),
-  patientId: integer("patient_id")
-    .notNull()
-    .references(() => patients.id),
-  departmentId: integer("department_id")
-    .notNull()
-    .references(() => departments.id),
-  testId: integer("test_id")
-    .notNull()
-    .references(() => labTests.id),
-  requestedBy: integer("requested_by")
-    .notNull()
-    .references(() => users.id),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  departmentId: integer("department_id").notNull().references(() => departments.id),
+  testId: integer("test_id").notNull().references(() => labTests.id),
+  requestedBy: integer("requested_by").notNull().references(() => users.id),
   appointmentId: integer("appointment_id").references(() => appointments.id),
-  status: text("status").notNull().default("pending"), // pending, completed, cancelled
-  paymentStatus: text("payment_status").notNull().default("not_paid"), // paid, not_paid
+  status: text("status").notNull().default("pending"),
+  paymentStatus: text("payment_status").notNull().default("not_paid"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -203,44 +188,30 @@ export const requests = pgTable("requests", {
 export type Request = typeof requests.$inferSelect;
 export type NewRequest = typeof requests.$inferInsert;
 
-/**
- * Request Results table schema
- * Stores uploaded result files (PDF, images, etc.) for a completed request
- */
+// ─── Request Results ──────────────────────────────────────────────────────────
 export const requestResults = pgTable("request_results", {
   id: serial("id").primaryKey(),
-  requestId: integer("request_id")
-    .notNull()
-    .references(() => requests.id),
+  requestId: integer("request_id").notNull().references(() => requests.id),
   fileName: text("file_name").notNull(),
   filePath: text("file_path").notNull(),
   fileType: text("file_type").notNull(),
   message: text("message"),
-  uploadedBy: integer("uploaded_by")
-    .notNull()
-    .references(() => users.id),
+  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type RequestResult = typeof requestResults.$inferSelect;
 export type NewRequestResult = typeof requestResults.$inferInsert;
 
-/**
- * Notifications table schema
- * Stores result-upload notifications for doctors
- */
+// ─── Notifications ────────────────────────────────────────────────────────────
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id), // the doctor to notify
-  requestId: integer("request_id")
-    .notNull()
-    .references(() => requests.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  requestId: integer("request_id").notNull().references(() => requests.id),
   patientFirstname: text("patient_firstname"),
   patientLastname: text("patient_lastname"),
   departmentName: text("department_name"),
-  message: text("message"), // optional message from the uploaded result
+  message: text("message"),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -248,17 +219,15 @@ export const notifications = pgTable("notifications", {
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 
-/**
- * Inventory Items table schema
- * Stores the central stock of supply items managed by admin/store
- */
+// ─── Inventory Items ──────────────────────────────────────────────────────────
 export const inventoryItems = pgTable("inventory_items", {
   id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   name: text("name").notNull(),
   description: text("description"),
-  unit: text("unit").notNull(), // e.g. "units", "boxes", "vials", "packs"
-  quantity: integer("quantity").notNull().default(0), // current stock level
-  reorderLevel: integer("reorder_level").notNull().default(10), // warn when stock <= this
+  unit: text("unit").notNull(),
+  quantity: integer("quantity").notNull().default(0),
+  reorderLevel: integer("reorder_level").notNull().default(10),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -266,69 +235,18 @@ export const inventoryItems = pgTable("inventory_items", {
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type NewInventoryItem = typeof inventoryItems.$inferInsert;
 
-/**
- * Supply Orders table schema
- * A supply order raised by a department requesting items from inventory
- */
-export const supplyOrders = pgTable("supply_orders", {
-  id: serial("id").primaryKey(),
-  departmentOrderId: integer("department_order_id"), // groups all line-orders from the same dept requisition
-  departmentId: integer("department_id")
-    .notNull()
-    .references(() => departments.id),
-  requestedBy: integer("requested_by")
-    .notNull()
-    .references(() => users.id),
-  status: text("status").notNull().default("pending"), // legacy — kept for old data
-  departmentStatus: text("department_status").notNull().default("pending"), // dept view: pending | accepted
-  supplyStatus: text("supply_status").notNull().default("pending"),         // supply view: pending | accepted | delivered | cancelled
-  notes: text("notes"),
-  cancellationReason: text("cancellation_reason"), // set by supply team when supplyStatus = cancelled
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export type SupplyOrder = typeof supplyOrders.$inferSelect;
-export type NewSupplyOrder = typeof supplyOrders.$inferInsert;
-
-/**
- * Supply Order Items table schema
- * The individual line items within a supply order.
- * References products (new flow). inventoryItemId kept nullable for legacy data.
- */
-export const supplyOrderItems = pgTable("supply_order_items", {
-  id: serial("id").primaryKey(),
-  orderId: integer("order_id")
-    .notNull()
-    .references(() => supplyOrders.id),
-  inventoryItemId: integer("inventory_item_id")
-    .references(() => inventoryItems.id),
-  productId: integer("product_id")
-    .references(() => products.id),
-  quantityRequested: integer("quantity_requested").notNull(),
-  status: text("status").notNull().default("pending"), // pending | delivered
-  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export type SupplyOrderItem = typeof supplyOrderItems.$inferSelect;
-export type NewSupplyOrderItem = typeof supplyOrderItems.$inferInsert;
-
-/**
- * Products table schema
- * Tracks medical product stock using a case + loose-unit model.
- * Total units = casesInStock × unitsPerCase + looseUnitsInStock
- */
+// ─── Products ─────────────────────────────────────────────────────────────────
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   name: text("name").notNull(),
   description: text("description"),
   casesInStock: integer("cases_in_stock").notNull().default(0),
   unitsPerCase: integer("units_per_case").notNull().default(1),
   looseUnitsInStock: integer("loose_units_in_stock").notNull().default(0),
-  reorderLevel: integer("reorder_level").notNull().default(20), // threshold in total units
-  price: integer("price").notNull().default(0), // price in naira (whole units)
-  category: text("category").notNull().default("general"), // pharmacy | laboratory | radiology | general
+  reorderLevel: integer("reorder_level").notNull().default(20),
+  price: integer("price").notNull().default(0),
+  category: text("category").notNull().default("general"),
   isPrescribable: boolean("is_prescribable").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -337,19 +255,51 @@ export const products = pgTable("products", {
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 
-// ─── Prescriptions ────────────────────────────────────────────────────────────
-// One row per drug prescribed. Multiple drugs from the same appointment
-// are separate rows (mirrors how `requests` works for lab tests).
+// ─── Supply Orders ────────────────────────────────────────────────────────────
+export const supplyOrders = pgTable("supply_orders", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  departmentOrderId: integer("department_order_id"),
+  departmentId: integer("department_id").notNull().references(() => departments.id),
+  requestedBy: integer("requested_by").notNull().references(() => users.id),
+  status: text("status").notNull().default("pending"),
+  departmentStatus: text("department_status").notNull().default("pending"),
+  supplyStatus: text("supply_status").notNull().default("pending"),
+  notes: text("notes"),
+  cancellationReason: text("cancellation_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
+export type SupplyOrder = typeof supplyOrders.$inferSelect;
+export type NewSupplyOrder = typeof supplyOrders.$inferInsert;
+
+// ─── Supply Order Items ───────────────────────────────────────────────────────
+export const supplyOrderItems = pgTable("supply_order_items", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => supplyOrders.id),
+  inventoryItemId: integer("inventory_item_id").references(() => inventoryItems.id),
+  productId: integer("product_id").references(() => products.id),
+  quantityRequested: integer("quantity_requested").notNull(),
+  status: text("status").notNull().default("pending"),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SupplyOrderItem = typeof supplyOrderItems.$inferSelect;
+export type NewSupplyOrderItem = typeof supplyOrderItems.$inferInsert;
+
+// ─── Prescriptions ────────────────────────────────────────────────────────────
 export const prescriptions = pgTable("prescriptions", {
   id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   appointmentId: integer("appointment_id").references(() => appointments.id),
   patientId: integer("patient_id").notNull().references(() => patients.id),
   requestedBy: integer("requested_by").notNull().references(() => users.id),
   productId: integer("product_id").notNull().references(() => products.id),
   dosage: text("dosage").notNull(),
-  paymentStatus: text("payment_status").notNull().default("not_paid"), // not_paid | paid
-  status: text("status").notNull().default("pending"),                 // pending | dispatched | cancelled
+  paymentStatus: text("payment_status").notNull().default("not_paid"),
+  status: text("status").notNull().default("pending"),
   cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

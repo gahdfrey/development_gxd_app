@@ -14,6 +14,8 @@ export const authConfig = {
         token.lastname = (user as any).lastname;
         token.role = (user as any).role;
         token.patientId = (user as any).patientId ?? null;
+        token.organisationId = (user as any).organisationId;
+        token.isPlatformAdmin = (user as any).isPlatformAdmin ?? false;
       }
       return token;
     },
@@ -25,6 +27,8 @@ export const authConfig = {
         session.user.lastname = token.lastname as string;
         session.user.role = token.role as string;
         session.user.patientId = (token.patientId as number | null) ?? null;
+        session.user.organisationId = token.organisationId as number;
+        session.user.isPlatformAdmin = token.isPlatformAdmin as boolean;
       }
       return session;
     },
