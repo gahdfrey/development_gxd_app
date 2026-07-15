@@ -17,12 +17,23 @@ import FormSection from "./form/FormSection";
 import PatientDetailsFields from "./PatientDetailsFields";
 import NextOfKinFields from "./NextOfKinFields";
 
+interface DuplicateMatch {
+  id: number;
+  mrn: string | null;
+  firstname: string;
+  lastname: string;
+  dob?: string;
+  phone?: string;
+  countryCode?: string;
+}
+
 interface PatientFormData {
   firstname: string;
   lastname: string;
   gender: string;
   dob: string;
   maidenName: string;
+  nin: string;
   email: string;
   countryCode: string;
   phone: string;
@@ -35,6 +46,7 @@ interface PatientFormData {
   nextOfKinAddress: string;
   nextOfKinPhone: string;
   nextOfKinEmail: string;
+  consentGiven: boolean;
 }
 
 interface CreatePatientModalProps {
@@ -51,6 +63,8 @@ export default function CreatePatientModal({
   const { data: hmos } = useSWR<HMO[]>("/api/hmo", fetcher);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[] | null>(null);
+  const [pendingData, setPendingData] = useState<PatientFormData | null>(null);
   const { showToast } = useToast();
 
   const {
@@ -67,6 +81,7 @@ export default function CreatePatientModal({
       gender: "",
       dob: "",
       maidenName: "",
+      nin: "",
       email: "",
       countryCode: "+234",
       phone: "",
@@ -79,6 +94,7 @@ export default function CreatePatientModal({
       nextOfKinAddress: "",
       nextOfKinPhone: "",
       nextOfKinEmail: "",
+      consentGiven: false,
     },
     mode: "onSubmit",
     reValidateMode: "onChange",
@@ -86,7 +102,7 @@ export default function CreatePatientModal({
 
   const insuranceType = watch("insuranceType");
 
-  const onSubmit = async (data: PatientFormData) => {
+  const submitPatient = async (data: PatientFormData, allowDuplicate: boolean) => {
     setIsSubmitting(true);
     setErrorMessage("");
 
@@ -111,13 +127,23 @@ export default function CreatePatientModal({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, allowDuplicate }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        // Possible duplicate: show the matches and let staff decide.
+        if (response.status === 409 && errorData.duplicateWarning) {
+          setDuplicateMatches(errorData.matches ?? []);
+          setPendingData(data);
+          setIsSubmitting(false);
+          return;
+        }
         throw new Error(errorData.error || "Failed to create patient");
       }
+
+      setDuplicateMatches(null);
+      setPendingData(null);
 
       await mutate(
         (key) => typeof key === "string" && key.startsWith("/api/patients"),
@@ -142,10 +168,14 @@ export default function CreatePatientModal({
     }
   };
 
+  const onSubmit = (data: PatientFormData) => submitPatient(data, false);
+
   const handleClose = () => {
     if (!isSubmitting) {
       reset();
       setErrorMessage("");
+      setDuplicateMatches(null);
+      setPendingData(null);
       onClose();
     }
   };
@@ -228,6 +258,85 @@ export default function CreatePatientModal({
             >
               <NextOfKinFields register={register} errors={errors} />
             </FormSection>
+
+            {/* Duplicate warning (NDHA: one patient, one health record) */}
+            {duplicateMatches && duplicateMatches.length > 0 && (
+              <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-5 animate-fade-in">
+                <p className="font-semibold text-amber-900 mb-2">
+                  ⚠ Possible duplicate patient
+                </p>
+                <p className="text-sm text-amber-800 mb-3">
+                  A patient with matching details already exists. Please check
+                  before creating a new record — duplicate records split a
+                  patient&apos;s medical history.
+                </p>
+                <ul className="space-y-1.5 mb-4">
+                  {duplicateMatches.map((m) => (
+                    <li
+                      key={m.id}
+                      className="text-sm text-amber-900 bg-white/70 border border-amber-200 rounded-lg px-3 py-2"
+                    >
+                      <span className="font-semibold">
+                        {m.firstname} {m.lastname}
+                      </span>{" "}
+                      — {m.mrn ?? "no MRN"}
+                      {m.dob ? ` · DOB ${m.dob}` : ""}
+                      {m.phone ? ` · ${m.countryCode ?? ""}${m.phone}` : ""}
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      setDuplicateMatches(null);
+                      setPendingData(null);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-amber-900 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50"
+                  >
+                    Go back and check
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => pendingData && submitPatient(pendingData, true)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+                  >
+                    This is a different person — create anyway
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Data Processing Consent (NDPA 2023) */}
+            <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/60 p-5">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register("consentGiven", {
+                    required:
+                      "Patient consent is required before registration can be completed",
+                  })}
+                  className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 leading-relaxed">
+                  <span className="font-semibold text-gray-900">
+                    Patient consent confirmed.
+                  </span>{" "}
+                  The patient (or their legal guardian) has consented to the
+                  collection and processing of their personal and health
+                  information for the purpose of care delivery, in line with
+                  the Nigeria Data Protection Act 2023. The patient may
+                  withdraw this consent at any time.
+                </span>
+              </label>
+              {errors.consentGiven && (
+                <p className="mt-2 ml-8 text-sm text-red-600">
+                  {errors.consentGiven.message}
+                </p>
+              )}
+            </div>
 
             {/* Submit Button */}
             <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">

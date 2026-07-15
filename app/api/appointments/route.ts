@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { appointments, patients, users } from "@/lib/db/schema";
 import { desc, eq, and } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET() {
   try {
@@ -46,8 +48,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([
+      ["appointments", "add"],
+      ["all-appointments", "add"],
+      ["dashboard", "add"],
+    ]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
     const { patientId, doctorId, appointmentDate, appointmentTime, status, visitType, notes } = body;
@@ -109,6 +116,16 @@ export async function POST(request: Request) {
       .leftJoin(patients, eq(appointments.patientId, patients.id))
       .leftJoin(users, eq(appointments.doctorId, users.id))
       .where(eq(appointments.id, newAppointment[0].id));
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "create",
+      entityType: "appointment",
+      entityId: newAppointment[0].id,
+      details: { patientId: parseInt(patientId), doctorId: parseInt(doctorId), appointmentDate, appointmentTime },
+    });
 
     return NextResponse.json(appointment[0], { status: 201 });
   } catch (error) {

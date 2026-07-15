@@ -119,15 +119,32 @@ export default function PatientDetailsFields({
         />
       </div>
 
-      {/* Maiden Name */}
-      <FormInput
-        id="maidenName"
-        label="Maiden Name"
-        icon={<IdentificationIcon className="h-4 w-4" />}
-        placeholder="Optional"
-        register={register("maidenName")}
-        optional
-      />
+      {/* NIN and Maiden Name */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormInput
+          id="nin"
+          label="NIN (National Identification Number)"
+          icon={<IdentificationIcon className="h-4 w-4" />}
+          placeholder="11-digit NIN (optional)"
+          error={errors.nin as FieldError | undefined}
+          register={register("nin", {
+            pattern: {
+              value: /^\d{11}$/,
+              message: "NIN must be exactly 11 digits",
+            },
+          })}
+          optional
+        />
+
+        <FormInput
+          id="maidenName"
+          label="Maiden Name"
+          icon={<IdentificationIcon className="h-4 w-4" />}
+          placeholder="Optional"
+          register={register("maidenName")}
+          optional
+        />
+      </div>
 
       {/* Phone Number with Country Code */}
       <div className="space-y-2">

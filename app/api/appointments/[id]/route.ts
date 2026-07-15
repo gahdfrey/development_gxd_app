@@ -2,15 +2,24 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { appointments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Status changes come from schedulers and from clinicians working their
+    // own appointment list.
+    const authz = await requirePermission([
+      ["appointments", "edit"],
+      ["all-appointments", "edit"],
+      ["my-appointments", "edit"],
+      ["my-appointments", "view"],
+    ]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id } = await params;
     const body = await request.json();
@@ -34,6 +43,16 @@ export async function PATCH(
     if (updatedAppointment.length === 0) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "update",
+      entityType: "appointment",
+      entityId: parseInt(id),
+      details: { status },
+    });
 
     return NextResponse.json(updatedAppointment[0]);
   } catch (error) {

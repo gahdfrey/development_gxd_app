@@ -10,6 +10,11 @@ import {
 } from "drizzle-orm/pg-core";
 
 // ─── Organisations ────────────────────────────────────────────────────────────
+// Facility attributes follow the NHFR (Nigeria Health Facility Registry)
+// minimum "signature domain" dataset: name, type, ownership, address,
+// contacts, operational status, administrative area, geo-coordinates.
+// facilityRegistryId is reserved for the national NHFR facility ID once the
+// registry is live.
 export const organisations = pgTable("organisations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -17,6 +22,14 @@ export const organisations = pgTable("organisations", {
   email: text("email"),
   phone: text("phone"),
   address: text("address"),
+  facilityRegistryId: text("facility_registry_id"),
+  facilityType: text("facility_type"),
+  ownership: text("ownership"),
+  state: text("state"),
+  lga: text("lga"),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  operationalStatus: text("operational_status").notNull().default("operational"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -33,6 +46,7 @@ export const roles = pgTable("roles", {
   permissions: json("permissions"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (t) => ({
   nameOrgUnique: uniqueIndex("roles_name_org_idx").on(t.name, t.organisationId),
 }));
@@ -47,6 +61,7 @@ export const hmos = pgTable("hmos", {
   description: text("description"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export type HMO = typeof hmos.$inferSelect;
@@ -59,6 +74,7 @@ export const departments = pgTable("departments", {
   name: text("name").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (t) => ({
   nameOrgUnique: uniqueIndex("departments_name_org_idx").on(t.name, t.organisationId),
 }));
@@ -79,8 +95,15 @@ export const users = pgTable("users", {
   departmentId: integer("department_id").references(() => departments.id),
   patientId: integer("patient_id"),
   isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
+  // NHWR (Nigeria Health Worker Registry) readiness: professional-council
+  // registration (e.g. MDCN for doctors, NMCN for nurses, PCN for
+  // pharmacists) and a reserved column for the national worker registry ID.
+  licenseNumber: text("license_number"),
+  licenseCouncil: text("license_council"),
+  workerRegistryId: text("worker_registry_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (t) => ({
   emailOrgUnique: uniqueIndex("users_email_org_idx").on(t.email, t.organisationId),
   usernameOrgUnique: uniqueIndex("users_username_org_idx").on(t.username, t.organisationId),
@@ -94,6 +117,13 @@ export type UserWithRole = User & { roleName: string | null };
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
   organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  // NHCR (Nigeria Health Client Registry) readiness: NIN is the national
+  // identity anchor ("one patient, one health record"); mrn is the local
+  // Medical Record Number; clientRegistryId is reserved for the national
+  // CR ID once the registry is live.
+  nin: text("nin"),
+  mrn: text("mrn"),
+  clientRegistryId: text("client_registry_id"),
   firstname: text("firstname").notNull(),
   lastname: text("lastname").notNull(),
   gender: text("gender").notNull(),
@@ -164,6 +194,7 @@ export const labTests = pgTable("lab_tests", {
   departmentId: integer("department_id").notNull().references(() => departments.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export type LabTest = typeof labTests.$inferSelect;
@@ -230,6 +261,7 @@ export const inventoryItems = pgTable("inventory_items", {
   reorderLevel: integer("reorder_level").notNull().default(10),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export type InventoryItem = typeof inventoryItems.$inferSelect;
@@ -250,6 +282,7 @@ export const products = pgTable("products", {
   isPrescribable: boolean("is_prescribable").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export type Product = typeof products.$inferSelect;
@@ -307,3 +340,78 @@ export const prescriptions = pgTable("prescriptions", {
 
 export type Prescription = typeof prescriptions.$inferSelect;
 export type NewPrescription = typeof prescriptions.$inferInsert;
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+// Append-only trail of every data mutation and auth event (NDPA 2023 / NDHA
+// privacy-by-design). Rows are never updated or deleted. No FK constraints so
+// log entries survive the soft-deletion of the entities they reference.
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id"),
+  userId: integer("user_id"),
+  userEmail: text("user_email"),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id"),
+  details: json("details"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type NewAuditLog = typeof auditLogs.$inferInsert;
+
+// ─── Patient Consents ─────────────────────────────────────────────────────────
+// NDHA-style consent records: purpose, information types, expiry, and
+// withdrawal. Withdrawal sets status/withdrawnAt; rows are never deleted.
+export const patientConsents = pgTable("patient_consents", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  purpose: text("purpose").notNull(),
+  informationTypes: json("information_types"),
+  status: text("status").notNull().default("granted"),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+  recordedBy: integer("recorded_by").references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PatientConsent = typeof patientConsents.$inferSelect;
+export type NewPatientConsent = typeof patientConsents.$inferInsert;
+
+// ─── ICD-11 Codes (terminology reference) ─────────────────────────────────────
+// WHO ICD-11 MMS tabulation — the diagnosis coding standard the NDHA mandates
+// (Terminology Services / semantic interoperability). Shared across all orgs;
+// populated from the official WHO release via seed-icd11.ts.
+export const icd11Codes = pgTable("icd11_codes", {
+  code: text("code").primaryKey(),
+  title: text("title").notNull(),
+  chapter: text("chapter"),
+  isLeaf: boolean("is_leaf").notNull().default(true),
+});
+
+export type Icd11Code = typeof icd11Codes.$inferSelect;
+
+// ─── Visit Diagnoses ──────────────────────────────────────────────────────────
+// Structured, ICD-11-coded diagnoses attached to a consultation. This is the
+// FHIR Condition artifact the NDHA requires — replacing free-text-only notes.
+// icdCode is nullable so a working/undetermined diagnosis can still be recorded
+// as text; icdTitle snapshots the label at time of coding.
+export const visitDiagnoses = pgTable("visit_diagnoses", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  visitId: integer("visit_id").notNull().references(() => visits.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  icdCode: text("icd_code").references(() => icd11Codes.code),
+  icdTitle: text("icd_title"),
+  clinicalText: text("clinical_text"),
+  diagnosisType: text("diagnosis_type").notNull().default("primary"),
+  recordedBy: integer("recorded_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type VisitDiagnosis = typeof visitDiagnoses.$inferSelect;
+export type NewVisitDiagnosis = typeof visitDiagnoses.$inferInsert;

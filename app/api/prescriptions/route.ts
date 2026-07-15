@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { prescriptions, patients, users, products } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { auth } from "@/auth";
 import { getOrgId } from "@/lib/org";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(_req: NextRequest) {
   try {
@@ -47,13 +48,16 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const doctorId = parseInt(session.user.id);
+    // Prescriptions are written by clinicians during consultations.
+    const authz = await requirePermission([
+      ["my-appointments", "add"],
+      ["my-appointments", "edit"],
+      ["appointments", "add"],
+      ["appointments", "edit"],
+      ["pharmacy", "add"],
+    ]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: doctorId, userEmail: actorEmail } = authz.ctx;
     const body = await req.json();
     const { appointmentId, patientId, items } = body;
 
@@ -80,6 +84,16 @@ export async function POST(req: NextRequest) {
         }))
       )
       .returning();
+
+    void logAudit({
+      organisationId: orgId,
+      userId: doctorId,
+      userEmail: actorEmail,
+      action: "create",
+      entityType: "prescription",
+      entityId: created.map((p) => p.id).join(","),
+      details: { patientId, appointmentId: appointmentId ?? null, itemCount: created.length },
+    });
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

@@ -3,8 +3,8 @@ import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
 import { requestResults, requests, notifications, patients, departments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { auth } from "@/auth";
-import { getOrgId } from "@/lib/org";
+import { requireAuth, requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 const ACCEPTED_TYPES = [
   "application/pdf",
@@ -25,13 +25,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Result uploads come from lab/radiology staff working their queue.
+    const authz = await requirePermission([
+      ["laboratory", "add"],
+      ["laboratory", "edit"],
+      ["radiography", "add"],
+      ["radiography", "edit"],
+    ]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: uploaderId, userEmail: actorEmail } = authz.ctx;
 
     const { id: idParam } = await params;
     const requestId = parseInt(idParam);
@@ -93,7 +95,6 @@ export async function POST(
     console.log("[upload] blob upload successful:", blob.url);
 
     const relativePath = blob.url;
-    const uploadedById = (session.user as any).id;
 
     const [result] = await db
       .insert(requestResults)
@@ -103,9 +104,19 @@ export async function POST(
         filePath: relativePath,
         fileType: file.type,
         message: message || null,
-        uploadedBy: parseInt(uploadedById),
+        uploadedBy: uploaderId,
       })
       .returning();
+
+    void logAudit({
+      organisationId: orgId,
+      userId: uploaderId,
+      userEmail: actorEmail,
+      action: "create",
+      entityType: "request_result",
+      entityId: result.id,
+      details: { requestId, fileName: file.name, fileType: file.type },
+    });
 
     await db
       .update(requests)
@@ -157,8 +168,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requireAuth();
+    if (authz.error) return authz.error;
+    const orgId = authz.ctx.orgId;
 
     const { id: idParam } = await params;
     const requestId = parseInt(idParam);

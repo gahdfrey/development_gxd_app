@@ -22,6 +22,7 @@ interface PatientFormData {
   gender: string;
   dob: string;
   maidenName: string;
+  nin: string;
   countryCode: string;
   phone: string;
   insuranceType: string;
@@ -42,6 +43,8 @@ interface Patient {
   gender: string;
   dob: string;
   maidenName: string;
+  nin?: string | null;
+  mrn?: string | null;
   countryCode: string;
   phone: string;
   insuranceType: string;
@@ -93,6 +96,7 @@ export default function EditPatientModal({
       gender: "",
       dob: "",
       maidenName: "",
+      nin: "",
       countryCode: "+234",
       phone: "",
       insuranceType: "",
@@ -118,6 +122,7 @@ export default function EditPatientModal({
         gender: patient.gender,
         dob: patient.dob.split("T")[0],
         maidenName: patient.maidenName,
+        nin: patient.nin || "",
         countryCode: patient.countryCode,
         phone: patient.phone,
         insuranceType: patient.insuranceType,

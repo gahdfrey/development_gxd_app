@@ -7,7 +7,14 @@ import SearchableSelect, {
   type SearchableSelectOption,
 } from "@/app/components/ui/SearchableSelect";
 import { fetcher } from "@/lib/fetcher";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  TrashIcon,
+  BeakerIcon,
+  ExclamationTriangleIcon,
+  CalendarDaysIcon,
+  PhoneIcon,
+} from "@heroicons/react/24/outline";
 
 interface Product {
   id: number;
@@ -187,6 +194,8 @@ export default function PrescriptionModal({
     onClose();
   };
 
+  const filledCount = rows.filter((r) => r.productOption).length;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -196,32 +205,41 @@ export default function PrescriptionModal({
     >
       <div className="space-y-5">
         {submitError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-            {submitError}
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <ExclamationTriangleIcon className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+            <span>{submitError}</span>
           </div>
         )}
 
-        {/* Patient card */}
+        {/* Patient banner */}
         {prefilledPatient && (
-          <div className="rounded-xl border border-green-100 bg-green-50/40 p-4 space-y-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Patient
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <span className="text-sm font-bold text-green-700">
-                  {prefilledPatient.firstname.charAt(0)}
-                  {prefilledPatient.lastname.charAt(0)}
-                </span>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 p-5">
+            <div
+              className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl"
+              aria-hidden
+            />
+            <div className="relative flex flex-wrap items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-lg shadow-emerald-900/40">
+                {prefilledPatient.firstname.charAt(0)}
+                {prefilledPatient.lastname.charAt(0)}
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-lg font-bold text-white">
                   {prefilledPatient.firstname} {prefilledPatient.lastname}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {prefilledPatient.dob ? formatAge(prefilledPatient.dob) : "—"}{" "}
-                  · {prefilledPatient.countryCode} {prefilledPatient.phone}
-                </p>
+                </h3>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-300">
+                  <span className="capitalize">{prefilledPatient.gender}</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDaysIcon className="h-3.5 w-3.5 text-slate-400" />
+                    {prefilledPatient.dob ? formatAge(prefilledPatient.dob) : "—"}
+                  </span>
+                  <span className="text-slate-600">•</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <PhoneIcon className="h-3.5 w-3.5 text-slate-400" />
+                    {prefilledPatient.countryCode} {prefilledPatient.phone}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -234,57 +252,67 @@ export default function PrescriptionModal({
             return (
               <div
                 key={row.rowId}
-                className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3"
+                className="rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors focus-within:border-emerald-200"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Drug {index + 1}
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-100 text-[11px] font-bold text-emerald-700">
+                      {index + 1}
+                    </span>
+                    Medication
                   </span>
                   {rows.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeRow(row.rowId)}
                       disabled={isSubmitting}
-                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>
                   )}
                 </div>
 
-                <SearchableSelect
-                  label="Drug / Product"
-                  options={productOptions}
-                  value={row.productOption}
-                  onChange={(opt) => handleProductChange(row.rowId, opt)}
-                  placeholder={
-                    productsLoading
-                      ? "Loading drugs..."
-                      : productOptions.length === 0
-                        ? "No drugs available"
-                        : "Search drug..."
-                  }
-                  disabled={productsLoading || isSubmitting}
-                  error={errs.product}
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dosage Instructions <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={row.dosage}
-                    onChange={(e) =>
-                      handleDosageChange(row.rowId, e.target.value)
+                <div className="space-y-3">
+                  <SearchableSelect
+                    label="Drug / Product"
+                    options={productOptions}
+                    value={row.productOption}
+                    onChange={(opt) => handleProductChange(row.rowId, opt)}
+                    placeholder={
+                      productsLoading
+                        ? "Loading drugs..."
+                        : productOptions.length === 0
+                          ? "No drugs available"
+                          : "Search drug..."
                     }
-                    placeholder="e.g. 500mg twice daily after meals"
-                    disabled={isSubmitting}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 ${errs.dosage ? "border-red-400 bg-red-50" : "border-gray-300"}`}
+                    disabled={productsLoading || isSubmitting}
+                    error={errs.product}
                   />
-                  {errs.dosage && (
-                    <p className="text-xs text-red-600 mt-1">{errs.dosage}</p>
-                  )}
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                      Dosage Instructions{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={row.dosage}
+                      onChange={(e) =>
+                        handleDosageChange(row.rowId, e.target.value)
+                      }
+                      placeholder="e.g. 500mg twice daily after meals"
+                      disabled={isSubmitting}
+                      className={`w-full rounded-xl border bg-gray-50/60 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 transition-all focus:bg-white focus:outline-none focus:ring-4 disabled:opacity-50 ${
+                        errs.dosage
+                          ? "border-red-300 focus:border-red-400 focus:ring-red-500/10"
+                          : "border-gray-200 focus:border-emerald-400 focus:ring-emerald-500/10"
+                      }`}
+                    />
+                    {errs.dosage && (
+                      <p className="mt-1 text-xs text-red-600">{errs.dosage}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -295,33 +323,57 @@ export default function PrescriptionModal({
           type="button"
           onClick={addRow}
           disabled={isSubmitting}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 border-dashed rounded-xl hover:bg-green-100 hover:border-green-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-100/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" />
           Add Another Drug
         </button>
 
-        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting
-              ? "Submitting..."
-              : rows.length === 1
-                ? "Submit Prescription"
-                : `Submit ${rows.length} Prescriptions`}
-          </button>
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+          <p className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+            <BeakerIcon className="h-4 w-4" />
+            {filledCount > 0 ? (
+              <>
+                <span className="font-semibold text-gray-600">
+                  {filledCount}
+                </span>{" "}
+                {filledCount === 1 ? "medication" : "medications"} ready
+              </>
+            ) : (
+              "No medication added yet"
+            )}
+          </p>
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <>
+                  <span
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                    aria-hidden
+                  />
+                  Submitting…
+                </>
+              ) : rows.length === 1 ? (
+                "Submit Prescription"
+              ) : (
+                `Submit ${rows.length} Prescriptions`
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

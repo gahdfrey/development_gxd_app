@@ -1,116 +1,259 @@
-export default function HeroSection() {
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
+import {
+    ArrowRight,
+    Bell,
+    CalendarDays,
+    CheckCircle2,
+    FlaskConical,
+    LayoutDashboard,
+    Search,
+    Settings,
+    ShieldCheck,
+    Users,
+} from "lucide-react";
+
+const trustedBy = ["Northline Health", "Beacon Medical", "St. Aurelia", "CarePoint", "Vantage Clinics"];
+
+const patients = [
+    { initials: "MR", name: "Maria Rodriguez", detail: "Annual physical · 9:30 AM", status: "Checked in", statusClass: "bg-emerald-50 text-emerald-700" },
+    { initials: "JT", name: "James Thornton", detail: "Lab review · 10:15 AM", status: "Waiting", statusClass: "bg-amber-50 text-amber-700" },
+    { initials: "AO", name: "Adaeze Okafor", detail: "Follow-up · 11:00 AM", status: "Scheduled", statusClass: "bg-slate-100 text-slate-600" },
+];
+
+function DashboardMockup() {
     return (
-        <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-            <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-600/10 via-transparent to-transparent"></div>
-            <div className="absolute top-40 left-10 -z-10 opacity-20">
-                <span className="material-symbols-outlined text-8xl text-blue-600 select-none">medical_services</span>
-            </div>
-            <div className="absolute bottom-20 right-1/4 -z-10 opacity-10">
-                <span className="material-symbols-outlined text-9xl text-blue-600 select-none">monitor_heart</span>
-            </div>
+        <div className="relative w-full max-w-[620px]">
+            {/* Glow */}
+            <div className="absolute -inset-8 bg-gradient-to-tr from-blue-500/20 via-sky-400/10 to-indigo-500/20 rounded-[2.5rem] blur-3xl" aria-hidden />
 
-            <div className="w-full grid lg:grid-cols-2 gap-12 items-center">
-                {/* Content Side */}
-                <div className="flex flex-col gap-8 max-w-2xl mt-10">
-                    <div className="inline-flex items-center gap-2 bg-blue-600/10 border border-blue-600/20 px-3 py-1 rounded-full w-fit">
-                        {/* <span className="material-symbols-outlined text-blue-600 text-sm">verified_user</span> */}
-                        <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Next-Gen HIPAA Compliant Platform</span>
+            {/* Main window */}
+            <div className="relative rounded-2xl bg-white ring-1 ring-slate-900/10 shadow-[0_24px_80px_-24px_rgba(15,23,42,0.35)] overflow-hidden">
+                {/* Title bar */}
+                <div className="flex items-center gap-3 h-11 px-4 bg-slate-50/80 border-b border-slate-200/80">
+                    <div className="flex gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
                     </div>
-                    <h1 className="text-5xl lg:text-7xl font-black leading-[1.1] tracking-tight text-slate-900">
-                        Patient Care,
-                        <span className="text-blue-600">Reimagined.</span>
-                    </h1>
-                    <p className="text-lg lg:text-xl text-slate-600 leading-relaxed">
-                        Experience a modern EHR platform designed for seamless integration, intuitive workflows, and superior patient outcomes. Built for providers who value speed and security.
-                    </p>
-                    <div className="flex flex-wrap gap-4 mt-4">
-                        <button className="px-6 py-4 rounded-xl bg-blue-600 text-white font-bold text-lg shadow-xl shadow-blue-600/30 hover:scale-[1.02] transition-transform flex items-center gap-2">
-                            <span>Get Started</span>
-                            {/* <span className="material-symbols-outlined">arrow_forward</span> */} </button>
-                        <button className="px-6 py-4 rounded-xl bg-white text-slate-900 font-bold text-lg border border-slate-200 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                            {/* <span className="material-symbols-outlined">play_circle</span> */}
-                            <span>Request a Demo</span>
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-6 mt-8 grayscale opacity-60">
-                        <span className="text-xs font-bold uppercase text-slate-500">Trusted by</span>
-                        <div className="flex gap-4 items-center">
-                            <svg width="24" height="24" strokeWidth="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
-                                <path d="M13.6667 16H10.3333V13.6667H8V10.3333H10.3333V8H13.6667V10.3333H16V13.6667H13.6667V16Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M5 18L3.13036 4.91253C3.05646 4.39524 3.39389 3.91247 3.90398 3.79912L11.5661 2.09641C11.8519 2.03291 12.1481 2.03291 12.4339 2.09641L20.096 3.79912C20.6061 3.91247 20.9435 4.39524 20.8696 4.91252L19 18C18.9293 18.495 18.5 21.5 12 21.5C5.5 21.5 5.07071 18.495 5 18Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                            </svg>
-                            <svg width="24" height="24" strokeWidth="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
-                                <path d="M6.4 8C6.73137 8 7 7.73137 7 7.4V3.6C7 3.26863 7.26863 3 7.6 3H16.4C16.7314 3 17 3.26863 17 3.6V7.4C17 7.73137 17.2686 8 17.6 8H19.4C19.7314 8 20 8.26863 20 8.6V20.4C20 20.7314 19.7314 21 19.4 21H4.6C4.26863 21 4 20.7314 4 20.4V8.6C4 8.26863 4.26863 8 4.6 8H6.4Z" stroke="currentColor" strokeWidth="1.5"></path>
-                                <path d="M9.99219 8H11.9922M13.9922 8H11.9922M11.9922 8V6M11.9922 8V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M16 17.01L16.01 16.9989" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M16 13.01L16.01 12.9989" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M12 13.01L12.01 12.9989" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M8 13.01L8.01 12.9989" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M8 17.01L8.01 16.9989" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M12 17.01L12.01 16.9989" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                            </svg>
-                            <svg width="24" height="24" strokeWidth="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
-                                <path d="M8 14L16 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M8 10L10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M8 18L12 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                                <path d="M10 3H6C4.89543 3 4 3.89543 4 5V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V5C20 3.89543 19.1046 3 18 3H14.5M10 3V1M10 3V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                            </svg>
+                    <div className="flex-1 flex justify-center">
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 bg-white border border-slate-200 rounded-md px-3 py-1">
+                            <ShieldCheck className="h-3 w-3 text-emerald-500" />
+                            app.carevault.health
                         </div>
                     </div>
                 </div>
 
-                {/* Dashboard Mockup Side */}
-                <div className="relative lg:h-[600px] w-full flex items-center justify-center lg:justify-end">
-                    <div className="relative w-full aspect-[4/3] max-w-[600px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden group">
-                        <div className="h-12 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-2">
-                            <div className="flex gap-1.5">
-                                <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                                <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                                <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
-                            </div>
-                        </div>
-                        <div className="p-6 flex flex-col gap-6">
-                            <div className="flex justify-between items-center">
-                                <div className="w-48 h-8 bg-slate-100 rounded-lg"></div>
-                                <div className="w-24 h-8 bg-blue-600/10 rounded-lg"></div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="h-24 bg-slate-50 rounded-xl border border-slate-100 p-4">
-                                    <div className="w-1/2 h-4 bg-slate-200 rounded mb-2"></div>
-                                    <div className="w-3/4 h-8 bg-blue-600/20 rounded"></div>
-                                </div>
-                                <div className="h-24 bg-slate-50 rounded-xl border border-slate-100 p-4">
-                                    <div className="w-1/2 h-4 bg-slate-200 rounded mb-2"></div>
-                                    <div className="w-3/4 h-8 bg-slate-200 rounded"></div>
-                                </div>
-                                <div className="h-24 bg-slate-50 rounded-xl border border-slate-100 p-4">
-                                    <div className="w-1/2 h-4 bg-slate-200 rounded mb-2"></div>
-                                    <div className="w-3/4 h-8 bg-slate-200 rounded"></div>
-                                </div>
-                            </div>
-                            <div className="flex-1 bg-slate-50 rounded-xl border border-slate-100 p-4 space-y-4">
-                                <div className="w-full h-4 bg-slate-200 rounded"></div>
-                                <div className="w-full h-4 bg-slate-200 rounded"></div>
-                                <div className="w-2/3 h-4 bg-slate-200 rounded"></div>
-                                <div className="w-full h-32 bg-blue-600/5 rounded-lg border border-blue-600/10 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-4xl text-blue-600/40">bar_chart</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="absolute bottom-10 -left-2 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 flex items-center gap-4 animate-bounce">
-                            {/* <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-emerald-600">check_circle</span>
-              </div> */}
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#91f48a" strokeWidth="1.5">
-                                <path fillRule="evenodd" clipRule="evenodd" d="M12 1.25C6.06294 1.25 1.25 6.06294 1.25 12C1.25 17.9371 6.06294 22.75 12 22.75C17.9371 22.75 22.75 17.9371 22.75 12C22.75 6.06294 17.9371 1.25 12 1.25ZM7.53044 11.9697C7.23755 11.6768 6.76268 11.6768 6.46978 11.9697C6.17689 12.2626 6.17689 12.7374 6.46978 13.0303L9.46978 16.0303C9.76268 16.3232 10.2376 16.3232 10.5304 16.0303L17.5304 9.03033C17.8233 8.73744 17.8233 8.26256 17.5304 7.96967C17.2375 7.67678 16.7627 7.67678 16.4698 7.96967L10.0001 14.4393L7.53044 11.9697Z" fill="#91f48a"></path>
-                            </svg>
+                <div className="flex">
+                    {/* Sidebar */}
+                    <div className="hidden sm:flex w-12 flex-col items-center gap-1.5 py-4 border-r border-slate-200/80 bg-slate-50/50">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+                            <LayoutDashboard className="h-4 w-4" />
+                        </span>
+                        {[Users, CalendarDays, FlaskConical, Bell, Settings].map((Icon, i) => (
+                            <span key={i} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400">
+                                <Icon className="h-4 w-4" />
+                            </span>
+                        ))}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 p-4 sm:p-5 space-y-4">
+                        {/* Header row */}
+                        <div className="flex items-center justify-between gap-3">
                             <div>
-                                <p className="text-sm font-bold">Sync Complete</p>
-                                <p className="text-xs text-slate-500">142 Records updated</p>
+                                <p className="text-[13px] font-semibold text-slate-900">Good morning, Dr. Jenkins</p>
+                                <p className="text-[11px] text-slate-400">Tuesday · 14 appointments today</p>
                             </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                                <Search className="h-3 w-3" />
+                                <span className="hidden sm:inline">Search patients…</span>
+                            </div>
+                        </div>
+
+                        {/* Stat tiles */}
+                        <div className="grid grid-cols-3 gap-3">
+                            {[
+                                { label: "Patients today", value: "14", delta: "+3" },
+                                { label: "Pending labs", value: "6", delta: "2 new" },
+                                { label: "Claims cleared", value: "98%", delta: "+1.2%" },
+                            ].map((s) => (
+                                <div key={s.label} className="rounded-xl border border-slate-200/80 bg-white p-3">
+                                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{s.label}</p>
+                                    <div className="mt-1 flex items-baseline gap-1.5">
+                                        <span className="text-lg font-bold text-slate-900">{s.value}</span>
+                                        <span className="text-[10px] font-semibold text-emerald-600">{s.delta}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Chart */}
+                        <div className="rounded-xl border border-slate-200/80 p-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-[11px] font-semibold text-slate-700">Patient volume</p>
+                                <p className="text-[10px] text-slate-400">Last 30 days</p>
+                            </div>
+                            <svg viewBox="0 0 320 80" className="w-full h-16" preserveAspectRatio="none" aria-hidden>
+                                <defs>
+                                    <linearGradient id="heroChart" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
+                                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path
+                                    d="M0,60 C30,55 45,40 70,42 C95,44 110,58 140,50 C170,42 185,22 215,26 C245,30 260,44 290,32 L320,24 L320,80 L0,80 Z"
+                                    fill="url(#heroChart)"
+                                />
+                                <path
+                                    d="M0,60 C30,55 45,40 70,42 C95,44 110,58 140,50 C170,42 185,22 215,26 C245,30 260,44 290,32 L320,24"
+                                    fill="none"
+                                    stroke="#2563eb"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                        </div>
+
+                        {/* Patient rows */}
+                        <div className="rounded-xl border border-slate-200/80 divide-y divide-slate-100">
+                            {patients.map((p) => (
+                                <div key={p.name} className="flex items-center gap-3 px-3 py-2.5">
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-bold text-blue-700">
+                                        {p.initials}
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[12px] font-semibold text-slate-800">{p.name}</p>
+                                        <p className="truncate text-[10px] text-slate-400">{p.detail}</p>
+                                    </div>
+                                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.statusClass}`}>
+                                        {p.status}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Floating card: sync toast */}
+            <div className="absolute -left-4 sm:-left-10 bottom-14 rounded-xl bg-white ring-1 ring-slate-900/10 shadow-xl px-4 py-3 flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                </span>
+                <div>
+                    <p className="text-[12px] font-semibold text-slate-900">Lab sync complete</p>
+                    <p className="text-[10px] text-slate-400">142 records updated just now</p>
+                </div>
+            </div>
+
+            {/* Floating card: uptime */}
+            <div className="absolute -right-2 sm:-right-6 -top-5 rounded-xl bg-white ring-1 ring-slate-900/10 shadow-xl px-4 py-3">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Uptime</p>
+                <p className="text-base font-bold text-slate-900">
+                    99.99% <span className="text-[10px] font-semibold text-emerald-600 align-middle">SLA</span>
+                </p>
+            </div>
+        </div>
+    );
+}
+
+export default function HeroSection() {
+    const shouldReduceMotion = useReducedMotion();
+    const fadeUp = (delay: number) => ({
+        initial: shouldReduceMotion ? false : { opacity: 0, y: 24 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.7, delay, ease: [0.21, 0.47, 0.32, 0.98] as const },
+    });
+
+    return (
+        <section className="relative overflow-hidden pt-32 pb-16 lg:pt-40 lg:pb-24">
+            {/* Background: grid + radial wash */}
+            <div
+                className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(226,232,240,0.6)_1px,transparent_1px),linear-gradient(to_bottom,rgba(226,232,240,0.6)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,#000_60%,transparent_100%)]"
+                aria-hidden
+            />
+            <div className="absolute -top-40 left-1/2 -translate-x-1/2 -z-10 h-[480px] w-[880px] rounded-full bg-gradient-to-b from-blue-100/80 via-sky-50/60 to-transparent blur-3xl" aria-hidden />
+
+            <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="grid lg:grid-cols-2 gap-16 lg:gap-12 items-center">
+                    {/* Copy */}
+                    <div className="max-w-xl">
+                        <motion.div {...fadeUp(0)}>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50/80 px-3.5 py-1.5 text-xs font-semibold text-blue-700">
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                HIPAA compliant · SOC 2 Type II certified
+                            </span>
+                        </motion.div>
+
+                        <motion.h1
+                            {...fadeUp(0.08)}
+                            className="mt-6 text-[2.75rem] leading-[1.05] sm:text-6xl lg:text-[4.25rem] font-bold tracking-tight text-slate-900"
+                        >
+                            The EHR built for the way{" "}
+                            <span className="text-blue-600">clinicians think</span>
+                        </motion.h1>
+
+                        <motion.p {...fadeUp(0.16)} className="mt-6 text-lg leading-relaxed text-slate-600">
+                            CareVault unifies charts, labs, scheduling, and billing into one fast,
+                            intuitive workspace — so your team spends less time on screens and more
+                            time with patients.
+                        </motion.p>
+
+                        <motion.div {...fadeUp(0.24)} className="mt-9 flex flex-wrap items-center gap-3.5">
+                            <button
+                                type="button"
+                                disabled
+                                aria-disabled="true"
+                                title="Access is by invitation only"
+                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600/50 px-6 py-3.5 text-[15px] font-semibold text-white/90 shadow-lg shadow-blue-600/15 cursor-not-allowed select-none"
+                            >
+                                Start free trial
+                                <ArrowRight className="h-4 w-4" />
+                            </button>
+                            <a
+                                href="#contact"
+                                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-[15px] font-semibold text-slate-800 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                            >
+                                Request a demo
+                            </a>
+                        </motion.div>
+
+                        <motion.div {...fadeUp(0.32)} className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
+                            {["Free 30-day trial", "No credit card required", "Guided migration"].map((item) => (
+                                <span key={item} className="inline-flex items-center gap-1.5">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                    {item}
+                                </span>
+                            ))}
+                        </motion.div>
+                    </div>
+
+                    {/* Product mockup */}
+                    <motion.div
+                        initial={shouldReduceMotion ? false : { opacity: 0, y: 32, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.8, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
+                        className="relative flex justify-center lg:justify-end"
+                    >
+                        <DashboardMockup />
+                    </motion.div>
+                </div>
+
+                {/* Trust strip */}
+                <motion.div {...fadeUp(0.4)} className="mt-20 lg:mt-24 border-t border-slate-200/80 pt-8">
+                    <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-6">
+                        Trusted by leading care teams
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+                        {trustedBy.map((name) => (
+                            <span key={name} className="text-[15px] font-semibold tracking-tight text-slate-400/90">
+                                {name}
+                            </span>
+                        ))}
+                    </div>
+                </motion.div>
             </div>
         </section>
     );

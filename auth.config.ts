@@ -34,6 +34,16 @@ export const authConfig = {
     },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
+
+      // API routes: deny by default. Only NextAuth + login/signup endpoints
+      // are public; everything else requires a session. Individual routes
+      // still perform their own org/permission checks on top of this.
+      if (nextUrl.pathname.startsWith("/api")) {
+        if (nextUrl.pathname.startsWith("/api/auth")) return true;
+        if (isLoggedIn) return true;
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
       const isOnDashboard =
         nextUrl.pathname.startsWith("/dashboard") ||
         nextUrl.pathname.startsWith("/users");

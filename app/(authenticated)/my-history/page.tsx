@@ -75,9 +75,17 @@ interface TimelineEntry {
     hasDoctorNotes: boolean;
     startTime: string;
     endTime: string;
+    diagnoses?: DiagnosisEntry[];
   } | null;
   requests: RequestEntry[];
   prescriptions: PrescriptionEntry[];
+}
+
+interface DiagnosisEntry {
+  icdCode: string | null;
+  icdTitle: string | null;
+  clinicalText: string | null;
+  diagnosisType: string;
 }
 
 interface PrescriptionEntry {
@@ -501,6 +509,32 @@ function VisitCard({ entry }: { entry: TimelineEntry }) {
                   Appointment Notes
                 </p>
                 <p className="text-sm text-gray-600 italic">"{appointment.notes}"</p>
+              </div>
+            )}
+
+            {/* Diagnoses — coded conditions are part of the patient's own record */}
+            {visit?.diagnoses && visit.diagnoses.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Diagnoses
+                </p>
+                <ul className="space-y-1.5">
+                  {visit.diagnoses.map((d, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+                    >
+                      {d.icdCode && (
+                        <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+                          {d.icdCode}
+                        </span>
+                      )}
+                      <span className="flex-1 text-sm text-gray-800">
+                        {d.icdTitle || d.clinicalText}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

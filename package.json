@@ -13,7 +13,12 @@
     "db:studio": "drizzle-kit studio",
     "db:recreate": "npx tsx lib/db/recreate.ts",
     "db:seed": "npx tsx lib/db/seed.ts",
-    "db:fix-superadmin": "npx tsx lib/db/fix-superadmin-permissions.ts"
+    "db:fix-superadmin": "npx tsx lib/db/fix-superadmin-permissions.ts",
+    "db:migrate-audit-consent": "npx tsx lib/db/add-audit-consent-softdelete.ts",
+    "db:migrate-identity": "npx tsx lib/db/add-identity-fields.ts",
+    "db:migrate-diagnoses": "npx tsx lib/db/add-diagnoses.ts",
+    "db:seed-icd11": "npx tsx lib/db/seed-icd11.ts",
+    "db:setup-diagnoses": "npm run db:migrate-diagnoses && npm run db:seed-icd11"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

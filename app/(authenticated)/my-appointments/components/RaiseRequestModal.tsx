@@ -7,7 +7,14 @@ import SearchableSelect, {
   type SearchableSelectOption,
 } from "@/app/components/ui/SearchableSelect";
 import { fetcher } from "@/lib/fetcher";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  TrashIcon,
+  ExclamationTriangleIcon,
+  CalendarDaysIcon,
+  PhoneIcon,
+  ShieldCheckIcon,
+} from "@heroicons/react/24/outline";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,7 +149,6 @@ export default function RaiseRequestModal({
         r.rowId === rowId ? { ...r, deptOption: opt, testOption: null } : r,
       ),
     );
-    // Clear errors for this row's department (and test since dept changed)
     setRowErrors((prev) => ({
       ...prev,
       [rowId]: { ...prev[rowId], department: undefined, test: undefined },
@@ -269,7 +275,9 @@ export default function RaiseRequestModal({
     return sum + (test?.price ?? 0);
   }, 0);
 
-  const hasAnyTest = rows.some((r) => r.testOption !== null);
+  const selectedCount = rows.filter((r) => r.testOption).length;
+  const hasAnyTest = selectedCount > 0;
+  const isHmo = prefilledPatient?.insuranceType === "hmo";
 
   // ---------------------------------------------------------------------------
   // Render
@@ -285,67 +293,66 @@ export default function RaiseRequestModal({
       <div className="space-y-5">
         {/* Submit-level error */}
         {submitError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-            {submitError}
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <ExclamationTriangleIcon className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+            <span>{submitError}</span>
           </div>
         )}
 
-        {/* ── Patient card ── */}
+        {/* ── Patient banner ── */}
         {prefilledPatient && (
-          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Patient
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                <span className="text-sm font-bold text-blue-600">
-                  {prefilledPatient.firstname.charAt(0)}{prefilledPatient.lastname.charAt(0)}
-                </span>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-5">
+            <div
+              className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl"
+              aria-hidden
+            />
+            <div className="relative flex flex-wrap items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-blue-900/40">
+                {prefilledPatient.firstname.charAt(0)}
+                {prefilledPatient.lastname.charAt(0)}
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-lg font-bold text-white">
                   {prefilledPatient.firstname} {prefilledPatient.lastname}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {prefilledPatient.countryCode} {prefilledPatient.phone}
-                </p>
+                </h3>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-300">
+                  <span className="capitalize">{prefilledPatient.gender || "—"}</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDaysIcon className="h-3.5 w-3.5 text-slate-400" />
+                    {prefilledPatient.dob ? formatAge(prefilledPatient.dob) : "—"}
+                  </span>
+                  <span className="text-slate-600">•</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <PhoneIcon className="h-3.5 w-3.5 text-slate-400" />
+                    {prefilledPatient.countryCode} {prefilledPatient.phone}
+                  </span>
+                </div>
               </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-200 ring-1 ring-white/10">
+                <ShieldCheckIcon className="h-3.5 w-3.5" />
+                {formatInsuranceLabel(prefilledPatient)}
+              </span>
             </div>
-            <div className="grid grid-cols-3 gap-3 pt-1">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500">Gender</label>
-                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
-                  {prefilledPatient.gender
-                    ? prefilledPatient.gender.charAt(0).toUpperCase() + prefilledPatient.gender.slice(1)
-                    : "—"}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500">Age</label>
-                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
-                  {prefilledPatient.dob ? formatAge(prefilledPatient.dob) : "—"}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500">Insurance</label>
-                <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
-                  {formatInsuranceLabel(prefilledPatient)}
-                </div>
-              </div>
-            </div>
-            {prefilledPatient.insuranceType === "hmo" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-gray-500">HMO Provider</label>
-                  <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default">
+
+            {/* HMO details */}
+            {isHmo && (
+              <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    HMO Provider
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-white">
                     {prefilledPatient.hmoName ?? "—"}
-                  </div>
+                  </p>
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-gray-500">Policy Number</label>
-                  <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 select-none cursor-default font-mono tracking-wide">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Policy Number
+                  </p>
+                  <p className="mt-0.5 font-mono text-sm font-semibold tracking-wide text-white">
                     {prefilledPatient.policyNumber ?? "—"}
-                  </div>
+                  </p>
                 </div>
               </div>
             )}
@@ -361,19 +368,22 @@ export default function RaiseRequestModal({
             return (
               <div
                 key={row.rowId}
-                className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3"
+                className="rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors focus-within:border-blue-200"
               >
                 {/* Row header */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Request {index + 1}
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-blue-700">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-100 text-[11px] font-bold text-blue-700">
+                      {index + 1}
+                    </span>
+                    Test / Investigation
                   </span>
                   {rows.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeRow(row.rowId)}
                       disabled={isSubmitting}
-                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
                       title="Remove this request"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -381,46 +391,48 @@ export default function RaiseRequestModal({
                   )}
                 </div>
 
-                {/* Department */}
-                <SearchableSelect
-                  label="Department"
-                  options={deptOptions}
-                  value={row.deptOption}
-                  onChange={(opt) => handleDeptChange(row.rowId, opt)}
-                  placeholder={
-                    deptsLoading
-                      ? "Loading departments..."
-                      : deptOptions.length === 0
-                      ? "No departments available"
-                      : "Search department..."
-                  }
-                  disabled={deptsLoading || deptOptions.length === 0 || isSubmitting}
-                  error={errs.department}
-                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {/* Department */}
+                  <SearchableSelect
+                    label="Department"
+                    options={deptOptions}
+                    value={row.deptOption}
+                    onChange={(opt) => handleDeptChange(row.rowId, opt)}
+                    placeholder={
+                      deptsLoading
+                        ? "Loading departments..."
+                        : deptOptions.length === 0
+                        ? "No departments available"
+                        : "Search department..."
+                    }
+                    disabled={deptsLoading || deptOptions.length === 0 || isSubmitting}
+                    error={errs.department}
+                  />
 
-                {/* Test */}
-                <SearchableSelect
-                  label="Test"
-                  options={availableTests}
-                  value={row.testOption}
-                  onChange={(opt) => handleTestChange(row.rowId, opt)}
-                  placeholder={
-                    !row.deptOption
-                      ? "Select a department first"
-                      : testsLoading
-                      ? "Loading tests..."
-                      : availableTests.length === 0
-                      ? "No tests for this department"
-                      : "Search test..."
-                  }
-                  disabled={
-                    !row.deptOption ||
-                    testsLoading ||
-                    availableTests.length === 0 ||
-                    isSubmitting
-                  }
-                  error={errs.test}
-                />
+                  {/* Test */}
+                  <SearchableSelect
+                    label="Test"
+                    options={availableTests}
+                    value={row.testOption}
+                    onChange={(opt) => handleTestChange(row.rowId, opt)}
+                    placeholder={
+                      !row.deptOption
+                        ? "Select a department first"
+                        : testsLoading
+                        ? "Loading tests..."
+                        : availableTests.length === 0
+                        ? "No tests for this department"
+                        : "Search test..."
+                    }
+                    disabled={
+                      !row.deptOption ||
+                      testsLoading ||
+                      availableTests.length === 0 ||
+                      isSubmitting
+                    }
+                    error={errs.test}
+                  />
+                </div>
               </div>
             );
           })}
@@ -431,7 +443,7 @@ export default function RaiseRequestModal({
           type="button"
           onClick={addRow}
           disabled={isSubmitting}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 border-dashed rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-200 bg-blue-50/50 px-4 py-2.5 text-sm font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" />
           Add Another Test
@@ -439,38 +451,53 @@ export default function RaiseRequestModal({
 
         {/* ── Total price summary ── */}
         {hasAnyTest && (
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
-            <span className="text-sm text-gray-600">
-              {rows.filter((r) => r.testOption).length} test{rows.filter((r) => r.testOption).length !== 1 ? "s" : ""} selected
+          <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
+            <span className="text-sm font-medium text-gray-600">
+              {selectedCount} test{selectedCount !== 1 ? "s" : ""} selected
             </span>
-            <span className="text-sm font-bold text-gray-900">
-              Total: ₦{totalPrice.toLocaleString()}
+            <span className="text-base font-bold text-gray-900">
+              ₦{totalPrice.toLocaleString()}
             </span>
           </div>
         )}
 
         {/* ── Action Buttons ── */}
-        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting
-              ? "Submitting..."
-              : rows.length === 1
-              ? "Submit Request"
-              : `Submit ${rows.length} Requests`}
-          </button>
+        <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+          <p className="text-xs text-gray-400">
+            {hasAnyTest
+              ? "Review the tests above before submitting"
+              : "No test added yet"}
+          </p>
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <>
+                  <span
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                    aria-hidden
+                  />
+                  Submitting…
+                </>
+              ) : rows.length === 1 ? (
+                "Submit Request"
+              ) : (
+                `Submit ${rows.length} Requests`
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

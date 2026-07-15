@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { userSchema, UserFormData } from "./schema";
+import { userSchema, UserFormData, LICENSE_COUNCILS } from "./schema";
 import { User } from "@/lib/db/schema";
 
 interface EditUserFormProps {
@@ -33,6 +33,8 @@ export default function EditUserForm({ user, onSubmit, onCancel }: EditUserFormP
       password:     "",
       roleId:       user.roleId       ? String(user.roleId)       : "",
       departmentId: user.departmentId ? String(user.departmentId) : "",
+      licenseNumber:  user.licenseNumber  || "",
+      licenseCouncil: user.licenseCouncil || "",
     },
   });
 
@@ -135,6 +137,34 @@ export default function EditUserForm({ user, onSubmit, onCancel }: EditUserFormP
             <option key={d.id} value={String(d.id)}>{d.name}</option>
           ))}
         </select>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Professional Council <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <select
+            {...register("licenseCouncil")}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Not a licensed clinician</option>
+            {LICENSE_COUNCILS.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Licence / Registration No. <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="e.g. MDCN/R/12345"
+            {...register("licenseNumber")}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
       </div>
 
       <div>

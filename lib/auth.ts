@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { users, roles } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 /**
@@ -55,7 +55,7 @@ export async function getUserByEmail(email: string) {
     })
     .from(users)
     .leftJoin(roles, eq(users.roleId, roles.id))
-    .where(eq(users.email, email))
+    .where(and(eq(users.email, email), isNull(users.deletedAt)))
     .limit(1);
 
   if (result.length === 0) return undefined;
