@@ -77,9 +77,18 @@ interface TimelineEntry {
     doctorNotes: string | null;
     startTime: string;
     endTime: string;
+    diagnoses?: DiagnosisEntry[];
   } | null;
   requests: RequestEntry[];
   prescriptions: PrescriptionEntry[];
+}
+
+interface DiagnosisEntry {
+  id: number;
+  icdCode: string | null;
+  icdTitle: string | null;
+  clinicalText: string | null;
+  diagnosisType: string;
 }
 
 interface PrescriptionEntry {
@@ -483,6 +492,39 @@ function VisitCard({ entry }: { entry: TimelineEntry }) {
                 Appointment Notes
               </p>
               <p className="text-sm text-gray-600 italic">"{appointment.notes}"</p>
+            </div>
+          )}
+
+          {/* ICD-11 diagnoses */}
+          {visit?.diagnoses && visit.diagnoses.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                Diagnoses ({visit.diagnoses.length})
+              </p>
+              <ul className="space-y-1.5">
+                {visit.diagnoses.map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+                  >
+                    {d.icdCode ? (
+                      <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+                        {d.icdCode}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                        uncoded
+                      </span>
+                    )}
+                    <span className="flex-1 text-sm text-gray-800">
+                      {d.icdTitle || d.clinicalText}
+                    </span>
+                    <span className="shrink-0 text-xs capitalize text-gray-400">
+                      {d.diagnosisType}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

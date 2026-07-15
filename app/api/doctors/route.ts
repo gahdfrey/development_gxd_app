@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, roles } from "@/lib/db/schema";
-import { eq, asc, desc, and } from "drizzle-orm";
+import { eq, asc, desc, and, isNull } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 
 export async function GET(request: Request) {
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const orderBy = searchParams.get("orderBy");
 
-    const whereClause = and(eq(roles.name, "Doctor"), eq(users.organisationId, orgId));
+    const whereClause = and(eq(roles.name, "Doctor"), eq(users.organisationId, orgId), isNull(users.deletedAt));
 
     const baseQuery = db
       .select({

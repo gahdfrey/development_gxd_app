@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   request: Request,
@@ -40,8 +42,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["patients", "edit"], ["dashboard", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id: paramId } = await params;
     const id = parseInt(paramId);
@@ -56,6 +59,7 @@ export async function PUT(
       gender,
       dob,
       maidenName,
+      nin,
       countryCode,
       phone,
       insuranceType,
@@ -89,6 +93,29 @@ export async function PUT(
       }
     }
 
+    // NIN validation + uniqueness among active patients in this facility.
+    const cleanNin = typeof nin === "string" && nin.trim() !== "" ? nin.trim() : null;
+    if (cleanNin) {
+      if (!/^\d{11}$/.test(cleanNin)) {
+        return NextResponse.json({ error: "NIN must be exactly 11 digits" }, { status: 400 });
+      }
+      const [ninMatch] = await db
+        .select({ id: patients.id, mrn: patients.mrn, firstname: patients.firstname, lastname: patients.lastname })
+        .from(patients)
+        .where(and(
+          eq(patients.organisationId, orgId),
+          isNull(patients.deletedAt),
+          eq(patients.nin, cleanNin),
+        ))
+        .limit(1);
+      if (ninMatch && ninMatch.id !== id) {
+        return NextResponse.json(
+          { error: `This NIN already belongs to another patient (${ninMatch.firstname} ${ninMatch.lastname}, ${ninMatch.mrn}).` },
+          { status: 409 },
+        );
+      }
+    }
+
     const updatedPatient = await db
       .update(patients)
       .set({
@@ -97,6 +124,7 @@ export async function PUT(
         gender,
         dob,
         maidenName: maidenName || null,
+        nin: cleanNin,
         countryCode,
         phone,
         insuranceType,
@@ -117,6 +145,16 @@ export async function PUT(
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "update",
+      entityType: "patient",
+      entityId: id,
+      details: { firstname, lastname, insuranceType },
+    });
+
     return NextResponse.json(updatedPatient[0]);
   } catch (error) {
     console.error("Error updating patient:", error);
@@ -129,8 +167,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["patients", "delete"], ["dashboard", "delete"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id: paramId } = await params;
     const id = parseInt(paramId);
@@ -147,6 +186,16 @@ export async function DELETE(
     if (deletedPatient.length === 0) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "delete",
+      entityType: "patient",
+      entityId: id,
+      details: { softDelete: true },
+    });
 
     return NextResponse.json({ message: "Patient deleted successfully" });
   } catch (error: any) {

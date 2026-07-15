@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { departments } from "@/lib/db/schema";
-import { asc, eq, and } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { asc, eq, and, isNull } from "drizzle-orm";
+import { requireAuth, requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET() {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Read allowed for all authenticated staff (used across request forms).
+    const authz = await requireAuth();
+    if (authz.error) return authz.error;
+    const orgId = authz.ctx.orgId;
 
     const allDepartments = await db
       .select()
       .from(departments)
-      .where(eq(departments.organisationId, orgId))
+      .where(and(eq(departments.organisationId, orgId), isNull(departments.deletedAt)))
       .orderBy(asc(departments.name));
 
     return NextResponse.json(allDepartments, { status: 200 });
@@ -24,8 +27,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["setup", "add"], ["setup", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
     const { name } = body;
@@ -36,6 +40,16 @@ export async function POST(request: NextRequest) {
       .insert(departments)
       .values({ organisationId: orgId, name: name.trim() })
       .returning();
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "create",
+      entityType: "department",
+      entityId: newDepartment.id,
+      details: { name: newDepartment.name },
+    });
 
     return NextResponse.json(newDepartment, { status: 201 });
   } catch (error: any) {

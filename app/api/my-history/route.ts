@@ -12,6 +12,7 @@ import {
   labTests,
   prescriptions,
   products,
+  visitDiagnoses,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
@@ -82,6 +83,7 @@ export async function GET(_req: NextRequest) {
         createdAt: appointments.createdAt,
         doctorFirstname: users.firstname,
         doctorLastname: users.lastname,
+        visitId: visits.id,
         visitDurationMinutes: visits.durationMinutes,
         visitDoctorNotes: visits.doctorNotes,
         visitStartTime: visits.startTime,
@@ -152,6 +154,27 @@ export async function GET(_req: NextRequest) {
       .where(eq(prescriptions.patientId, patientId))
       .orderBy(desc(prescriptions.createdAt));
 
+    // ICD-11 diagnoses — coded conditions ARE part of the patient's own
+    // record (WHO IPS), unlike raw doctor notes which stay hidden.
+    const visitIds = apptRows.map((a) => a.visitId).filter((v): v is number => v != null);
+    const diagnosisRows = visitIds.length > 0
+      ? await db
+          .select({
+            visitId: visitDiagnoses.visitId,
+            icdCode: visitDiagnoses.icdCode,
+            icdTitle: visitDiagnoses.icdTitle,
+            clinicalText: visitDiagnoses.clinicalText,
+            diagnosisType: visitDiagnoses.diagnosisType,
+          })
+          .from(visitDiagnoses)
+          .where(inArray(visitDiagnoses.visitId, visitIds))
+      : [];
+    const diagnosesByVisit: Record<number, typeof diagnosisRows> = {};
+    for (const d of diagnosisRows) {
+      if (!diagnosesByVisit[d.visitId]) diagnosesByVisit[d.visitId] = [];
+      diagnosesByVisit[d.visitId].push(d);
+    }
+
     // Build maps
     const resultsByRequest: Record<number, typeof resultRows> = {};
     for (const r of resultRows) {
@@ -202,6 +225,7 @@ export async function GET(_req: NextRequest) {
               hasDoctorNotes: appt.visitDoctorNotes != null && appt.visitDoctorNotes.trim() !== "",
               startTime: appt.visitStartTime,
               endTime: appt.visitEndTime,
+              diagnoses: appt.visitId != null ? (diagnosesByVisit[appt.visitId] ?? []) : [],
             }
           : null,
       requests: (requestsByAppointment[appt.id] ?? []).map((req) => ({

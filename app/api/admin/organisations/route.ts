@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, slug, email, phone, address } = body;
+    const { name, slug, email, phone, address, facilityType, ownership, state, lga, latitude, longitude } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: "Organisation name is required" }, { status: 400 });
@@ -39,6 +39,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // NHFR (Nigeria Health Facility Registry) signature-domain attributes.
+    const VALID_FACILITY_TYPES = ["hospital", "clinic", "primary_health_centre", "laboratory", "pharmacy", "imaging_centre", "other"];
+    if (facilityType && !VALID_FACILITY_TYPES.includes(facilityType)) {
+      return NextResponse.json({ error: `facilityType must be one of: ${VALID_FACILITY_TYPES.join(", ")}` }, { status: 400 });
+    }
+    const VALID_OWNERSHIP = ["public", "private", "faith_based", "ngo"];
+    if (ownership && !VALID_OWNERSHIP.includes(ownership)) {
+      return NextResponse.json({ error: `ownership must be one of: ${VALID_OWNERSHIP.join(", ")}` }, { status: 400 });
+    }
+
     const [org] = await db
       .insert(organisations)
       .values({
@@ -47,6 +57,12 @@ export async function POST(request: NextRequest) {
         email: email?.trim() || null,
         phone: phone?.trim() || null,
         address: address?.trim() || null,
+        facilityType: facilityType || null,
+        ownership: ownership || null,
+        state: state?.trim() || null,
+        lga: lga?.trim() || null,
+        latitude: latitude?.trim() || null,
+        longitude: longitude?.trim() || null,
       })
       .returning();
 

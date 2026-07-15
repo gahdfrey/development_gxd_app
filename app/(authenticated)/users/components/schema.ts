@@ -8,6 +8,21 @@ export const userSchema = z.object({
     password:     z.string().optional(),
     roleId:       z.string().optional(),
     departmentId: z.string().optional(),
+    licenseNumber:  z.string().optional(),
+    licenseCouncil: z.string().optional(),
 });
 
 export type UserFormData = z.infer<typeof userSchema>;
+
+// Nigerian professional regulatory councils for health workers
+// (NDHA / Nigeria Health Worker Registry alignment)
+export const LICENSE_COUNCILS = [
+    { value: "MDCN",  label: "MDCN — Medical & Dental Council of Nigeria" },
+    { value: "NMCN",  label: "NMCN — Nursing & Midwifery Council of Nigeria" },
+    { value: "PCN",   label: "PCN — Pharmacy Council of Nigeria" },
+    { value: "MLSCN", label: "MLSCN — Medical Laboratory Science Council of Nigeria" },
+    { value: "RRBN",  label: "RRBN — Radiographers Registration Board of Nigeria" },
+    { value: "MRTB",  label: "MRTB — Medical Rehabilitation Therapists Board" },
+    { value: "CHPRBN", label: "CHPRBN — Community Health Practitioners Registration Board" },
+    { value: "OTHER", label: "Other council" },
+];

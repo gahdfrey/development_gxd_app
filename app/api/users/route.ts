@@ -2,19 +2,22 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, roles, departments } from "@/lib/db/schema";
 import bcrypt from "bcryptjs";
-import { desc, eq, or, ilike, and, not } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { desc, eq, or, ilike, and, not, isNull } from "drizzle-orm";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: Request) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["users", "view"]]);
+    if (authz.error) return authz.error;
+    const orgId = authz.ctx.orgId;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
     const notPatient = not(ilike(roles.name, "patient"));
     const inOrg = eq(users.organisationId, orgId);
+    const notDeleted = isNull(users.deletedAt);
 
     let query = db
       .select({
@@ -25,6 +28,8 @@ export async function GET(request: Request) {
         lastname: users.lastname,
         roleId: users.roleId,
         departmentId: users.departmentId,
+        licenseNumber: users.licenseNumber,
+        licenseCouncil: users.licenseCouncil,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         roleName: roles.name,
@@ -36,13 +41,13 @@ export async function GET(request: Request) {
 
     if (search && search.trim() !== "") {
       const searchTerm = `%${search.trim()}%`;
-      query = query.where(and(inOrg, notPatient, or(
+      query = query.where(and(inOrg, notPatient, notDeleted, or(
         ilike(users.firstname, searchTerm),
         ilike(users.lastname, searchTerm),
         ilike(users.email, searchTerm),
       ))) as any;
     } else {
-      query = query.where(and(inOrg, notPatient)) as any;
+      query = query.where(and(inOrg, notPatient, notDeleted)) as any;
     }
 
     const allUsers = await query.orderBy(desc(users.createdAt));
@@ -55,11 +60,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["users", "add"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
-    const { username, email, firstname, lastname, password, roleId, departmentId } = body;
+    const { username, email, firstname, lastname, password, roleId, departmentId, licenseNumber, licenseCouncil } = body;
 
     if (!username || !email || !firstname || !lastname || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -75,8 +81,20 @@ export async function POST(request: Request) {
         password: hashedPassword,
         roleId: roleId || null,
         departmentId: departmentId || null,
+        licenseNumber: licenseNumber?.trim() || null,
+        licenseCouncil: licenseCouncil?.trim() || null,
       })
       .returning();
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "create",
+      entityType: "user",
+      entityId: newUser[0].id,
+      details: { email, username, roleId: roleId || null },
+    });
 
     const { password: _, ...safeUser } = newUser[0];
     return NextResponse.json(safeUser, { status: 201 });

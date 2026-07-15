@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hmos } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
+import { requireAuth, requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 // GET /api/hmo/[id] - Get a single HMO by ID
 export async function GET(
@@ -9,6 +11,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authz = await requireAuth();
+    if (authz.error) return authz.error;
+
     const { id: idParam } = await params;
     const id = parseInt(idParam);
 
@@ -16,7 +21,10 @@ export async function GET(
       return NextResponse.json({ error: "Invalid HMO ID" }, { status: 400 });
     }
 
-    const [hmo] = await db.select().from(hmos).where(eq(hmos.id, id));
+    const [hmo] = await db
+      .select()
+      .from(hmos)
+      .where(and(eq(hmos.id, id), isNull(hmos.deletedAt)));
 
     if (!hmo) {
       return NextResponse.json({ error: "HMO not found" }, { status: 404 });
@@ -35,6 +43,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authz = await requirePermission([["setup", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
+
     const { id: idParam } = await params;
     const id = parseInt(idParam);
 
@@ -61,12 +73,22 @@ export async function PUT(
         description: description?.trim() || null,
         updatedAt: new Date(),
       })
-      .where(eq(hmos.id, id))
+      .where(and(eq(hmos.id, id), isNull(hmos.deletedAt)))
       .returning();
 
     if (!updatedHMO) {
       return NextResponse.json({ error: "HMO not found" }, { status: 404 });
     }
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "update",
+      entityType: "hmo",
+      entityId: id,
+      details: { name: updatedHMO.name },
+    });
 
     return NextResponse.json(updatedHMO, { status: 200 });
   } catch (error: any) {
@@ -87,12 +109,16 @@ export async function PUT(
   }
 }
 
-// DELETE /api/hmo/[id] - Delete an HMO
+// DELETE /api/hmo/[id] - Soft-delete an HMO
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authz = await requirePermission([["setup", "delete"], ["setup", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
+
     const { id: idParam } = await params;
     const id = parseInt(idParam);
 
@@ -100,14 +126,35 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid HMO ID" }, { status: 400 });
     }
 
-    const [deletedHMO] = await db
-      .delete(hmos)
-      .where(eq(hmos.id, id))
-      .returning();
+    const [target] = await db
+      .select({ id: hmos.id, name: hmos.name })
+      .from(hmos)
+      .where(and(eq(hmos.id, id), isNull(hmos.deletedAt)));
 
-    if (!deletedHMO) {
+    if (!target) {
       return NextResponse.json({ error: "HMO not found" }, { status: 404 });
     }
+
+    // Soft delete; rename to free the unique name index. Patients keep their
+    // hmoId reference so historical insurance data is preserved.
+    await db
+      .update(hmos)
+      .set({
+        deletedAt: new Date(),
+        name: `${target.name}__deleted_${Date.now()}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(hmos.id, id));
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "delete",
+      entityType: "hmo",
+      entityId: id,
+      details: { name: target.name, softDelete: true },
+    });
 
     return NextResponse.json(
       { message: "HMO deleted successfully" },

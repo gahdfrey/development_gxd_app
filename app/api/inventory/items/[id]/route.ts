@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryItems } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { eq, and, isNull } from "drizzle-orm";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["supply-orders", "edit"], ["setup", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id: idStr } = await params;
     const id = parseInt(idStr);
@@ -31,12 +33,22 @@ export async function PATCH(
         ...(reorderLevel !== undefined && { reorderLevel }),
         updatedAt: new Date(),
       })
-      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.organisationId, orgId)))
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.organisationId, orgId), isNull(inventoryItems.deletedAt)))
       .returning();
 
     if (!updated) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "update",
+      entityType: "inventory_item",
+      entityId: id,
+      details: { name: updated.name, quantityChanged: quantity !== undefined },
+    });
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {
@@ -50,8 +62,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["supply-orders", "delete"], ["setup", "delete"], ["setup", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id: idStr } = await params;
     const id = parseInt(idStr);
@@ -59,24 +72,30 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
 
+    // Soft delete: existing supply-order items keep their reference.
     const [deleted] = await db
-      .delete(inventoryItems)
-      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.organisationId, orgId)))
+      .update(inventoryItems)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.organisationId, orgId), isNull(inventoryItems.deletedAt)))
       .returning();
 
     if (!deleted) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "delete",
+      entityType: "inventory_item",
+      entityId: id,
+      details: { name: deleted.name, softDelete: true },
+    });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: unknown) {
     console.error("Error deleting inventory item:", error);
-    if ((error as { code?: string }).code === "23503") {
-      return NextResponse.json(
-        { error: "Cannot delete item — it is referenced by existing supply orders" },
-        { status: 409 }
-      );
-    }
     return NextResponse.json({ error: "Failed to delete inventory item" }, { status: 500 });
   }
 }

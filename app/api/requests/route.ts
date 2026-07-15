@@ -4,6 +4,8 @@ import { requests, patients, departments, labTests, users, requestResults } from
 import { eq, desc, ilike, and, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getOrgId } from "@/lib/org";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,13 +60,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const requestedBy = parseInt(session.user.id);
+    // Test/imaging requests are raised by clinicians during consultations.
+    const authz = await requirePermission([
+      ["my-appointments", "add"],
+      ["my-appointments", "edit"],
+      ["appointments", "add"],
+      ["appointments", "edit"],
+      ["laboratory", "add"],
+      ["radiography", "add"],
+    ]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: requestedBy, userEmail: actorEmail } = authz.ctx;
     const body = await request.json();
     const { patientId, departmentId, testId, appointmentId } = body;
 
@@ -85,6 +91,16 @@ export async function POST(request: NextRequest) {
         paymentStatus: "not_paid",
       })
       .returning();
+
+    void logAudit({
+      organisationId: orgId,
+      userId: requestedBy,
+      userEmail: actorEmail,
+      action: "create",
+      entityType: "request",
+      entityId: newRequest.id,
+      details: { patientId: newRequest.patientId, departmentId: newRequest.departmentId, testId: newRequest.testId },
+    });
 
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error: any) {

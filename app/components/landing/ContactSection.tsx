@@ -1,154 +1,171 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, Mail, MapPin, Phone, Send } from "lucide-react";
+import Reveal from "./Reveal";
+
 const faqs = [
     {
-        q: "Is ModernEHR fully HIPAA compliant?",
-        a: "Yes, we employ AES-256 encryption at rest and TLS 1.3 in transit. Our servers are SOC2 Type II certified and specifically hardened for PHI data."
-    }, {
+        q: "Is CareVault fully HIPAA compliant?",
+        a: "Yes. We employ AES-256 encryption at rest and TLS 1.3 in transit. Our servers are SOC 2 Type II certified and specifically hardened for PHI data.",
+    },
+    {
         q: "How long does data migration take?",
-        a: "Our automated migration tools typically handle mid-sized practice data imports within 48-72 hours, including patient records and billing history."
-    }, {
+        a: "Our automated migration tools typically handle mid-sized practice data imports within 48–72 hours, including patient records and billing history.",
+    },
+    {
         q: "Do you provide training for staff?",
-        a: "Every implementation comes with dedicated 1-on-1 onboarding and access to our 24/7 learning management system for your entire clinical team."
+        a: "Every implementation comes with dedicated 1-on-1 onboarding and access to our 24/7 learning management system for your entire clinical team.",
+    },
+    {
+        q: "Can CareVault integrate with our existing lab partners?",
+        a: "Yes. We maintain live interfaces with all major national laboratories and can stand up custom HL7/FHIR connections for regional partners.",
     },
 ];
 
-const offices = [
-    {
-        city: "San Francisco, CA",
-        address: "101 California St, Suite 400",
-        zip: "San Francisco, CA 94111",
-        img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAK7rKrWFfVanUbqFjFtNmTMg7ha-FnNFQ2Z0xV4LBTEzRsRNncEd6mY4HjJbMq5KIDimQkE28mHUNc_5D0JwIT2hg-28S2e8u3jvAg47VD9V3TD3ej0lw4LJJrii4UYWMhRGHidBK4yMpSSZKzXtMs3xXFBmrLk3UH7EqllqxySbBo58RA_WsLiGbPV-ZpJ0DFLyYNvkJ1TYpO_7KQTw0UXg7DV6RxKf77XzeldusyDBxj6M_EvbZ9N8X55eQQxDmRDDETmD1cmNE"
-    }, {
-        city: "Austin, TX",
-        address: "500 W 2nd St, Suite 1900",
-        zip: "Austin, TX 78701",
-        img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBWLeFGOFperKr1vo53cjng786Stoi8EyB3-fF-IK__zI8qrdTdOnGINOGhFkSmGV4qcj66prnfYu1YZ_ZMGeQNEdWBWzJ97OLFrqIdTNdTaV9mh6uXiO90SYAEx4lDNiEmkvjQFYrpvsydhuQDybTb3oE_KQETMmk0XALen9y3E3TjHspIYfrvIiV0C0CK-jKI1bM9gNiaQAbTGoFk6Vus9icH6KDSOU1I_ieE5z44AK_qU5rOVeZMTZlkbAXKkunGQO24BXLZ6u4"
-    },
+const contactDetails = [
+    { icon: Mail, label: "Email", value: "hello@carevault.health" },
+    { icon: Phone, label: "Phone", value: "+234 905 669 9774" },
+    { icon: MapPin, label: "Office", value: "8b Dipo Awolesi Street, Magodo" },
 ];
+
+const inputClasses =
+    "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10";
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden">
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+            >
+                <span className="text-[15px] font-semibold text-slate-900">{q}</span>
+                <ChevronDown
+                    className={`h-4.5 w-4.5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                />
+            </button>
+            <div
+                className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+            >
+                <div className="overflow-hidden">
+                    <p className="px-5 pb-4 text-[14px] leading-relaxed text-slate-600">{a}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function ContactSection() {
     return (
-        <section id="contact" className="py-16 md:py-24">
-            <div className="max-w-3xl mb-16">
-                <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">Let&apos;s build a better workflow together</h2>
-                <p className="text-lg text-slate-600">Our team is ready to help you transition to a smarter, HIPAA-compliant EHR system tailored to your practice size.</p>
-            </div>
-            <div className="grid lg:grid-cols-2 gap-16 items-start">
-                {/* Contact Form */}
-                <div className="bg-white p-8 rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100">
-                    <div className="mb-8">
-                        <h3 className="text-2xl font-bold mb-2">Send us a message</h3>
-                        <p className="text-slate-500 text-sm">Typical response time: under 2 hours.</p>
-                    </div>
-                    <form className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold ml-1">First Name</label>
-                                <input className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all" placeholder="Jane" type="text"/>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold ml-1">Last Name</label>
-                                <input className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all" placeholder="Smith" type="text"/>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold ml-1">Work Email</label>
-                            <input className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all" placeholder="jane.smith@clinic.com" type="email"/>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold ml-1">Organization Type</label>
-                            <select className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all appearance-none">
-                                <option>Private Practice</option>
-                                <option>Multi-specialty Clinic</option>
-                                <option>Hospital System</option>
-                                <option>Urgent Care</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold ml-1">Message</label>
-                            <textarea className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all resize-none" placeholder="Tell us about your practice needs..."
-                                rows={4}></textarea>
-                        </div>
-                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2" type="submit">
-                            <span>Send Message</span>
-                            {/* <span className="material-symbols-outlined text-sm">send</span> */} </button>
-                        <p className="text-center text-xs text-slate-400 mt-4 italic">
-                            By submitting this form, you agree to our privacy policy and HIPAA data handling practices.
-                        </p>
-                    </form>
-                </div>
+        <section id="contact" className="bg-slate-50 border-y border-slate-200/70 scroll-mt-16">
+            <div className="max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32">
+                <Reveal className="max-w-2xl mb-16">
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-600 mb-4">
+                        Contact
+                    </p>
+                    <h2 className="text-4xl lg:text-[2.75rem] font-bold tracking-tight text-slate-900 leading-tight">
+                        Let&apos;s build a better workflow together
+                    </h2>
+                    <p className="mt-5 text-lg text-slate-600 leading-relaxed">
+                        Our team is ready to help you transition to a smarter, HIPAA-compliant EHR
+                        tailored to your practice size.
+                    </p>
+                </Reveal>
 
-                {/* FAQ & Locations */}
-                <div className="space-y-12">
-                    {/* FAQs */}
-                    <div>
-                        <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
-                            <span>
-                                <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#507fdc" strokeWidth="1.5">
-                                    <path fillRule="evenodd" clipRule="evenodd" d="M1.25 12C1.25 6.06294 6.06294 1.25 12 1.25C17.937 1.25 22.75 6.06293 22.75 12C22.75 17.937 17.937 22.75 12 22.75C10.1437 22.75 8.39536 22.2788 6.87016 21.4493L2.63727 22.2373C2.39422 22.2826 2.14448 22.2051 1.96967 22.0303C1.79485 21.8555 1.71742 21.6058 1.76267 21.3627L2.55076 17.1298C1.72113 15.6046 1.25 13.8563 1.25 12ZM10.3446 7.60313C10.0001 7.89541 9.75 8.34102 9.75 9.00001C9.75 9.41422 9.41421 9.75001 9 9.75001C8.58579 9.75001 8.25 9.41422 8.25 9.00001C8.25 7.90899 8.68736 7.04209 9.37414 6.45937C10.0446 5.89048 10.9119 5.625 11.75 5.625C12.5882 5.625 13.4554 5.89049 14.1259 6.45938C14.8126 7.0421 15.25 7.90899 15.25 9.00001C15.25 9.76589 15.0538 10.3495 14.7334 10.8301C14.4642 11.234 14.1143 11.5462 13.839 11.7919C13.8089 11.8187 13.7798 11.8447 13.7517 11.8699C13.4445 12.1464 13.213 12.3743 13.0433 12.6741C12.881 12.9609 12.75 13.3616 12.75 13.9999C12.75 14.4141 12.4142 14.7499 12 14.7499C11.5858 14.7499 11.25 14.4141 11.25 13.9999C11.25 13.1382 11.4315 12.4764 11.7379 11.9352C12.037 11.4069 12.4305 11.041 12.7483 10.755L12.8205 10.6901C13.1207 10.4204 13.3276 10.2347 13.4853 9.99803C13.6337 9.77553 13.75 9.48414 13.75 9.00001C13.75 8.34103 13.4999 7.89542 13.1554 7.60314C12.7946 7.29702 12.2868 7.125 11.75 7.125C11.2131 7.125 10.7054 7.29702 10.3446 7.60313ZM12.5672 18.501C12.8445 18.1933 12.8197 17.719 12.512 17.4418C12.2042 17.1646 11.73 17.1893 11.4528 17.497L11.4428 17.5081C11.1655 17.8159 11.1903 18.2901 11.498 18.5674C11.8058 18.8446 12.28 18.8199 12.5572 18.5121L12.5672 18.501Z" fill="#507fdc"></path>
-                                </svg>
-                            </span>
+                <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+                    {/* Contact form */}
+                    <Reveal>
+                        <div className="rounded-3xl border border-slate-200/80 bg-white p-8 lg:p-10 shadow-[0_24px_64px_-40px_rgba(15,23,42,0.3)]">
+                            <h3 className="text-xl font-bold tracking-tight text-slate-900">Send us a message</h3>
+                            <p className="mt-1.5 text-sm text-slate-500">Typical response time: under 2 hours.</p>
 
-                            Common Questions
-                        </h3>
-                        <div className="space-y-4">
-                            {
-                            faqs.map((faq, idx) => (
-                                <div key={idx}
-                                    className="p-5 bg-white rounded-xl border border-slate-100">
-                                    <h4 className="font-bold mb-2 flex justify-between items-center">
-                                        {
-                                        faq.q
-                                    }
-                                        {/* <span className="material-symbols-outlined text-slate-400">expand_more</span> */} </h4>
-                                    <p className="text-sm text-slate-600">
-                                        {
-                                        faq.a
-                                    }</p>
-                                </div>
-                            ))
-                        } </div>
-                    </div>
-
-                    {/* Locations */}
-                    <div>
-                        <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
-                            {/* <span className="material-symbols-outlined text-blue-600">location_on</span> */}
-                            <svg width="24px" height="24px" strokeWidth="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="#507fdc">
-                                <path d="M20 10C20 14.4183 12 22 12 22C12 22 4 14.4183 4 10C4 5.58172 7.58172 2 12 2C16.4183 2 20 5.58172 20 10Z" stroke="#507fdc" strokeWidth="1.5"></path>
-                                <path d="M12 11C12.5523 11 13 10.5523 13 10C13 9.44772 12.5523 9 12 9C11.4477 9 11 9.44772 11 10C11 10.5523 11.4477 11 12 11Z" fill="#507fdc" stroke="#507fdc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
-                            </svg>
-                            Our Offices
-                        </h3>
-                        <div className="grid sm:grid-cols-2 gap-6">
-                            {
-                            offices.map((office, idx) => (
-                                <div key={idx}
-                                    className="group cursor-pointer">
-                                    <div className="h-40 bg-slate-200 rounded-xl mb-4 overflow-hidden relative">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                                            alt={
-                                                office.city
-                                            }
-                                            src={
-                                                office.img
-                                            }/>
-                                        <div className="absolute inset-0 bg-blue-600/10 group-hover:bg-transparent"></div>
+                            <form className="mt-8 space-y-5">
+                                <div className="grid sm:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="first-name" className="block text-sm font-medium text-slate-700">
+                                            First name
+                                        </label>
+                                        <input id="first-name" type="text" placeholder="Jane" className={inputClasses} />
                                     </div>
-                                    <h5 className="font-bold">
-                                        {
-                                        office.city
-                                    }</h5>
-                                    <p className="text-sm text-slate-500">
-                                        {
-                                        office.address
-                                    }<br/>{
-                                        office.zip
-                                    }</p>
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="last-name" className="block text-sm font-medium text-slate-700">
+                                            Last name
+                                        </label>
+                                        <input id="last-name" type="text" placeholder="Smith" className={inputClasses} />
+                                    </div>
                                 </div>
-                            ))
-                        } </div>
-                    </div>
+                                <div className="space-y-1.5">
+                                    <label htmlFor="work-email" className="block text-sm font-medium text-slate-700">
+                                        Work email
+                                    </label>
+                                    <input id="work-email" type="email" placeholder="jane.smith@clinic.com" className={inputClasses} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label htmlFor="org-type" className="block text-sm font-medium text-slate-700">
+                                        Organization type
+                                    </label>
+                                    <select id="org-type" className={inputClasses}>
+                                        <option>Private practice</option>
+                                        <option>Multi-specialty clinic</option>
+                                        <option>Hospital system</option>
+                                        <option>Urgent care</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label htmlFor="message" className="block text-sm font-medium text-slate-700">
+                                        Message
+                                    </label>
+                                    <textarea
+                                        id="message"
+                                        rows={4}
+                                        placeholder="Tell us about your practice needs…"
+                                        className={`${inputClasses} resize-none`}
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700 transition-colors"
+                                >
+                                    Send message
+                                    <Send className="h-4 w-4" />
+                                </button>
+                                <p className="text-center text-xs leading-relaxed text-slate-400">
+                                    By submitting this form, you agree to our privacy policy and HIPAA
+                                    data handling practices.
+                                </p>
+                            </form>
+                        </div>
+                    </Reveal>
+
+                    {/* FAQ + contact details */}
+                    <Reveal delay={0.12} className="space-y-10">
+                        <div>
+                            <h3 className="text-xl font-bold tracking-tight text-slate-900 mb-6">
+                                Common questions
+                            </h3>
+                            <div className="space-y-3">
+                                {faqs.map((faq) => (
+                                    <FaqItem key={faq.q} q={faq.q} a={faq.a} />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid sm:grid-cols-3 gap-4">
+                            {contactDetails.map((item) => (
+                                <div key={item.label} className="rounded-xl border border-slate-200/80 bg-white p-5">
+                                    <item.icon className="h-5 w-5 text-blue-600 mb-3" strokeWidth={1.75} />
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                        {item.label}
+                                    </p>
+                                    <p className="mt-1 text-sm font-semibold text-slate-800">{item.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </Reveal>
                 </div>
             </div>
         </section>

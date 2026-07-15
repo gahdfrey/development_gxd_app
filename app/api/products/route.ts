@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
-import { asc, ilike, eq, and, sql } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { asc, ilike, eq, and, sql, isNull } from "drizzle-orm";
+import { requireAuth, requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requireAuth();
+    if (authz.error) return authz.error;
+    const orgId = authz.ctx.orgId;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const category = searchParams.get("category");
     const prescribable = searchParams.get("prescribable");
 
-    const conditions: any[] = [eq(products.organisationId, orgId)];
+    const conditions: any[] = [eq(products.organisationId, orgId), isNull(products.deletedAt)];
     if (search) conditions.push(ilike(products.name, `%${search}%`));
     if (category && category !== "all") conditions.push(eq(products.category, category));
     if (prescribable === "true") conditions.push(eq(products.isPrescribable, true));
@@ -48,8 +50,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["products", "add"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
     const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable } = body;
@@ -76,6 +79,16 @@ export async function POST(request: NextRequest) {
         price: price ?? 0,
       })
       .returning();
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "create",
+      entityType: "product",
+      entityId: product.id,
+      details: { name: product.name, category: product.category },
+    });
 
     return NextResponse.json(product, { status: 201 });
   } catch (error) {

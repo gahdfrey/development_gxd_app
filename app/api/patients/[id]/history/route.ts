@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import {
   patients, hmos, appointments, visits, requests,
   requestResults, users, departments, labTests, prescriptions, products,
+  visitDiagnoses,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
@@ -67,6 +68,7 @@ export async function GET(
         createdAt: appointments.createdAt,
         doctorFirstname: users.firstname,
         doctorLastname: users.lastname,
+        visitId: visits.id,
         visitDurationMinutes: visits.durationMinutes,
         visitDoctorNotes: visits.doctorNotes,
         visitStartTime: visits.startTime,
@@ -138,6 +140,28 @@ export async function GET(
       .where(eq(prescriptions.patientId, patientId))
       .orderBy(desc(prescriptions.createdAt));
 
+    // 6. ICD-11 diagnoses for this patient's visits
+    const visitIds = apptRows.map((a) => a.visitId).filter((v): v is number => v != null);
+    const diagnosisRows = visitIds.length > 0
+      ? await db
+          .select({
+            id: visitDiagnoses.id,
+            visitId: visitDiagnoses.visitId,
+            icdCode: visitDiagnoses.icdCode,
+            icdTitle: visitDiagnoses.icdTitle,
+            clinicalText: visitDiagnoses.clinicalText,
+            diagnosisType: visitDiagnoses.diagnosisType,
+          })
+          .from(visitDiagnoses)
+          .where(inArray(visitDiagnoses.visitId, visitIds))
+      : [];
+
+    const diagnosesByVisit: Record<number, typeof diagnosisRows> = {};
+    for (const d of diagnosisRows) {
+      if (!diagnosesByVisit[d.visitId]) diagnosesByVisit[d.visitId] = [];
+      diagnosesByVisit[d.visitId].push(d);
+    }
+
     // Build a map: requestId -> results[]
     const resultsByRequest: Record<number, typeof resultRows> = {};
     for (const r of resultRows) {
@@ -185,6 +209,7 @@ export async function GET(
             doctorNotes: appt.visitDoctorNotes,
             startTime: appt.visitStartTime,
             endTime: appt.visitEndTime,
+            diagnoses: appt.visitId != null ? (diagnosesByVisit[appt.visitId] ?? []) : [],
           }
         : null,
       requests: (requestsByAppointment[appt.id] ?? []).map((req) => ({

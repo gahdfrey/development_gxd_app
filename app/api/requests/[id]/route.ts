@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requests } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Marking a request as paid is a finance-desk action.
+    const authz = await requirePermission([["finance", "edit"], ["finance", "add"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id: idParam } = await params;
     const id = parseInt(idParam);
@@ -57,6 +60,16 @@ export async function PATCH(
     if (!updated) {
       return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "update",
+      entityType: "request",
+      entityId: id,
+      details: { paymentStatus: "paid" },
+    });
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {

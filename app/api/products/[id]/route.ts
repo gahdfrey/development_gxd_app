@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
-import { eq, and, sql } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { eq, and, sql, isNull } from "drizzle-orm";
+import { requireAuth, requirePermission } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 const VALID_CATEGORIES = ["pharmacy", "laboratory", "radiology", "general"];
 
@@ -11,8 +12,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requireAuth();
+    if (authz.error) return authz.error;
+    const orgId = authz.ctx.orgId;
 
     const { id: idStr } = await params;
     const id = parseInt(idStr);
@@ -35,7 +37,7 @@ export async function GET(
         updatedAt: products.updatedAt,
       })
       .from(products)
-      .where(and(eq(products.id, id), eq(products.organisationId, orgId)));
+      .where(and(eq(products.id, id), eq(products.organisationId, orgId), isNull(products.deletedAt)));
 
     if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
     return NextResponse.json(product, { status: 200 });
@@ -50,8 +52,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Edited from the product-inventory screen ("products" module) and the
+    // org setup screen ("setup" module).
+    const authz = await requirePermission([["products", "edit"], ["setup", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id: idStr } = await params;
     const id = parseInt(idStr);
@@ -84,10 +89,25 @@ export async function PATCH(
         ...(isPrescribable !== undefined && { isPrescribable }),
         updatedAt: new Date(),
       })
-      .where(and(eq(products.id, id), eq(products.organisationId, orgId)))
+      .where(and(eq(products.id, id), eq(products.organisationId, orgId), isNull(products.deletedAt)))
       .returning();
 
     if (!updated) return NextResponse.json({ error: "Product not found" }, { status: 404 });
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "update",
+      entityType: "product",
+      entityId: id,
+      details: {
+        name: updated.name,
+        stockChanged: casesInStock !== undefined || looseUnitsInStock !== undefined,
+        priceChanged: price !== undefined,
+      },
+    });
+
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {
     console.error("Error updating product:", error);
@@ -100,19 +120,33 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["products", "delete"], ["setup", "delete"], ["setup", "edit"]]);
+    if (authz.error) return authz.error;
+    const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
+    // Soft delete: prescriptions and supply-order items keep their reference.
     const [deleted] = await db
-      .delete(products)
-      .where(and(eq(products.id, id), eq(products.organisationId, orgId)))
+      .update(products)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(products.id, id), eq(products.organisationId, orgId), isNull(products.deletedAt)))
       .returning();
 
     if (!deleted) return NextResponse.json({ error: "Product not found" }, { status: 404 });
+
+    void logAudit({
+      organisationId: orgId,
+      userId: actorId,
+      userEmail: actorEmail,
+      action: "delete",
+      entityType: "product",
+      entityId: id,
+      details: { name: deleted.name, softDelete: true },
+    });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error deleting product:", error);
