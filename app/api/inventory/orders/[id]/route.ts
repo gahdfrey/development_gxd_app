@@ -259,13 +259,13 @@ export async function PATCH(
       }
 
       const [current] = await db
-        .select({ departmentStatus: supplyOrders.departmentStatus })
+        .select({ supplyStatus: supplyOrders.supplyStatus })
         .from(supplyOrders)
         .where(and(eq(supplyOrders.id, id), orgFilter));
 
       if (!current) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-      if (current.departmentStatus !== "pending") {
-        return NextResponse.json({ error: "Items can only be edited on pending orders." }, { status: 400 });
+      if (current.supplyStatus !== "pending") {
+        return NextResponse.json({ error: "Items can only be edited before the order is accepted." }, { status: 400 });
       }
 
       const productIds = items.map((i) => i.productId);
@@ -307,13 +307,13 @@ export async function PATCH(
       const [updated] = await db
         .update(supplyOrders)
         .set({ notes: notes ? notes.trim() || null : null, updatedAt: new Date() })
-        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.departmentStatus, "pending"), orgFilter))
+        .where(and(eq(supplyOrders.id, id), eq(supplyOrders.supplyStatus, "pending"), orgFilter))
         .returning({ id: supplyOrders.id });
 
       if (!updated) {
         const [exists] = await db.select({ id: supplyOrders.id }).from(supplyOrders).where(and(eq(supplyOrders.id, id), orgFilter));
         if (!exists) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-        return NextResponse.json({ error: "Notes can only be edited on pending orders." }, { status: 400 });
+        return NextResponse.json({ error: "Notes can only be edited before the order is accepted." }, { status: 400 });
       }
 
       return NextResponse.json({ success: true }, { status: 200 });
@@ -340,14 +340,14 @@ export async function DELETE(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
 
     const [order] = await db
-      .select({ id: supplyOrders.id, departmentStatus: supplyOrders.departmentStatus })
+      .select({ id: supplyOrders.id, supplyStatus: supplyOrders.supplyStatus })
       .from(supplyOrders)
       .where(and(eq(supplyOrders.id, id), eq(supplyOrders.organisationId, orgId)));
 
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-    if (order.departmentStatus !== "pending") {
-      return NextResponse.json({ error: "Only pending orders can be deleted." }, { status: 400 });
+    if (order.supplyStatus !== "pending") {
+      return NextResponse.json({ error: "Orders can only be deleted before they are accepted." }, { status: 400 });
     }
 
     await db.delete(supplyOrderItems).where(eq(supplyOrderItems.orderId, id));

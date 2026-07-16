@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import Modal from "@/app/components/ui/Modal";
 import SearchableSelect, {
@@ -123,9 +123,20 @@ export default function RaiseRequestModal({
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const deptOptions: SearchableSelectOption[] = (departments ?? []).map(
-    (d) => ({ id: d.id, label: d.name }),
+  // Only departments that actually have tests can fulfil a request. This
+  // naturally excludes non-diagnostic departments like Pharmacy (which
+  // dispenses prescriptions, not tests) without hard-coding any names.
+  const deptIdsWithTests = useMemo(
+    () => new Set((allTests ?? []).map((t) => t.departmentId)),
+    [allTests],
   );
+
+  const deptOptions: SearchableSelectOption[] = (departments ?? [])
+    .filter((d) => deptIdsWithTests.has(d.id))
+    .map((d) => ({ id: d.id, label: d.name }));
+
+  // Departments are only meaningful once tests have loaded (we filter by them).
+  const departmentsLoading = deptsLoading || testsLoading;
 
   const testsForDept = useCallback(
     (deptId: number | undefined): SearchableSelectOption[] => {
@@ -399,13 +410,13 @@ export default function RaiseRequestModal({
                     value={row.deptOption}
                     onChange={(opt) => handleDeptChange(row.rowId, opt)}
                     placeholder={
-                      deptsLoading
+                      departmentsLoading
                         ? "Loading departments..."
                         : deptOptions.length === 0
                         ? "No departments available"
                         : "Search department..."
                     }
-                    disabled={deptsLoading || deptOptions.length === 0 || isSubmitting}
+                    disabled={departmentsLoading || deptOptions.length === 0 || isSubmitting}
                     error={errs.department}
                   />
 

@@ -23,7 +23,6 @@ import RaiseOrderModal from "../inventory/components/RaiseOrderModal";
 import EditOrderModal from "../inventory/components/EditOrderModal";
 import {
   PlusIcon,
-  CheckCircleIcon,
   EyeIcon,
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
@@ -64,13 +63,15 @@ interface CurrentUser {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  pending:  { label: "Pending",  className: "bg-yellow-100 text-yellow-800" },
-  accepted: { label: "Accepted", className: "bg-blue-100 text-blue-800" },
+  pending:   { label: "Pending",   className: "bg-yellow-100 text-yellow-800" },
+  accepted:  { label: "Accepted",  className: "bg-blue-100 text-blue-800" },
+  delivered: { label: "Delivered", className: "bg-green-100 text-green-800" },
+  cancelled: { label: "Cancelled", className: "bg-red-100 text-red-700" },
 };
 
-const TABS = ["all", "pending", "accepted"] as const;
+const TABS = ["all", "pending", "accepted", "delivered", "cancelled"] as const;
 const TAB_LABELS: Record<string, string> = {
-  all: "All", pending: "Pending", accepted: "Accepted",
+  all: "All", pending: "Pending", accepted: "Accepted", delivered: "Delivered", cancelled: "Cancelled",
 };
 type Tab = typeof TABS[number];
 
@@ -103,8 +104,8 @@ function ViewOrderModal({
   order: SupplyOrder;
   onClose: () => void;
 }) {
-  const badge = STATUS_BADGE[order.departmentStatus] ?? {
-    label: order.departmentStatus,
+  const badge = STATUS_BADGE[order.supplyStatus] ?? {
+    label: order.supplyStatus,
     className: "bg-gray-100 text-gray-600",
   };
 
@@ -234,24 +235,19 @@ function ViewOrderModal({
 function OrderCard({
   order,
   isAdmin,
-  actionLoading,
-  onAccept,
   onEdit,
   onView,
 }: {
   order: SupplyOrder;
   isAdmin: boolean;
-  actionLoading: number | null;
-  onAccept: (id: number) => void;
   onEdit: (order: SupplyOrder) => void;
   onView: (order: SupplyOrder) => void;
 }) {
-  const badge = STATUS_BADGE[order.departmentStatus] ?? {
-    label: order.departmentStatus,
+  const badge = STATUS_BADGE[order.supplyStatus] ?? {
+    label: order.supplyStatus,
     className: "bg-gray-100 text-gray-600",
   };
-  const loading = actionLoading === order.id;
-  const isPending = order.departmentStatus === "pending";
+  const isPending = order.supplyStatus === "pending";
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
@@ -291,24 +287,13 @@ function OrderCard({
       {/* Actions */}
       <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100">
         {isPending && (
-          <>
-            <button
-              onClick={() => onAccept(order.id)}
-              disabled={loading}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              <CheckCircleIcon className="h-3.5 w-3.5" />
-              {loading ? "…" : "Accept"}
-            </button>
-            <button
-              onClick={() => onEdit(order)}
-              disabled={loading}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-            >
-              <PencilSquareIcon className="h-3.5 w-3.5" />
-              Edit
-            </button>
-          </>
+          <button
+            onClick={() => onEdit(order)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <PencilSquareIcon className="h-3.5 w-3.5" />
+            Edit
+          </button>
         )}
         <button
           onClick={() => onView(order)}
@@ -329,7 +314,6 @@ export default function OrdersPage() {
   const [raiseOpen, setRaiseOpen] = useState(false);
   const [viewOrder, setViewOrder] = useState<SupplyOrder | null>(null);
   const [editOrder, setEditOrder] = useState<SupplyOrder | null>(null);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   const { data: currentUser } = useSWR<CurrentUser>("/api/wai", fetcher, {
     shouldRetryOnError: false,
@@ -346,7 +330,7 @@ export default function OrdersPage() {
   const apiUrl = useMemo(() => {
     const p = new URLSearchParams();
     if (!isAdmin && userDeptId) p.set("departmentId", String(userDeptId));
-    if (tab !== "all") p.set("departmentStatus", tab);
+    if (tab !== "all") p.set("supplyStatus", tab);
     return `/api/inventory/orders?${p.toString()}`;
   }, [isAdmin, userDeptId, tab]);
 
@@ -364,28 +348,16 @@ export default function OrdersPage() {
   const counts = useMemo(() => {
     const all = allOrders ?? [];
     return {
-      all:      all.length,
-      pending:  all.filter((o) => o.departmentStatus === "pending").length,
-      accepted: all.filter((o) => o.departmentStatus === "accepted").length,
+      all:       all.length,
+      pending:   all.filter((o) => o.supplyStatus === "pending").length,
+      accepted:  all.filter((o) => o.supplyStatus === "accepted").length,
+      delivered: all.filter((o) => o.supplyStatus === "delivered").length,
+      cancelled: all.filter((o) => o.supplyStatus === "cancelled").length,
     };
   }, [allOrders]);
 
   const pageTitle = userDeptName ? `${userDeptName} Orders` : "Orders";
   const revalidate = () => { mutate(); mutateAll(); };
-
-  const handleAccept = async (orderId: number) => {
-    setActionLoading(orderId);
-    try {
-      const res = await fetch(`/api/inventory/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ departmentStatus: "accepted" }),
-      });
-      if (res.ok) revalidate();
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   if (!currentUser) {
     return (
@@ -487,12 +459,11 @@ export default function OrdersPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {displayOrders.map((order) => {
-                    const badge = STATUS_BADGE[order.departmentStatus] ?? {
-                      label: order.departmentStatus,
+                    const badge = STATUS_BADGE[order.supplyStatus] ?? {
+                      label: order.supplyStatus,
                       className: "bg-gray-100 text-gray-600",
                     };
-                    const loading = actionLoading === order.id;
-                    const isPending = order.departmentStatus === "pending";
+                    const isPending = order.supplyStatus === "pending";
 
                     return (
                       <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
@@ -533,19 +504,8 @@ export default function OrdersPage() {
                           <div className="flex items-center justify-end gap-2">
                             {isPending && (
                               <button
-                                onClick={() => handleAccept(order.id)}
-                                disabled={loading}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-                              >
-                                <CheckCircleIcon className="h-3.5 w-3.5" />
-                                {loading ? "…" : "Accept"}
-                              </button>
-                            )}
-                            {isPending && (
-                              <button
                                 onClick={() => setEditOrder(order)}
-                                disabled={loading}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
                               >
                                 <PencilSquareIcon className="h-3.5 w-3.5" />
                                 Edit
@@ -575,8 +535,6 @@ export default function OrdersPage() {
                 key={order.id}
                 order={order}
                 isAdmin={isAdmin}
-                actionLoading={actionLoading}
-                onAccept={handleAccept}
                 onEdit={setEditOrder}
                 onView={setViewOrder}
               />

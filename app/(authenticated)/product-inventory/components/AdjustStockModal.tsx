@@ -23,12 +23,20 @@ interface Props {
   onSuccess: () => void;
 }
 
-export default function AdjustStockModal({ open, preselectedId, onClose, onSuccess }: Props) {
+export default function AdjustStockModal({
+  open,
+  preselectedId,
+  onClose,
+  onSuccess,
+}: Props) {
   const { data: products } = useSWR<CatalogProduct[]>("/api/products", fetcher);
 
-  const [selectedId, setSelectedId] = useState<number | "">(preselectedId ?? "");
-  const [casesInStock, setCasesInStock] = useState(0);
-  const [looseUnitsInStock, setLooseUnitsInStock] = useState(0);
+  const [selectedId, setSelectedId] = useState<number | "">(
+    preselectedId ?? "",
+  );
+  // Kept as strings so the fields can be cleared (empty) while typing.
+  const [casesInStock, setCasesInStock] = useState("");
+  const [looseUnitsInStock, setLooseUnitsInStock] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,11 +45,11 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
   // When a product is selected, pre-fill current stock values
   useEffect(() => {
     if (selected) {
-      setCasesInStock(selected.casesInStock);
-      setLooseUnitsInStock(selected.looseUnitsInStock);
+      setCasesInStock(String(selected.casesInStock));
+      setLooseUnitsInStock(String(selected.looseUnitsInStock));
     } else {
-      setCasesInStock(0);
-      setLooseUnitsInStock(0);
+      setCasesInStock("");
+      setLooseUnitsInStock("");
     }
   }, [selectedId, selected]);
 
@@ -55,14 +63,23 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
 
   if (!open) return null;
 
+  // Numeric values derived from the string inputs (empty → 0).
+  const casesNum = parseInt(casesInStock, 10) || 0;
+  const looseNum = parseInt(looseUnitsInStock, 10) || 0;
   const totalUnits = selected
-    ? casesInStock * selected.unitsPerCase + looseUnitsInStock
+    ? casesNum * selected.unitsPerCase + looseNum
     : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedId) { setError("Please select a product."); return; }
-    if (casesInStock < 0 || looseUnitsInStock < 0) { setError("Stock values cannot be negative."); return; }
+    if (!selectedId) {
+      setError("Please select a product.");
+      return;
+    }
+    if (casesNum < 0 || looseNum < 0) {
+      setError("Stock values cannot be negative.");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -70,16 +87,16 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
       const res = await fetch(`/api/products/${selectedId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ casesInStock, looseUnitsInStock }),
+        body: JSON.stringify({ casesInStock: casesNum, looseUnitsInStock: looseNum }),
       });
       if (!res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as { error?: string };
         throw new Error(data.error ?? "Failed to update stock");
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update stock");
     } finally {
       setSaving(false);
     }
@@ -90,12 +107,16 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Adjust Stock</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Update the current stock level for a product</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Update the current stock level for a product
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
           )}
 
           {/* Product selector */}
@@ -105,7 +126,9 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
             </label>
             <select
               value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value ? parseInt(e.target.value) : "")}
+              onChange={(e) =>
+                setSelectedId(e.target.value ? parseInt(e.target.value) : "")
+              }
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select a product…</option>
@@ -117,7 +140,8 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
             </select>
             {selected && (
               <p className="mt-1 text-xs text-gray-400">
-                {selected.unitsPerCase} units/case · current stock: {selected.totalUnits} units
+                {selected.unitsPerCase} units/case · current stock:{" "}
+                {selected.totalUnits} units
               </p>
             )}
           </div>
@@ -135,23 +159,31 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
                       Cases in Stock
                     </label>
                     <input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
                       value={casesInStock}
-                      onChange={(e) => setCasesInStock(Math.max(0, parseInt(e.target.value) || 0))}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^\d*$/.test(v)) setCasesInStock(v);
+                      }}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Loose Units
-                      <span className="ml-1 text-xs text-gray-400">(open case)</span>
+                      <span className="ml-1 text-xs text-gray-400">
+                        (open case)
+                      </span>
                     </label>
                     <input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="numeric"
                       value={looseUnitsInStock}
-                      onChange={(e) => setLooseUnitsInStock(Math.max(0, parseInt(e.target.value) || 0))}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^\d*$/.test(v)) setLooseUnitsInStock(v);
+                      }}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     />
                   </div>
@@ -160,7 +192,8 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
                 <div className="flex items-center justify-between pt-1 border-t border-blue-200 text-xs">
                   <span className="text-blue-600 font-medium">New total</span>
                   <span className="font-bold text-blue-700">
-                    {casesInStock} × {selected.unitsPerCase} + {looseUnitsInStock} ={" "}
+                    {casesNum} × {selected.unitsPerCase} +{" "}
+                    {looseNum} ={" "}
                     <span className="text-sm">{totalUnits}</span> units
                   </span>
                 </div>
@@ -168,15 +201,18 @@ export default function AdjustStockModal({ open, preselectedId, onClose, onSucce
 
               {/* Delta indicator */}
               {totalUnits !== selected.totalUnits && (
-                <div className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg ${
-                  totalUnits > selected.totalUnits
-                    ? "bg-green-50 text-green-700"
-                    : "bg-red-50 text-red-700"
-                }`}>
+                <div
+                  className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg ${
+                    totalUnits > selected.totalUnits
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
                   <span>{totalUnits > selected.totalUnits ? "▲" : "▼"}</span>
                   <span>
                     {totalUnits > selected.totalUnits ? "+" : ""}
-                    {totalUnits - selected.totalUnits} units from current stock ({selected.totalUnits} → {totalUnits})
+                    {totalUnits - selected.totalUnits} units from current stock
+                    ({selected.totalUnits} → {totalUnits})
                   </span>
                 </div>
               )}
