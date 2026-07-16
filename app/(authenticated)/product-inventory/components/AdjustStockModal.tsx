@@ -70,6 +70,14 @@ export default function AdjustStockModal({
     ? casesNum * selected.unitsPerCase + looseNum
     : 0;
 
+  // Preview of the server-side normalization (loose units rolled into cases
+  // once they reach a full case). The total never changes, only the split.
+  const willNormalize = !!selected && looseNum >= selected.unitsPerCase;
+  const normCases = selected
+    ? casesNum + Math.floor(looseNum / selected.unitsPerCase)
+    : casesNum;
+  const normLoose = selected ? looseNum % selected.unitsPerCase : looseNum;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedId) {
@@ -197,6 +205,21 @@ export default function AdjustStockModal({
                     <span className="text-sm">{totalUnits}</span> units
                   </span>
                 </div>
+
+                {/* Normalization preview */}
+                {willNormalize && (
+                  <p className="text-xs text-blue-700 bg-blue-100/70 rounded-md px-2.5 py-1.5">
+                    {looseNum} loose units will be stored as{" "}
+                    <span className="font-semibold">
+                      {normCases} case{normCases !== 1 ? "s" : ""}
+                    </span>{" "}
+                    +{" "}
+                    <span className="font-semibold">
+                      {normLoose} loose unit{normLoose !== 1 ? "s" : ""}
+                    </span>
+                    .
+                  </p>
+                )}
               </div>
 
               {/* Delta indicator */}
