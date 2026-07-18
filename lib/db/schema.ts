@@ -90,6 +90,7 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   firstname: text("firstname").notNull(),
   lastname: text("lastname").notNull(),
+  gender: text("gender"),
   password: text("password").notNull(),
   roleId: integer("role_id").references(() => roles.id),
   departmentId: integer("department_id").references(() => departments.id),

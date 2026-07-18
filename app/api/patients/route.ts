@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       consentGiven, nin, allowDuplicate,
     } = body;
 
-    if (!firstname || !lastname || !gender || !dob || !countryCode || !phone || !insuranceType) {
+    if (!firstname || !lastname || !gender || !dob || !countryCode || !phone || !insuranceType || !email?.trim()) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 

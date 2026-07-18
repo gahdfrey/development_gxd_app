@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  createUser,
+  createOrganisationWithSuperadmin,
   validateRegistrationData,
 } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq, and, ilike } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,17 +14,14 @@ export async function POST(request: NextRequest) {
       email,
       password,
       confirmPassword,
-      roleId,
-      organisationId,
+      organisationName,
     } = body;
 
-    if (!organisationId) {
-      return NextResponse.json({ error: "organisationId is required" }, { status: 400 });
-    }
-
-    const orgId = parseInt(organisationId);
-    if (isNaN(orgId)) {
-      return NextResponse.json({ error: "Invalid organisationId" }, { status: 400 });
+    if (!organisationName || !String(organisationName).trim()) {
+      return NextResponse.json(
+        { error: "Validation failed", errors: { organisationName: "Organisation name is required" } },
+        { status: 400 }
+      );
     }
 
     const validation = validateRegistrationData({ firstname, lastname, username, email, password, confirmPassword });
@@ -35,39 +29,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Validation failed", errors: validation.errors }, { status: 400 });
     }
 
-    // Uniqueness checks are scoped per org (composite unique index)
-    const [existingByEmail] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(ilike(users.email, email), eq(users.organisationId, orgId)))
-      .limit(1);
-
-    if (existingByEmail) {
-      return NextResponse.json({ error: "User with this email already exists" }, { status: 409 });
-    }
-
-    const [existingByUsername] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(ilike(users.username, username), eq(users.organisationId, orgId)))
-      .limit(1);
-
-    if (existingByUsername) {
-      return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
-    }
-
-    const user = await createUser({
+    // Signup always creates a brand-new organisation, so there is no
+    // existing org whose users to collide with.
+    const { user } = await createOrganisationWithSuperadmin({
+      organisationName: String(organisationName).trim(),
       firstname,
       lastname,
       username,
       email,
       password,
-      organisationId: orgId,
-      roleId: roleId ? parseInt(roleId) : undefined,
     });
 
     return NextResponse.json(
-      { message: "User created successfully", user: { id: user.id, username: user.username, email: user.email } },
+      { message: "Organisation and user created successfully", user: { id: user.id, username: user.username, email: user.email } },
       { status: 201 }
     );
   } catch (error) {

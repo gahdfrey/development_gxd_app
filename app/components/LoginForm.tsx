@@ -56,6 +56,12 @@ export default function LoginForm() {
         showToast("Invalid email or password. Please try again.", "error");
       } else {
         showToast("Login successful! Redirecting...", "success");
+        // Signal the welcome banner to show once, on the page we land on.
+        try {
+          sessionStorage.setItem("carevault:justLoggedIn", "1");
+        } catch {
+          /* sessionStorage unavailable — banner simply won't show */
+        }
 
         // Fetch user permissions to determine redirect route
         try {

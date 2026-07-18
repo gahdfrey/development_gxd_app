@@ -28,6 +28,7 @@ export default function EditUserForm({ user, onSubmit, onCancel }: EditUserFormP
     defaultValues: {
       firstname:    user.firstname    || "",
       lastname:     user.lastname     || "",
+      gender:       user.gender       || "",
       username:     user.username     || "",
       email:        user.email        || "",
       password:     "",
@@ -86,6 +87,20 @@ export default function EditUserForm({ user, onSubmit, onCancel }: EditUserFormP
           />
           {errors.lastname && <p className="mt-1 text-xs text-red-500">{errors.lastname.message}</p>}
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+        <select
+          {...register("gender")}
+          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${errors.gender ? "border-red-500" : "border-gray-300"}`}
+        >
+          <option value="">Select gender</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+        {errors.gender && <p className="mt-1 text-xs text-red-500">{errors.gender.message}</p>}
       </div>
 
       <div>

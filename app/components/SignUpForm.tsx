@@ -4,17 +4,15 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 
 interface FormData {
+  organisationName: string;
   firstname: string;
   lastname: string;
   username: string;
   email: string;
   password: string;
   confirmPassword: string;
-  roleId: string;
   termsAccepted: boolean;
 }
 
@@ -27,10 +25,6 @@ export default function CustomSignUpForm() {
 
   const router = useRouter();
 
-  const { data: roles = [], isLoading: rolesLoading } = useSWR<
-    { id: number; name: string }[]
-  >("/api/roles", fetcher);
-
   const {
     register,
     handleSubmit,
@@ -41,13 +35,13 @@ export default function CustomSignUpForm() {
     reset,
   } = useForm<FormData>({
     defaultValues: {
+      organisationName: "",
       firstname: "",
       lastname: "",
       username: "",
       email: "",
       password: "",
       confirmPassword: "",
-      roleId: "",
       termsAccepted: false,
     },
     mode: "onChange",
@@ -59,6 +53,7 @@ export default function CustomSignUpForm() {
     // Trim strings
     const trimmedData = {
       ...data,
+      organisationName: data.organisationName.trim(),
       firstname: data.firstname.trim(),
       lastname: data.lastname.trim(),
       username: data.username.trim(),
@@ -121,13 +116,13 @@ export default function CustomSignUpForm() {
   const handleInputChange = (
     field: keyof Pick<
       FormData,
+      | "organisationName"
       | "firstname"
       | "lastname"
       | "username"
       | "email"
       | "password"
       | "confirmPassword"
-      | "roleId"
     >
   ) => {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -141,7 +136,7 @@ export default function CustomSignUpForm() {
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
           Get Started
         </h1>
-        <p className="text-gray-500">Create your account in moments</p>
+        <p className="text-gray-500">Set up your organisation's account</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -156,6 +151,42 @@ export default function CustomSignUpForm() {
             <p className="text-sm text-emerald-700">{successMessage}</p>
           </div>
         )}
+
+        {/* Organisation Field */}
+        <div>
+          <label
+            htmlFor="organisationName"
+            className="block text-xs font-semibold text-gray-700 mb-1"
+          >
+            Organisation / Hospital Name *
+          </label>
+          <input
+            {...register("organisationName", {
+              required: "Organisation name is required",
+              minLength: {
+                value: 2,
+                message: "Organisation name must be at least 2 characters",
+              },
+              onChange: handleInputChange("organisationName"),
+            })}
+            type="text"
+            id="organisationName"
+            className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+              errors.organisationName
+                ? "border-red-500 bg-red-50"
+                : "border-gray-300"
+            }`}
+            placeholder="e.g., Dleventh Clinic"
+          />
+          {errors.organisationName && (
+            <p className="mt-1 text-xs text-red-500">
+              {errors.organisationName.message}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-gray-400">
+            This creates a new organisation and makes you its Superadmin.
+          </p>
+        </div>
 
         {/* Personal Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
@@ -279,37 +310,6 @@ export default function CustomSignUpForm() {
           />
           {errors.email && (
             <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
-          )}
-        </div>
-
-        {/* Role Field */}
-        <div>
-          <label
-            htmlFor="roleId"
-            className="block text-xs font-semibold text-gray-700 mb-1"
-          >
-            Role *
-          </label>
-          <select
-            {...register("roleId", {
-              required: "Please select a role",
-              onChange: handleInputChange("roleId"),
-            })}
-            id="roleId"
-            disabled={rolesLoading}
-            className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-              errors.roleId ? "border-red-500 bg-red-50" : "border-gray-300"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            <option value="">Select a role</option>
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
-              </option>
-            ))}
-          </select>
-          {errors.roleId && (
-            <p className="mt-1 text-xs text-red-500">{errors.roleId.message}</p>
           )}
         </div>
 

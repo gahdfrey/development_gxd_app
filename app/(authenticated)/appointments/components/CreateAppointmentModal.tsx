@@ -47,6 +47,16 @@ interface Doctor {
   email: string;
 }
 
+interface ExistingAppointment {
+  id: number;
+  appointmentTime: string;
+  status: string;
+  patient: { firstname: string; lastname: string } | null;
+}
+
+// Statuses that still occupy the doctor's calendar slot (mirrors the API).
+const ACTIVE_APPOINTMENT_STATUSES = ["scheduled", "completed"];
+
 export default function CreateAppointmentModal({
   isOpen,
   onClose,
@@ -72,6 +82,7 @@ export default function CreateAppointmentModal({
     formState: { errors },
     reset,
     setValue,
+    watch,
   } = useForm<AppointmentFormData>({
     defaultValues: {
       patientId: null,
@@ -84,6 +95,23 @@ export default function CreateAppointmentModal({
     },
     mode: "onChange",
   });
+
+  const appointmentDate = watch("appointmentDate");
+
+  // Show the selected doctor's existing appointments for the chosen date,
+  // so staff can see availability before picking a time slot.
+  const { data: doctorAppointments = [] } = useSWR<ExistingAppointment[]>(
+    selectedDoctor && appointmentDate
+      ? `/api/appointments?doctorId=${selectedDoctor.id}&date=${appointmentDate}`
+      : null,
+    fetcher,
+  );
+
+  const bookedTimes = new Set(
+    doctorAppointments
+      .filter((appt) => ACTIVE_APPOINTMENT_STATUSES.includes(appt.status))
+      .map((appt) => appt.appointmentTime),
+  );
 
   // Convert patients and doctors to searchable options
   const patientOptions: SearchableSelectOption[] = patients.map((patient) => ({
@@ -121,6 +149,13 @@ export default function CreateAppointmentModal({
   const onSubmit = async (data: AppointmentFormData) => {
     if (!selectedPatient || !selectedDoctor) {
       setErrorMessage("Please select both patient and doctor");
+      return;
+    }
+
+    if (bookedTimes.has(data.appointmentTime)) {
+      setErrorMessage(
+        `${selectedDoctor.label} already has an appointment at this time. Please choose a different time.`,
+      );
       return;
     }
 
@@ -325,8 +360,13 @@ export default function CreateAppointmentModal({
                   >
                     <option value="">Select Time</option>
                     {timeSlots.map((slot) => (
-                      <option key={slot.value} value={slot.value}>
+                      <option
+                        key={slot.value}
+                        value={slot.value}
+                        disabled={bookedTimes.has(slot.value)}
+                      >
                         {slot.label}
+                        {bookedTimes.has(slot.value) ? " (Booked)" : ""}
                       </option>
                     ))}
                   </select>
@@ -353,6 +393,47 @@ export default function CreateAppointmentModal({
                 )}
               </div>
             </div>
+
+            {/* Doctor Availability */}
+            {selectedDoctor && appointmentDate && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm">
+                {doctorAppointments.filter((appt) =>
+                  ACTIVE_APPOINTMENT_STATUSES.includes(appt.status),
+                ).length === 0 ? (
+                  <p className="text-blue-700 font-medium">
+                    ✓ {selectedDoctor.label} has no appointments booked on this
+                    date — all time slots are available.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-blue-700 font-medium mb-2">
+                      {selectedDoctor.label}'s existing appointments on{" "}
+                      {appointmentDate}:
+                    </p>
+                    <ul className="space-y-1 text-blue-800">
+                      {doctorAppointments
+                        .filter((appt) =>
+                          ACTIVE_APPOINTMENT_STATUSES.includes(appt.status),
+                        )
+                        .sort((a, b) =>
+                          a.appointmentTime.localeCompare(b.appointmentTime),
+                        )
+                        .map((appt) => (
+                          <li key={appt.id} className="flex items-center gap-2">
+                            <ClockIcon className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              {appt.appointmentTime}
+                              {appt.patient
+                                ? ` — ${appt.patient.firstname} ${appt.patient.lastname}`
+                                : ""}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Visit Type */}
             <div className="space-y-2">
