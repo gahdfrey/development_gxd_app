@@ -8,11 +8,13 @@ import { ShieldExclamationIcon } from '@heroicons/react/24/outline';
 
 // Maps URL prefix → module name (must match APP_MODULES in lib/constants.ts)
 const ROUTE_MODULE_MAP: Record<string, string> = {
-  '/dashboard':        'dashboard',
+  '/dashboard':        'analytics',
+  '/patients':         'dashboard',
   '/appointments':     'appointments',
   '/my-appointments':  'my-appointments',
   '/all-appointments': 'all-appointments',
   '/users':            'users',
+  '/data-requests':    'data-requests',
   '/roles':            'roles',
   '/finance':          'finance',
   '/laboratory':       'laboratory',

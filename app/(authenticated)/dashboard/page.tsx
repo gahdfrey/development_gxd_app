@@ -1,331 +1,230 @@
 "use client";
 
-import {useState, useMemo} from "react";
-import {createColumnHelper} from "@tanstack/react-table";
-import useSWR, {mutate} from "swr";
-import {fetcher} from "@/lib/fetcher";
-import {usePatientFilters} from "@/lib/hooks/usePatientFilters";
-import Table from "@/app/components/ui/Table";
-import Modal from "@/app/components/ui/Modal";
-import CreatePatientModal from "./components/CreatePatientModal";
-import EditPatientModal from "./components/EditPatientModal";
-import ViewPatientModal from "./components/ViewPatientModal";
-import {PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon} from "@heroicons/react/24/outline";
-import {useToast} from "@/app/contexts/ToastContext";
-import PermissionDenied from "@/app/components/ui/PermissionDenied";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+import Link from "next/link";
+import {
+  UsersIcon,
+  CalendarDaysIcon,
+  ClipboardDocumentCheckIcon,
+  BeakerIcon,
+  BanknotesIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  ArrowTrendingUpIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
+import {
+  ChartCard,
+  DonutChart,
+  AreaChart,
+  BarChart,
+  HBarList,
+  PALETTE,
+} from "./components/charts";
 
-interface Patient {
-    id: number;
-    firstname: string;
-    lastname: string;
-    gender: string;
-    dob: string;
-    maidenName: string;
-    countryCode: string;
-    phone: string;
-    insuranceType: string;
-    createdAt: string;
-    updatedAt: string;
+interface Slice {
+  label: string;
+  value: number;
+  code?: string | null;
+}
+
+interface Analytics {
+  totals: {
+    patients: number;
+    appointments: number;
+    visits: number;
+    requests: number;
+    prescriptions: number;
+    patientsThisMonth: number;
+    apptsToday: number;
+    revenue: number;
+    pendingRequests: number;
+    unpaidRequests: number;
+    resultsReceived: number;
+  };
+  apptByStatus: { status: string; value: number }[];
+  patientsByGender: { gender: string; value: number }[];
+  patientsByInsurance: Slice[];
+  requestsByDept: Slice[];
+  rxByStatus: { status: string; value: number }[];
+  topDiagnoses: Slice[];
+  topMeds: Slice[];
+  monthlyActivity: { month: string; appointments: number; patients: number }[];
+  monthlyRevenue: { month: string; revenue: number }[];
+  lowStock: { name: string; total_units: number; reorder_level: number }[];
+}
+
+const nairaShort = (v: number) =>
+  v >= 1_000_000 ? `₦${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `₦${(v / 1000).toFixed(0)}k` : `₦${v}`;
+
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  accent,
+  sub,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  accent: string;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5" style={{ borderTopColor: accent, borderTopWidth: 3 }}>
+      <div className="flex items-center justify-between">
+        <p className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">{value}</p>
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: `${accent}14`, color: accent }}>
+          <Icon className="h-5 w-5" />
+        </span>
+      </div>
+      <p className="mt-1.5 text-xs sm:text-sm text-gray-500">{label}</p>
+      {sub && <p className="mt-0.5 text-xs font-medium" style={{ color: accent }}>{sub}</p>}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
-    const {filterState, setFilters, resetFilters, queryString} = usePatientFilters();
+  const { data, isLoading, error } = useSWR<Analytics>("/api/analytics", fetcher);
 
-    const {
-        data: patients = [],
-        error,
-        isLoading
-    } = useSWR < Patient[] > (`/api/patients${queryString}`, fetcher);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedPatient, setSelectedPatient] = useState < Patient | null > (null);
-    const [selectedPatientId, setSelectedPatientId] = useState < number | null > (null,);
-    const {showToast} = useToast();
-
-    const handleDeletePatient = async () => {
-        if (!selectedPatient) 
-            return;
-        
-
-
-        const response = await fetch(`/api/patients/${
-            selectedPatient.id
-        }`, {method: "DELETE"});
-
-        if (! response.ok) {
-            console.error("Failed to delete patient");
-            showToast("Failed to delete patient", "error");
-            return;
-        }
-
-        mutate((key) => typeof key === "string" && key.startsWith("/api/patients"), undefined, {
-            revalidate: true
-        },);
-        setIsDeleteModalOpen(false);
-        setSelectedPatient(null);
-        showToast("Patient deleted successfully", "success");
-    };
-
-    const columnHelper = createColumnHelper < Patient > ();
-
-    const columns = useMemo(() => [
-        columnHelper.accessor("firstname", {
-            header: "First Name",
-            cell: (info) => info.getValue()
-        }),
-        columnHelper.accessor("lastname", {
-            header: "Last Name",
-            cell: (info) => info.getValue()
-        }),
-        columnHelper.accessor("gender", {
-            header: "Gender",
-            cell: (info) => info.getValue()
-        }),
-        columnHelper.accessor("dob", {
-            header: "Date of Birth",
-            cell: (info) => new Date(info.getValue()).toLocaleDateString()
-        }),
-        columnHelper.accessor("phone", {
-            header: "Phone",
-            cell: (info) => {
-                const patient = info.row.original;
-                return `${
-                    patient.countryCode
-                } ${
-                    info.getValue()
-                }`;
-            }
-        }),
-        columnHelper.accessor("insuranceType", {
-            header: "Insurance",
-            cell: (info) => info.getValue()
-        }),
-        columnHelper.accessor("createdAt", {
-            header: "Created At",
-            cell: (info) => new Date(info.getValue()).toLocaleDateString()
-        }),
-
-        columnHelper.display(
-            {
-                id: "actions",
-                header: "Actions",
-                cell: (props) => (
-                    <div className="flex gap-2">
-                        <button onClick={
-                                () => {
-                                    setSelectedPatientId(props.row.original.id);
-                                    setIsViewModalOpen(true);
-                                }
-                            }
-                            className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-                            title="View">
-                            <EyeIcon className="w-5 h-5"/>
-                        </button>
-                        <button onClick={
-                                () => {
-                                    setSelectedPatient(props.row.original);
-                                    setIsEditModalOpen(true);
-                                }
-                            }
-                            className="p-1 text-yellow-600 hover:text-yellow-800 transition-colors"
-                            title="Edit">
-                            <PencilSquareIcon className="w-5 h-5"/>
-                        </button>
-                        <button onClick={
-                                () => {
-                                    setSelectedPatient(props.row.original);
-                                    setIsDeleteModalOpen(true);
-                                }
-                            }
-                            className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                            title="Delete">
-                            <TrashIcon className="w-5 h-5"/>
-                        </button>
-                    </div>
-                )
-            }
-        ),
-    ], [],);
-
-    // Check for permission error
-    if (error && (error.message ?. includes("Forbidden") || error.message ?. includes("permission"))) {
-        return <PermissionDenied moduleName="Dashboard"/>;
-    }
-
+  if (isLoading) {
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            </div>
-
-            {/* Search and Filter Controls */}
-            <div className="mb-6 flex flex-col sm:flex-row gap-3">
-                {/* Date Range Filters */}
-                <div className="flex gap-2">
-                    <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                            From Date
-                        </label>
-                        <input type="date"
-                            value={
-                                filterState.startDate
-                            }
-                            onChange={
-                                (e) => setFilters({startDate: e.target.value})
-                            }
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"/>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                            To Date
-                        </label>
-                        <input type="date"
-                            value={
-                                filterState.endDate
-                            }
-                            onChange={
-                                (e) => setFilters({endDate: e.target.value})
-                            }
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"/>
-                    </div>
-                </div>
-
-                {/* Search Input */}
-                <div className="relative flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Search Patients
-                    </label>
-                    <input type="text" placeholder="Search patients..."
-                        value={
-                            filterState.search
-                        }
-                        onChange={
-                            (e) => setFilters({search: e.target.value})
-                        }
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                    <svg className="absolute left-3 bottom-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                    {
-                    filterState.search && (
-                        <button onClick={
-                                () => setFilters({search: ""})
-                            }
-                            className="absolute right-3 bottom-2.5 text-gray-400 hover:text-gray-600">
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    )
-                } </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-end gap-2">
-                    {
-                    (filterState.startDate || filterState.endDate || filterState.search) && (
-                        <button onClick={resetFilters}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors">
-                            Clear Filters
-                        </button>
-                    )
-                }
-                    <button onClick={
-                            () => setIsCreateModalOpen(true)
-                        }
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
-                        <PlusIcon className="w-5 h-5"/>
-                        Create Patient
-                    </button>
-                </div>
-            </div>
-
-            {
-            isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-            ) : (
-                <Table data={patients}
-                    columns={columns}/>
-            )
-        }
-
-            {/* Create Modal */}
-            <CreatePatientModal isOpen={isCreateModalOpen}
-                onClose={
-                    () => setIsCreateModalOpen(false)
-                }/> {/* Edit Modal */}
-            <EditPatientModal isOpen={isEditModalOpen}
-                onClose={
-                    () => {
-                        setIsEditModalOpen(false);
-                        setSelectedPatient(null);
-                    }
-                }
-                patientId={
-                    selectedPatient ?. id ?? null
-                }
-                onSuccess={
-                    () => {
-                        setIsEditModalOpen(false);
-                        setSelectedPatient(null);
-                    }
-                }/> {/* View Modal */}
-            {
-            selectedPatientId && (
-                <ViewPatientModal patientId={selectedPatientId}
-                    onClose={
-                        () => {
-                            setIsViewModalOpen(false);
-                            setSelectedPatientId(null);
-                        }
-                    }/>
-            )
-        }
-
-            {/* Delete Confirmation Modal */}
-            <Modal isOpen={isDeleteModalOpen}
-                onClose={
-                    () => {
-                        setIsDeleteModalOpen(false);
-                        setSelectedPatient(null);
-                    }
-                }
-                title="Delete Patient">
-                <div className="space-y-4">
-                    <p className="text-gray-600">
-                        Are you sure you want to delete patient{" "}
-                        <strong> {
-                            selectedPatient ?. firstname
-                        }
-                            {
-                            selectedPatient ?. lastname
-                        } </strong>
-                        ? This action cannot be undone.
-                    </p>
-                    <div className="flex justify-end gap-3">
-                        <button onClick={
-                                () => {
-                                    setIsDeleteModalOpen(false);
-                                    setSelectedPatient(null);
-                                }
-                            }
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            Cancel
-                        </button>
-                        <button onClick={handleDeletePatient}
-                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                            Delete
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+      </div>
     );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-red-600">
+          <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
+          <p className="text-sm font-medium">
+            Couldn&apos;t load analytics. You may not have dashboard access, or please try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const t = data.totals;
+  const labels = data.monthlyActivity.map((m) => m.month);
+
+  return (
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-sm text-gray-500 mt-1">Facility overview and reporting</p>
+        </div>
+        <Link
+          href="/patients"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Manage patients
+          <ArrowRightIcon className="h-4 w-4" />
+        </Link>
+      </div>
+
+      {/* KPI tiles */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile icon={UsersIcon} label="Total patients" value={t.patients.toLocaleString()} accent="#2563eb" sub={`+${t.patientsThisMonth} this month`} />
+        <StatTile icon={CalendarDaysIcon} label="Appointments" value={t.appointments.toLocaleString()} accent="#7c3aed" sub={`${t.apptsToday} today`} />
+        <StatTile icon={ClipboardDocumentCheckIcon} label="Consultations" value={t.visits.toLocaleString()} accent="#059669" />
+        <StatTile icon={BanknotesIcon} label="Revenue collected" value={nairaShort(t.revenue)} accent="#d97706" />
+      </div>
+
+      {/* Operational alert row */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile icon={BeakerIcon} label="Test requests" value={t.requests.toLocaleString()} accent="#0891b2" />
+        <StatTile icon={ClockIcon} label="Pending requests" value={t.pendingRequests.toLocaleString()} accent="#e11d48" />
+        <StatTile icon={ExclamationTriangleIcon} label="Unpaid requests" value={t.unpaidRequests.toLocaleString()} accent="#e11d48" />
+        <StatTile icon={ClipboardDocumentCheckIcon} label="Results received" value={t.resultsReceived.toLocaleString()} accent="#059669" />
+      </div>
+
+      {/* Trends */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Activity" subtitle="Appointments & new patients · last 6 months">
+          <AreaChart
+            labels={labels}
+            series={[
+              { name: "Appointments", color: "#2563eb", points: data.monthlyActivity.map((m) => m.appointments) },
+              { name: "New patients", color: "#059669", points: data.monthlyActivity.map((m) => m.patients) },
+            ]}
+          />
+        </ChartCard>
+        <ChartCard title="Revenue" subtitle="Collected from paid tests & prescriptions · last 6 months">
+          <BarChart
+            data={data.monthlyRevenue.map((m) => ({ label: m.month, value: m.revenue }))}
+            color="#d97706"
+            formatValue={nairaShort}
+          />
+        </ChartCard>
+      </div>
+
+      {/* Breakdowns */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ChartCard title="Appointments by status">
+          <DonutChart
+            data={data.apptByStatus.map((s) => ({ label: s.status, value: s.value }))}
+            colors={["#059669", "#2563eb", "#e11d48", "#d97706"]}
+          />
+        </ChartCard>
+        <ChartCard title="Patients by gender">
+          <DonutChart
+            data={data.patientsByGender.map((s) => ({ label: s.gender, value: s.value }))}
+            colors={["#2563eb", "#e11d48", "#64748b"]}
+          />
+        </ChartCard>
+        <ChartCard title="Insurance mix">
+          <DonutChart data={data.patientsByInsurance} colors={PALETTE} />
+        </ChartCard>
+      </div>
+
+      {/* Clinical top-lists */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Top diagnoses" subtitle="Most recorded ICD-11 conditions">
+          <HBarList data={data.topDiagnoses} color="#7c3aed" emptyText="No diagnoses recorded yet" />
+        </ChartCard>
+        <ChartCard title="Top medications" subtitle="Most prescribed products">
+          <HBarList data={data.topMeds} color="#0891b2" emptyText="No prescriptions yet" />
+        </ChartCard>
+      </div>
+
+      {/* Requests + prescriptions + low stock */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ChartCard title="Requests by department">
+          <DonutChart data={data.requestsByDept} colors={["#2563eb", "#059669", "#d97706", "#7c3aed"]} />
+        </ChartCard>
+        <ChartCard title="Prescriptions by status">
+          <DonutChart
+            data={data.rxByStatus.map((s) => ({ label: s.status, value: s.value }))}
+            colors={["#d97706", "#059669", "#e11d48"]}
+          />
+        </ChartCard>
+        <ChartCard title="Low stock" subtitle="At or below reorder level">
+          {data.lowStock.length === 0 ? (
+            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700">
+              <ArrowTrendingUpIcon className="h-4 w-4" />
+              All products above reorder level
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {data.lowStock.map((p, i) => (
+                <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-red-100 bg-red-50/60 px-3 py-2">
+                  <span className="truncate text-sm font-medium text-gray-800">{p.name}</span>
+                  <span className="shrink-0 text-xs font-semibold text-red-600">
+                    {p.total_units} / {p.reorder_level}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ChartCard>
+      </div>
+    </div>
+  );
 }

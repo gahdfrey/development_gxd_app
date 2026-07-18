@@ -15,7 +15,8 @@ export function getDefaultRoute(permissions: any): string {
   // Dashboard is first so superadmin (all permissions) always lands there.
   // Specialised modules follow so role-specific users land on their own section.
   const routes = [
-    { path: "/dashboard", module: "dashboard" },
+    { path: "/dashboard", module: "analytics" },
+    { path: "/patients", module: "dashboard" },
     { path: "/my-appointments", module: "my-appointments" },
     { path: "/my-history", module: "my-history" },
     { path: "/appointments", module: "appointments" },

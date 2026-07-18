@@ -127,7 +127,16 @@ interface ResultEntry {
   uploadedByLastname: string | null;
 }
 
-type TabKey = "visits" | "results" | "prescriptions";
+type TabKey = "visits" | "results" | "prescriptions" | "privacy";
+
+interface DataRequestRow {
+  id: number;
+  type: string;
+  status: string;
+  details: string;
+  resolutionNote: string | null;
+  createdAt: string;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -680,6 +689,210 @@ function EmptyState({
   );
 }
 
+// ─── Privacy & Data Rights (GDPR Art. 15/16/17/20) ───────────────────────────
+
+function PrivacyPanel({ history }: { history: PatientHistory }) {
+  const { data: requests, mutate: mutateRequests } = useSWR<DataRequestRow[]>(
+    "/api/data-requests",
+    fetcher,
+  );
+  const [type, setType] = useState<"rectification" | "erasure">("rectification");
+  const [details, setDetails] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const downloadData = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      note: "Personal health data export provided under your right of data portability (GDPR Art. 20).",
+      ...history,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `my-health-data-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!details.trim()) {
+      setFeedback({ ok: false, text: "Please describe your request." });
+      return;
+    }
+    setSubmitting(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/data-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, details }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed to submit request");
+      setDetails("");
+      setFeedback({
+        ok: true,
+        text: "Your request has been submitted. Our team will review and respond.",
+      });
+      mutateRequests();
+    } catch (err) {
+      setFeedback({
+        ok: false,
+        text: err instanceof Error ? err.message : "Failed to submit request",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const REQUEST_LABEL: Record<string, string> = {
+    rectification: "Correction",
+    erasure: "Deletion",
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Download my data */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+            <ArrowDownTrayIcon className="h-5 w-5 text-blue-600" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-bold text-gray-900">Download my data</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get a copy of your complete health record — profile, visits,
+              diagnoses, test results, and prescriptions — in a structured file
+              you can keep or share with another provider.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2.5">
+              <button
+                onClick={downloadData}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4" />
+                Download (JSON)
+              </button>
+              <a
+                href={`/api/patients/${history.patient.id}/fhir`}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4" />
+                Download (FHIR R4)
+              </a>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              FHIR is the international standard for sharing health records
+              between systems.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Submit a data request */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+        <h3 className="text-sm font-bold text-gray-900">
+          Request a correction or deletion
+        </h3>
+        <p className="mt-1 text-sm text-gray-500">
+          Ask us to correct information that&apos;s wrong, or to delete your
+          personal data. We&apos;ll review your request and get back to you.
+        </p>
+
+        {feedback && (
+          <p
+            className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+              feedback.ok
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-red-50 text-red-600"
+            }`}
+          >
+            {feedback.text}
+          </p>
+        )}
+
+        <form onSubmit={submit} className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {(["rectification", "erasure"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={`rounded-lg px-3.5 py-2 text-sm font-semibold ring-1 transition-colors ${
+                  type === t
+                    ? "bg-blue-50 text-blue-700 ring-blue-200"
+                    : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                {t === "rectification" ? "Correct my information" : "Delete my data"}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            rows={4}
+            placeholder={
+              type === "rectification"
+                ? "Tell us what's incorrect and what it should be…"
+                : "Tell us what you'd like deleted and why…"
+            }
+            className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 transition-colors"
+          >
+            {submitting ? "Submitting…" : "Submit request"}
+          </button>
+        </form>
+      </div>
+
+      {/* Existing requests */}
+      {requests && requests.length > 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Your requests</h3>
+          <ul className="space-y-2.5">
+            {requests.map((r) => (
+              <li
+                key={r.id}
+                className="rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-gray-800">
+                    {REQUEST_LABEL[r.type] ?? r.type} request
+                  </span>
+                  <Pill kind={r.status === "resolved" ? "completed" : r.status === "rejected" ? "cancelled" : "pending"}>
+                    {capitalise(r.status)}
+                  </Pill>
+                </div>
+                <p className="mt-1 text-sm text-gray-600">{r.details}</p>
+                {r.resolutionNote && (
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    <span className="font-semibold">Response:</span>{" "}
+                    {r.resolutionNote}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-400">
+                  {formatDate(r.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MyHistoryPage() {
@@ -759,6 +972,7 @@ export default function MyHistoryPage() {
       label: "Prescriptions",
       count: allPrescriptions.length,
     },
+    { key: "privacy", label: "Privacy & My Data", count: 0 },
   ];
 
   return (
@@ -1006,15 +1220,17 @@ export default function MyHistoryPage() {
                 }`}
               >
                 {tab.label}
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                    active
-                      ? "bg-blue-50 text-blue-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {tab.count}
-                </span>
+                {tab.count > 0 && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                      active
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1126,6 +1342,9 @@ export default function MyHistoryPage() {
             ))}
           </div>
         ))}
+
+      {/* ── Tab: Privacy & My Data ─────────────────────────────────────── */}
+      {activeTab === "privacy" && <PrivacyPanel history={data} />}
 
       {/* Bottom safe-area padding for mobile */}
       <div className="h-4 sm:h-0" />

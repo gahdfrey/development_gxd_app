@@ -183,7 +183,7 @@ export default function HeroSection() {
                         <motion.div {...fadeUp(0)}>
                             <span className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50/80 px-3.5 py-1.5 text-xs font-semibold text-blue-700">
                                 <ShieldCheck className="h-3.5 w-3.5" />
-                                HIPAA compliant · SOC 2 Type II certified
+                                Built for HIPAA &amp; GDPR-aligned data protection
                             </span>
                         </motion.div>
 

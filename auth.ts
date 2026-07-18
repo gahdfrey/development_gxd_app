@@ -3,6 +3,29 @@ import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import { getUserByEmail, verifyPassword } from "./lib/auth";
 import { logAudit } from "./lib/audit";
+import { db } from "./lib/db";
+import { auditLogs } from "./lib/db/schema";
+import { and, eq, gte, sql } from "drizzle-orm";
+
+// Failed-login lockout: after LOCKOUT_THRESHOLD failures for an email within
+// LOCKOUT_WINDOW_MS, further attempts are blocked until the window elapses.
+const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+async function recentLoginFailures(email: string): Promise<number> {
+  const since = new Date(Date.now() - LOCKOUT_WINDOW_MS);
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(auditLogs)
+    .where(
+      and(
+        eq(auditLogs.userEmail, email),
+        eq(auditLogs.action, "login.failure"),
+        gte(auditLogs.createdAt, since),
+      ),
+    );
+  return row?.n ?? 0;
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -18,7 +41,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const user = await getUserByEmail(credentials.email as string);
+        const email = credentials.email as string;
+
+        // Lockout / backoff: block if too many recent failures for this email.
+        if ((await recentLoginFailures(email)) >= LOCKOUT_THRESHOLD) {
+          void logAudit({
+            action: "login.lockout",
+            entityType: "auth",
+            userEmail: email,
+            details: { reason: "too_many_failed_attempts", windowMinutes: 15 },
+          });
+          return null;
+        }
+
+        const user = await getUserByEmail(email);
 
         if (!user) {
           void logAudit({

@@ -6,21 +6,34 @@ import {
   visitDiagnoses,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
-import { getOrgId } from "@/lib/org";
+import { getAuthContext } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await getAuthContext();
+    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const orgId = ctx.orgId;
 
     const { id: idParam } = await params;
     const patientId = parseInt(idParam);
     if (isNaN(patientId)) {
       return NextResponse.json({ error: "Invalid patient ID" }, { status: 400 });
     }
+
+    // HIPAA audit controls: record that this staff member viewed the
+    // patient's full clinical record.
+    void logAudit({
+      organisationId: orgId,
+      userId: ctx.userId,
+      userEmail: ctx.userEmail,
+      action: "read",
+      entityType: "patient_history",
+      entityId: patientId,
+    });
 
     // 1. Patient + HMO name
     const patientRows = await db
