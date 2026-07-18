@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import UploadResultModal from "./UploadResultModal";
-import { CheckCircleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import ViewResultModal from "./ViewResultModal";
+import { CheckCircleIcon, LockClosedIcon, EyeIcon } from "@heroicons/react/24/outline";
 
 export interface RequestRow {
   id: number;
@@ -44,6 +45,7 @@ export default function RequestsTable({
   const columnHelper = createColumnHelper<RequestRow>();
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<RequestRow | null>(null);
   // Tracks which row is showing the inline "confirm payment" prompt
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
@@ -196,9 +198,16 @@ export default function RequestsTable({
                 if (!isPaid) return null;
                 if (row.hasResult) {
                   return (
-                    <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white border border-blue-600">
-                      Result Sent
-                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedRow(row);
+                        setViewModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 transition-colors"
+                    >
+                      <EyeIcon className="h-3.5 w-3.5" />
+                      View Result
+                    </button>
                   );
                 }
                 return (
@@ -244,6 +253,15 @@ export default function RequestsTable({
           setSelectedRow(null);
           onUploadSuccess?.();
         }}
+      />
+
+      <ViewResultModal
+        isOpen={viewModalOpen}
+        onClose={() => {
+          setViewModalOpen(false);
+          setSelectedRow(null);
+        }}
+        row={selectedRow}
       />
     </>
   );

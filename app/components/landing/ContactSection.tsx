@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Mail, MapPin, Phone, Send } from "lucide-react";
+import { ChevronDown, Loader2, Mail, MapPin, Phone, Send } from "lucide-react";
 import Reveal from "./Reveal";
+import { useToast } from "@/app/contexts/ToastContext";
 
 const faqs = [
     {
-        q: "Is CareVault fully HIPAA compliant?",
-        a: "Yes. We employ AES-256 encryption at rest and TLS 1.3 in transit. Our servers are SOC 2 Type II certified and specifically hardened for PHI data.",
+        q: "How does CareVault protect patient data?",
+        a: "CareVault is engineered around HIPAA and GDPR data-protection principles: role-based access control, full audit logging, consent management, encryption in transit, and patient data-rights tooling. Formal certifications (e.g. SOC 2) are handled per deployment with your hosting and compliance teams.",
     },
     {
         q: "How long does data migration take?",
@@ -59,7 +60,53 @@ function FaqItem({ q, a }: { q: string; a: string }) {
     );
 }
 
+const initialForm = {
+    firstName: "",
+    lastName: "",
+    workEmail: "",
+    orgType: "Private practice",
+    message: "",
+};
+
 export default function ContactSection() {
+    const { showToast } = useToast();
+    const [form, setForm] = useState(initialForm);
+    const [isSending, setIsSending] = useState(false);
+
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    ) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isSending) return;
+        setIsSending(true);
+        try {
+            const res = await fetch("/api/contact", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(form),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to send your message. Please try again.");
+            }
+            // Toast auto-dismisses after 3 seconds (see Toast component default).
+            showToast("Message sent — we'll be in touch shortly.", "success");
+            setForm(initialForm);
+        } catch (err) {
+            showToast(
+                err instanceof Error ? err.message : "Failed to send your message. Please try again.",
+                "error",
+            );
+        } finally {
+            setIsSending(false);
+        }
+    };
+
     return (
         <section id="contact" className="bg-slate-50 border-y border-slate-200/70 scroll-mt-16">
             <div className="max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32">
@@ -71,7 +118,7 @@ export default function ContactSection() {
                         Let&apos;s build a better workflow together
                     </h2>
                     <p className="mt-5 text-lg text-slate-600 leading-relaxed">
-                        Our team is ready to help you transition to a smarter, HIPAA-compliant EHR
+                        Our team is ready to help you transition to a smarter, HIPAA &amp; GDPR-aligned EHR
                         tailored to your practice size.
                     </p>
                 </Reveal>
@@ -83,32 +130,69 @@ export default function ContactSection() {
                             <h3 className="text-xl font-bold tracking-tight text-slate-900">Send us a message</h3>
                             <p className="mt-1.5 text-sm text-slate-500">Typical response time: under 2 hours.</p>
 
-                            <form className="mt-8 space-y-5">
+                            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                                 <div className="grid sm:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
                                         <label htmlFor="first-name" className="block text-sm font-medium text-slate-700">
                                             First name
                                         </label>
-                                        <input id="first-name" type="text" placeholder="Jane" className={inputClasses} />
+                                        <input
+                                            id="first-name"
+                                            name="firstName"
+                                            type="text"
+                                            placeholder="Jane"
+                                            required
+                                            value={form.firstName}
+                                            onChange={handleChange}
+                                            disabled={isSending}
+                                            className={inputClasses}
+                                        />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label htmlFor="last-name" className="block text-sm font-medium text-slate-700">
                                             Last name
                                         </label>
-                                        <input id="last-name" type="text" placeholder="Smith" className={inputClasses} />
+                                        <input
+                                            id="last-name"
+                                            name="lastName"
+                                            type="text"
+                                            placeholder="Smith"
+                                            required
+                                            value={form.lastName}
+                                            onChange={handleChange}
+                                            disabled={isSending}
+                                            className={inputClasses}
+                                        />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
                                     <label htmlFor="work-email" className="block text-sm font-medium text-slate-700">
                                         Work email
                                     </label>
-                                    <input id="work-email" type="email" placeholder="jane.smith@clinic.com" className={inputClasses} />
+                                    <input
+                                        id="work-email"
+                                        name="workEmail"
+                                        type="email"
+                                        placeholder="jane.smith@clinic.com"
+                                        required
+                                        value={form.workEmail}
+                                        onChange={handleChange}
+                                        disabled={isSending}
+                                        className={inputClasses}
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label htmlFor="org-type" className="block text-sm font-medium text-slate-700">
                                         Organization type
                                     </label>
-                                    <select id="org-type" className={inputClasses}>
+                                    <select
+                                        id="org-type"
+                                        name="orgType"
+                                        value={form.orgType}
+                                        onChange={handleChange}
+                                        disabled={isSending}
+                                        className={inputClasses}
+                                    >
                                         <option>Private practice</option>
                                         <option>Multi-specialty clinic</option>
                                         <option>Hospital system</option>
@@ -121,17 +205,32 @@ export default function ContactSection() {
                                     </label>
                                     <textarea
                                         id="message"
+                                        name="message"
                                         rows={4}
                                         placeholder="Tell us about your practice needs…"
+                                        required
+                                        value={form.message}
+                                        onChange={handleChange}
+                                        disabled={isSending}
                                         className={`${inputClasses} resize-none`}
                                     />
                                 </div>
                                 <button
                                     type="submit"
-                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700 transition-colors"
+                                    disabled={isSending}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                                 >
-                                    Send message
-                                    <Send className="h-4 w-4" />
+                                    {isSending ? (
+                                        <>
+                                            Sending…
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            Send message
+                                            <Send className="h-4 w-4" />
+                                        </>
+                                    )}
                                 </button>
                                 <p className="text-center text-xs leading-relaxed text-slate-400">
                                     By submitting this form, you agree to our privacy policy and HIPAA

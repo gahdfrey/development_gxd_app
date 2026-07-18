@@ -35,11 +35,13 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
 
-      // API routes: deny by default. Only NextAuth + login/signup endpoints
-      // are public; everything else requires a session. Individual routes
-      // still perform their own org/permission checks on top of this.
+      // API routes: deny by default. Only NextAuth, login/signup, and the
+      // public landing-page contact form are public; everything else
+      // requires a session. Individual routes still perform their own
+      // org/permission checks on top of this.
       if (nextUrl.pathname.startsWith("/api")) {
         if (nextUrl.pathname.startsWith("/api/auth")) return true;
+        if (nextUrl.pathname === "/api/contact") return true;
         if (isLoggedIn) return true;
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }
@@ -68,6 +70,10 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt",
+    // Absolute session lifetime (a working shift) — sessions expire and
+    // require re-authentication after this window.
+    maxAge: 8 * 60 * 60, // 8 hours
+    updateAge: 60 * 60, // refresh the token at most hourly on activity
   },
   secret: process.env.NEXTAUTH_SECRET,
 } satisfies NextAuthConfig;

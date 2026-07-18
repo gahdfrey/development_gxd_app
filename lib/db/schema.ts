@@ -415,3 +415,25 @@ export const visitDiagnoses = pgTable("visit_diagnoses", {
 
 export type VisitDiagnosis = typeof visitDiagnoses.$inferSelect;
 export type NewVisitDiagnosis = typeof visitDiagnoses.$inferInsert;
+
+// ─── Data Subject Requests (GDPR Art. 16/17) ──────────────────────────────────
+// Patient-initiated requests to correct (rectification) or delete (erasure /
+// "right to be forgotten") their personal data. Staff review and resolve;
+// rows are never deleted, preserving the handling trail.
+export const dataRequests = pgTable("data_requests", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  requestedByUserId: integer("requested_by_user_id").references(() => users.id),
+  type: text("type").notNull(), // "rectification" | "erasure"
+  status: text("status").notNull().default("pending"), // "pending" | "resolved" | "rejected"
+  details: text("details").notNull(),
+  resolutionNote: text("resolution_note"),
+  resolvedBy: integer("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type DataRequest = typeof dataRequests.$inferSelect;
+export type NewDataRequest = typeof dataRequests.$inferInsert;

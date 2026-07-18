@@ -491,7 +491,7 @@ function VisitCard({ entry }: { entry: TimelineEntry }) {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
                 Appointment Notes
               </p>
-              <p className="text-sm text-gray-600 italic">"{appointment.notes}"</p>
+              <p className="text-sm text-gray-600 italic">&ldquo;{appointment.notes}&rdquo;</p>
             </div>
           )}
 
@@ -676,8 +676,18 @@ export default function PatientHistoryPage({
                 {capitalise(patient.gender)} · {formatAge(patient.dob)} · DOB: {patient.dob}
               </p>
             </div>
-            <div className="text-xs text-gray-400">
-              Registered {formatDate(patient.createdAt)}
+            <div className="flex flex-col items-end gap-2">
+              <span className="text-xs text-gray-400">
+                Registered {formatDate(patient.createdAt)}
+              </span>
+              <a
+                href={`/api/patients/${id}/fhir`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                title="Export this record as a FHIR R4 bundle"
+              >
+                <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                Export FHIR
+              </a>
             </div>
           </div>
 

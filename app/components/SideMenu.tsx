@@ -80,8 +80,8 @@ export default function SideMenu() {
       <div className="flex flex-col h-full py-4 px-2 overflow-hidden">
         {/* Menu Items */}
         <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-none">
-          {/* Dashboard Link */}
-          {hasPermission("dashboard", "view") && (
+          {/* Analytics Link */}
+          {hasPermission("analytics", "view") && (
             <Link
               href="/dashboard"
               className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
@@ -111,11 +111,93 @@ export default function SideMenu() {
                   isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
                 }`}
               >
-                Dashboard
+                Analytics
               </span>
               {!isExpanded && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
-                  Dashboard
+                  Analytics
+                </div>
+              )}
+            </Link>
+          )}
+
+          {/* Patients Link */}
+          {hasPermission("dashboard", "view") && (
+            <Link
+              href="/patients"
+              className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
+                isActive("/patients")
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+              }`}
+              aria-current={isActive("/patients") ? "page" : undefined}
+            >
+              <div className="shrink-0 relative p-1">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+              </div>
+              <span
+                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+                }`}
+              >
+                Patients
+              </span>
+              {!isExpanded && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                  Patients
+                </div>
+              )}
+            </Link>
+          )}
+
+          {/* Patients Link */}
+          {hasPermission("dashboard", "view") && (
+            <Link
+              href="/patients"
+              className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
+                isActive("/patients")
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+              }`}
+              aria-current={isActive("/patients") ? "page" : undefined}
+            >
+              <div className="shrink-0 relative p-1">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-2a3 3 0 10-3-3"
+                  />
+                </svg>
+              </div>
+              <span
+                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+                }`}
+              >
+                Patients
+              </span>
+              {!isExpanded && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                  Patients
                 </div>
               )}
             </Link>
@@ -403,6 +485,47 @@ export default function SideMenu() {
               {!isExpanded && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
                   Users
+                </div>
+              )}
+            </Link>
+          )}
+
+          {/* Data Requests Link (GDPR Art. 16/17) */}
+          {hasPermission("data-requests", "view") && (
+            <Link
+              href="/data-requests"
+              className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
+                isActive("/data-requests")
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+              }`}
+              aria-current={isActive("/data-requests") ? "page" : undefined}
+            >
+              <div className="shrink-0 relative p-1">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <span
+                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+                }`}
+              >
+                Data Requests
+              </span>
+              {!isExpanded && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                  Data Requests
                 </div>
               )}
             </Link>

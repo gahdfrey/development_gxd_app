@@ -74,6 +74,41 @@ export async function PATCH(
     if (category !== undefined && !VALID_CATEGORIES.includes(category)) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
+    if (casesInStock !== undefined && (isNaN(casesInStock) || casesInStock < 0)) {
+      return NextResponse.json({ error: "Cases in stock cannot be negative" }, { status: 400 });
+    }
+    if (looseUnitsInStock !== undefined && (isNaN(looseUnitsInStock) || looseUnitsInStock < 0)) {
+      return NextResponse.json({ error: "Loose units cannot be negative" }, { status: 400 });
+    }
+
+    // Normalize loose units into whole cases when they reach/exceed a full
+    // case (e.g. 43 loose at 20 units/case → +2 cases, 3 loose). Done here so
+    // stock is always stored canonically, regardless of how it was entered.
+    let normalizedCases = casesInStock;
+    let normalizedLoose = looseUnitsInStock;
+    if (looseUnitsInStock !== undefined) {
+      // unitsPerCase and the base case count may not be in this request —
+      // fall back to the product's current values.
+      let effectiveUnitsPerCase = unitsPerCase;
+      let baseCases = casesInStock;
+      if (effectiveUnitsPerCase === undefined || baseCases === undefined) {
+        const [current] = await db
+          .select({ unitsPerCase: products.unitsPerCase, casesInStock: products.casesInStock })
+          .from(products)
+          .where(and(eq(products.id, id), eq(products.organisationId, orgId), isNull(products.deletedAt)));
+        if (!current) return NextResponse.json({ error: "Product not found" }, { status: 404 });
+        if (effectiveUnitsPerCase === undefined) effectiveUnitsPerCase = current.unitsPerCase;
+        if (baseCases === undefined) baseCases = current.casesInStock;
+      }
+
+      if (effectiveUnitsPerCase >= 1 && looseUnitsInStock >= effectiveUnitsPerCase) {
+        normalizedCases = baseCases + Math.floor(looseUnitsInStock / effectiveUnitsPerCase);
+        normalizedLoose = looseUnitsInStock % effectiveUnitsPerCase;
+      } else {
+        normalizedCases = baseCases;
+        normalizedLoose = looseUnitsInStock;
+      }
+    }
 
     const [updated] = await db
       .update(products)
@@ -81,9 +116,12 @@ export async function PATCH(
         ...(name !== undefined && { name: name.trim() }),
         ...(description !== undefined && { description: description?.trim() || null }),
         ...(category !== undefined && { category }),
-        ...(casesInStock !== undefined && { casesInStock }),
+        // When loose units are being set, write the normalized case/loose pair;
+        // otherwise fall back to a cases-only update.
+        ...(looseUnitsInStock !== undefined
+          ? { casesInStock: normalizedCases, looseUnitsInStock: normalizedLoose }
+          : casesInStock !== undefined && { casesInStock }),
         ...(unitsPerCase !== undefined && { unitsPerCase }),
-        ...(looseUnitsInStock !== undefined && { looseUnitsInStock }),
         ...(reorderLevel !== undefined && { reorderLevel }),
         ...(price !== undefined && { price }),
         ...(isPrescribable !== undefined && { isPrescribable }),

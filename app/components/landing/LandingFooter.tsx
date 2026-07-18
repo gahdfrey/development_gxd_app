@@ -7,7 +7,7 @@ const columns = [
     },
     {
         heading: "Compliance",
-        links: ["HIPAA Policy", "GDPR Info", "SOC 2 Reports", "Data Privacy"],
+        links: ["HIPAA Policy", "GDPR Info", "Security Practices", "Data Privacy"],
     },
     {
         heading: "Company",
