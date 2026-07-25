@@ -26,6 +26,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { useMemo, useState } from "react";
 import { getBlobUrl } from "@/lib/appointmentUtils";
+import PendingPaymentTab from "./components/PendingPaymentTab";
+import type { UnpaidRequest, UnpaidPrescription } from "./components/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +61,8 @@ interface PatientHistory {
   };
   timeline: TimelineEntry[];
   unlinkedRequests: RequestEntry[];
+  unpaidRequests: UnpaidRequest[];
+  unpaidPrescriptions: UnpaidPrescription[];
 }
 
 interface TimelineEntry {
@@ -127,7 +131,7 @@ interface ResultEntry {
   uploadedByLastname: string | null;
 }
 
-type TabKey = "visits" | "results" | "prescriptions" | "privacy";
+type TabKey = "visits" | "results" | "prescriptions" | "pending-payment" | "privacy";
 
 interface DataRequestRow {
   id: number;
@@ -896,7 +900,7 @@ function PrivacyPanel({ history }: { history: PatientHistory }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MyHistoryPage() {
-  const { data, isLoading, error } = useSWR<PatientHistory>(
+  const { data, isLoading, error, mutate } = useSWR<PatientHistory>(
     "/api/my-history",
     fetcher,
   );
@@ -971,6 +975,11 @@ export default function MyHistoryPage() {
       key: "prescriptions",
       label: "Prescriptions",
       count: allPrescriptions.length,
+    },
+    {
+      key: "pending-payment",
+      label: "Pending Payment",
+      count: data.unpaidRequests.length + data.unpaidPrescriptions.length,
     },
     { key: "privacy", label: "Privacy & My Data", count: 0 },
   ];
@@ -1342,6 +1351,15 @@ export default function MyHistoryPage() {
             ))}
           </div>
         ))}
+
+      {/* ── Tab: Pending Payment ───────────────────────────────────────── */}
+      {activeTab === "pending-payment" && (
+        <PendingPaymentTab
+          unpaidRequests={data.unpaidRequests}
+          unpaidPrescriptions={data.unpaidPrescriptions}
+          onPaid={() => mutate()}
+        />
+      )}
 
       {/* ── Tab: Privacy & My Data ─────────────────────────────────────── */}
       {activeTab === "privacy" && <PrivacyPanel history={data} />}

@@ -4,6 +4,7 @@ import { labTests, departments } from "@/lib/db/schema";
 import { eq, asc, and, isNull } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 export async function GET() {
   try {
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newTest, { status: 201 });
   } catch (error: any) {
     console.error("Error creating test:", error);
-    if (error.code === "23503") return NextResponse.json({ error: "Selected department does not exist" }, { status: 400 });
+    if (getPgErrorCode(error) === "23503") return NextResponse.json({ error: "Selected department does not exist" }, { status: 400 });
     return NextResponse.json({ error: "Failed to create test" }, { status: 500 });
   }
 }

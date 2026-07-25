@@ -144,6 +144,7 @@ export async function GET(_req: NextRequest) {
         appointmentId: prescriptions.appointmentId,
         productId: prescriptions.productId,
         productName: products.name,
+        productPrice: products.price,
         dosage: prescriptions.dosage,
         paymentStatus: prescriptions.paymentStatus,
         status: prescriptions.status,
@@ -244,6 +245,14 @@ export async function GET(_req: NextRequest) {
       0,
     );
 
+    // Pending Payment tab: every unpaid request/prescription, flattened
+    // across both the timeline and the unlinked-requests bucket (same shape
+    // the Test Results tab already flattens client-side).
+    const unpaidRequests = requestRows
+      .filter((r) => r.paymentStatus !== "paid")
+      .map((req) => ({ ...req, results: resultsByRequest[req.id] ?? [] }));
+    const unpaidPrescriptions = prescriptionRows.filter((p) => p.paymentStatus !== "paid");
+
     return NextResponse.json({
       patient,
       stats: { completedVisits, totalRequests, paidRequests, resultsReceived },
@@ -252,6 +261,8 @@ export async function GET(_req: NextRequest) {
         ...req,
         results: resultsByRequest[req.id] ?? [],
       })),
+      unpaidRequests,
+      unpaidPrescriptions,
     });
   } catch (error) {
     console.error("Error fetching patient history:", error);

@@ -4,6 +4,7 @@ import { beds } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 const VALID_STATUSES = ["available", "occupied", "maintenance"];
 
@@ -66,7 +67,7 @@ export async function PUT(
     return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {
     console.error("Error updating bed:", error);
-    if (error.code === "23505") return NextResponse.json({ error: "A bed with this number already exists in this ward" }, { status: 409 });
+    if (getPgErrorCode(error) === "23505") return NextResponse.json({ error: "A bed with this number already exists in this ward" }, { status: 409 });
     return NextResponse.json({ error: "Failed to update bed" }, { status: 500 });
   }
 }

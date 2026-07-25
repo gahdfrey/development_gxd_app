@@ -18,6 +18,14 @@ SMTP_FROM=your-gmail-address@gmail.com
 # Optional: override who receives contact-form submissions (defaults to gessien3@gmail.com)
 CONTACT_RECIPIENT_EMAIL=gessien3@gmail.com
 
+# Patient portal online payments (app/api/payments/*). Leave PAYMENT_GATEWAY
+# unset to use the built-in mock gateway (no real charges, useful for
+# dev/testing). Set to "paystack" + fill in PAYSTACK_SECRET_KEY to go live.
+PAYMENT_GATEWAY=mock
+PAYSTACK_SECRET_KEY=sk_test_your-paystack-secret-key
+# Used to build the callback URL patients are returned to after checkout.
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
 # Instructions:
 # 1. Copy this file's contents to .env.local
 # 2. Generate NEXTAUTH_SECRET: openssl rand -base64 32

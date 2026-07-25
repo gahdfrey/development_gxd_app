@@ -4,6 +4,7 @@ import { hmos } from "@/lib/db/schema";
 import { desc, isNull } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 // GET /api/hmo - Get all HMOs (shared across all orgs; read for any staff)
 export async function GET() {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating HMO:", error);
 
     // Handle unique constraint violation
-    if (error.code === "23505") {
+    if (getPgErrorCode(error) === "23505") {
       return NextResponse.json(
         { error: "HMO with this name already exists" },
         { status: 409 }

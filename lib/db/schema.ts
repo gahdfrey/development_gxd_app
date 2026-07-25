@@ -523,3 +523,43 @@ export const admissionTransfers = pgTable("admission_transfers", {
 
 export type AdmissionTransfer = typeof admissionTransfers.$inferSelect;
 export type NewAdmissionTransfer = typeof admissionTransfers.$inferInsert;
+
+// ─── Payments ───────────────────────────────────────────────────────────────
+// A patient-initiated online payment (e.g. from the patient portal), which
+// may cover several requests/prescriptions at once — see paymentItems.
+// Desk payments recorded by Finance staff stay as a direct paymentStatus
+// flip on `requests`/`prescriptions` and do NOT go through this table.
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  amount: integer("amount").notNull(),
+  currency: text("currency").notNull().default("NGN"),
+  status: text("status").notNull().default("pending"), // "pending" | "success" | "failed"
+  gatewayProvider: text("gateway_provider").notNull(), // "paystack" | "flutterwave" | "mock"
+  gatewayReference: text("gateway_reference").notNull().unique(),
+  initiatedBy: text("initiated_by").notNull().default("patient"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
+
+// ─── Payment Items ────────────────────────────────────────────────────────────
+// Which requests/prescriptions a payment covers, with the amount snapshotted
+// at payment time (prices on requests/prescriptions are otherwise derived
+// live from labTests/products, which can drift after the fact). No FK on
+// itemId since it points to one of two different tables depending on
+// itemType — validated in application code instead (same reasoning as
+// auditLogs having no FK constraints).
+export const paymentItems = pgTable("payment_items", {
+  id: serial("id").primaryKey(),
+  paymentId: integer("payment_id").notNull().references(() => payments.id),
+  itemType: text("item_type").notNull(), // "request" | "prescription"
+  itemId: integer("item_id").notNull(),
+  amount: integer("amount").notNull(),
+});
+
+export type PaymentItem = typeof paymentItems.$inferSelect;
+export type NewPaymentItem = typeof paymentItems.$inferInsert;

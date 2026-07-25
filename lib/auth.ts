@@ -15,6 +15,14 @@ const SUPERADMIN_PERMISSIONS = {
   "data-requests": ["add", "view", "edit", "delete"],
   roles: ["add", "view", "edit", "delete"],
   setup: ["view", "edit"],
+  finance: ["add", "view", "edit", "delete", "print"],
+  laboratory: ["add", "view", "edit", "delete", "print"],
+  radiography: ["add", "view", "edit", "delete", "print"],
+  "my-history": ["view"],
+  "supply-orders": ["add", "view", "edit", "delete", "print"],
+  products: ["add", "view", "edit", "delete", "print"],
+  orders: ["add", "view", "edit", "delete", "print"],
+  pharmacy: ["add", "view", "edit", "delete", "print"],
 };
 
 function slugify(name: string) {

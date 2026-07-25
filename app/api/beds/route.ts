@@ -5,6 +5,7 @@ import { asc, eq, and, isNull } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { getOrgId } from "@/lib/org";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 // Read allowed for all authenticated staff (bed-availability dropdowns in
 // the Admit/Transfer modals fire this on every ward selection); uses the
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newBed, { status: 201 });
   } catch (error: any) {
     console.error("Error creating bed:", error);
-    if (error.code === "23505") return NextResponse.json({ error: "A bed with this number already exists in this ward" }, { status: 409 });
+    if (getPgErrorCode(error) === "23505") return NextResponse.json({ error: "A bed with this number already exists in this ward" }, { status: 409 });
     return NextResponse.json({ error: "Failed to create bed" }, { status: 500 });
   }
 }

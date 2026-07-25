@@ -4,6 +4,7 @@ import { departments } from "@/lib/db/schema";
 import { asc, eq, and, isNull } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 export async function GET() {
   try {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newDepartment, { status: 201 });
   } catch (error: any) {
     console.error("Error creating department:", error);
-    if (error.code === "23505") return NextResponse.json({ error: "A department with this name already exists" }, { status: 409 });
+    if (getPgErrorCode(error) === "23505") return NextResponse.json({ error: "A department with this name already exists" }, { status: 409 });
     return NextResponse.json({ error: "Failed to create department" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { labTests } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 export async function GET(
   _request: NextRequest,
@@ -98,7 +99,7 @@ export async function PUT(
   } catch (error: any) {
     console.error("Error updating test:", error);
 
-    if (error.code === "23503") {
+    if (getPgErrorCode(error) === "23503") {
       return NextResponse.json({ error: "Selected department does not exist" }, { status: 400 });
     }
 

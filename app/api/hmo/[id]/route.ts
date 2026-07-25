@@ -4,6 +4,7 @@ import { hmos } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 // GET /api/hmo/[id] - Get a single HMO by ID
 export async function GET(
@@ -95,7 +96,7 @@ export async function PUT(
     console.error("Error updating HMO:", error);
 
     // Handle unique constraint violation
-    if (error.code === "23505") {
+    if (getPgErrorCode(error) === "23505") {
       return NextResponse.json(
         { error: "HMO with this name already exists" },
         { status: 409 }
