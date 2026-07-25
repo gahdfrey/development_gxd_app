@@ -26,6 +26,7 @@ export async function GET(request: Request) {
         email: users.email,
         firstname: users.firstname,
         lastname: users.lastname,
+        gender: users.gender,
         roleId: users.roleId,
         departmentId: users.departmentId,
         licenseNumber: users.licenseNumber,
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
     const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
-    const { username, email, firstname, lastname, password, roleId, departmentId, licenseNumber, licenseCouncil } = body;
+    const { username, email, firstname, lastname, gender, password, roleId, departmentId, licenseNumber, licenseCouncil } = body;
 
     if (!username || !email || !firstname || !lastname || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
       .values({
         organisationId: orgId,
         username, email, firstname, lastname,
+        gender: gender?.trim() || null,
         password: hashedPassword,
         roleId: roleId || null,
         departmentId: departmentId || null,

@@ -24,6 +24,7 @@ export async function GET(
         email: users.email,
         firstname: users.firstname,
         lastname: users.lastname,
+        gender: users.gender,
         roleId: users.roleId,
         departmentId: users.departmentId,
         licenseNumber: users.licenseNumber,
@@ -61,7 +62,7 @@ export async function PUT(
     const { id } = await params;
     const userId = parseInt(id);
     const body = await request.json();
-    const { username, email, firstname, lastname, password, roleId, departmentId, permissions, licenseNumber, licenseCouncil } = body;
+    const { username, email, firstname, lastname, gender, password, roleId, departmentId, permissions, licenseNumber, licenseCouncil } = body;
 
     const updateData: Record<string, unknown> = {
       username,
@@ -73,6 +74,7 @@ export async function PUT(
       updatedAt: new Date(),
     };
 
+    if (gender !== undefined) updateData.gender = gender?.trim() || null;
     if (licenseNumber !== undefined) updateData.licenseNumber = licenseNumber?.trim() || null;
     if (licenseCouncil !== undefined) updateData.licenseCouncil = licenseCouncil?.trim() || null;
 

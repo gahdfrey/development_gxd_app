@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { organisations } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
 import { auth } from "@/auth";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 export async function GET(_request: NextRequest) {
   try {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(org, { status: 201 });
   } catch (error: any) {
     console.error("Error creating organisation:", error);
-    if (error.code === "23505") {
+    if (getPgErrorCode(error) === "23505") {
       return NextResponse.json({ error: "An organisation with this slug already exists" }, { status: 409 });
     }
     return NextResponse.json({ error: "Failed to create organisation" }, { status: 500 });

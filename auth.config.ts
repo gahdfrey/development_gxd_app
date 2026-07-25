@@ -35,13 +35,15 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
 
-      // API routes: deny by default. Only NextAuth, login/signup, and the
-      // public landing-page contact form are public; everything else
-      // requires a session. Individual routes still perform their own
-      // org/permission checks on top of this.
+      // API routes: deny by default. Only NextAuth, login/signup, the
+      // public landing-page contact form, and the payment gateway webhook
+      // are public; everything else requires a session. Individual routes
+      // still perform their own org/permission checks (or, for the
+      // webhook, signature verification) on top of this.
       if (nextUrl.pathname.startsWith("/api")) {
         if (nextUrl.pathname.startsWith("/api/auth")) return true;
         if (nextUrl.pathname === "/api/contact") return true;
+        if (nextUrl.pathname === "/api/payments/webhook") return true;
         if (isLoggedIn) return true;
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }

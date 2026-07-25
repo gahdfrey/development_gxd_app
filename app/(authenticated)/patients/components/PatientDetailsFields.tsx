@@ -228,12 +228,12 @@ export default function PatientDetailsFields({
         placeholder="patient@example.com"
         error={errors.email}
         register={register("email", {
+          required: "Email is required for patient portal login",
           pattern: {
             value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
             message: "Enter a valid email address",
           },
         })}
-        optional
       />
 
       {/* Insurance Type */}

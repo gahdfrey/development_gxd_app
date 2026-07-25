@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 export async function GET(request: NextRequest) {
   try {
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error: any) {
     console.error("Error creating request:", error);
-    if (error.code === "23503") return NextResponse.json({ error: "Invalid patient, department, or test reference" }, { status: 400 });
+    if (getPgErrorCode(error) === "23503") return NextResponse.json({ error: "Invalid patient, department, or test reference" }, { status: 400 });
     return NextResponse.json({ error: "Failed to create request" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { departments, labTests } from "@/lib/db/schema";
 import { eq, and, isNull, count } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getPgErrorCode } from "@/lib/db/pg-error";
 
 export async function GET(
   _request: NextRequest,
@@ -84,7 +85,7 @@ export async function PUT(
   } catch (error: any) {
     console.error("Error updating department:", error);
 
-    if (error.code === "23505") {
+    if (getPgErrorCode(error) === "23505") {
       return NextResponse.json(
         { error: "A department with this name already exists" },
         { status: 409 },
