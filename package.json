@@ -18,7 +18,9 @@
     "db:migrate-identity": "npx tsx lib/db/add-identity-fields.ts",
     "db:migrate-diagnoses": "npx tsx lib/db/add-diagnoses.ts",
     "db:seed-icd11": "npx tsx lib/db/seed-icd11.ts",
-    "db:setup-diagnoses": "npm run db:migrate-diagnoses && npm run db:seed-icd11"
+    "db:setup-diagnoses": "npm run db:migrate-diagnoses && npm run db:seed-icd11",
+    "db:migrate-admission": "npx tsx lib/db/add-admission-module.ts",
+    "db:migrate-admission-perf": "npx tsx lib/db/add-admission-perf-indexes.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

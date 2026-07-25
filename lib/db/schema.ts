@@ -7,6 +7,7 @@ import {
   integer,
   boolean,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 
 // ─── Organisations ────────────────────────────────────────────────────────────
@@ -163,7 +164,11 @@ export const appointments = pgTable("appointments", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // Supports "this patient's appointments" lookups (e.g. the Admission
+  // module's completed-appointment picker) without scanning the whole table.
+  patientIdx: index("appointments_patient_idx").on(t.patientId),
+}));
 
 export type Appointment = typeof appointments.$inferSelect;
 export type NewAppointment = typeof appointments.$inferInsert;
@@ -438,3 +443,83 @@ export const dataRequests = pgTable("data_requests", {
 
 export type DataRequest = typeof dataRequests.$inferSelect;
 export type NewDataRequest = typeof dataRequests.$inferInsert;
+
+// ─── Wards ────────────────────────────────────────────────────────────────────
+export const wards = pgTable("wards", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  name: text("name").notNull(),
+  departmentId: integer("department_id").references(() => departments.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => ({
+  // organisationId leads so "list this org's wards" (every GET /api/wards
+  // call) hits the index directly instead of a full-table scan.
+  orgNameUnique: uniqueIndex("wards_org_name_idx").on(t.organisationId, t.name),
+}));
+
+export type Ward = typeof wards.$inferSelect;
+export type NewWard = typeof wards.$inferInsert;
+
+// ─── Beds ─────────────────────────────────────────────────────────────────────
+export const beds = pgTable("beds", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  wardId: integer("ward_id").notNull().references(() => wards.id),
+  bedNumber: text("bed_number").notNull(),
+  status: text("status").notNull().default("available"), // "available" | "occupied" | "maintenance"
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => ({
+  bedNumberWardUnique: uniqueIndex("beds_number_ward_idx").on(t.bedNumber, t.wardId),
+  // Speeds up "available beds in this ward" — hit on every open of the
+  // Admit/Transfer modals' bed dropdown.
+  wardStatusIdx: index("beds_ward_status_idx").on(t.wardId, t.status),
+}));
+
+export type Bed = typeof beds.$inferSelect;
+export type NewBed = typeof beds.$inferInsert;
+
+// ─── Admissions (ADT — Admission, Discharge, Transfer) ────────────────────────
+export const admissions = pgTable("admissions", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  wardId: integer("ward_id").notNull().references(() => wards.id),
+  bedId: integer("bed_id").notNull().references(() => beds.id),
+  admittingDoctorId: integer("admitting_doctor_id").notNull().references(() => users.id),
+  admissionType: text("admission_type").notNull().default("elective"), // "elective" | "emergency" | "transfer-in"
+  admissionReason: text("admission_reason").notNull(),
+  status: text("status").notNull().default("admitted"), // "admitted" | "discharged"
+  admittedAt: timestamp("admitted_at", { withTimezone: true }).notNull().defaultNow(),
+  dischargedAt: timestamp("discharged_at", { withTimezone: true }),
+  dischargeSummary: text("discharge_summary"),
+  dischargedBy: integer("discharged_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Admission = typeof admissions.$inferSelect;
+export type NewAdmission = typeof admissions.$inferInsert;
+
+// ─── Admission Transfers ───────────────────────────────────────────────────────
+// One row per ward/bed move within an admission — gives a full movement
+// history (the ADT "transfer" event) rather than just the current location.
+export const admissionTransfers = pgTable("admission_transfers", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  admissionId: integer("admission_id").notNull().references(() => admissions.id),
+  fromWardId: integer("from_ward_id").references(() => wards.id),
+  fromBedId: integer("from_bed_id").references(() => beds.id),
+  toWardId: integer("to_ward_id").notNull().references(() => wards.id),
+  toBedId: integer("to_bed_id").notNull().references(() => beds.id),
+  reason: text("reason"),
+  transferredBy: integer("transferred_by").notNull().references(() => users.id),
+  transferredAt: timestamp("transferred_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AdmissionTransfer = typeof admissionTransfers.$inferSelect;
+export type NewAdmissionTransfer = typeof admissionTransfers.$inferInsert;

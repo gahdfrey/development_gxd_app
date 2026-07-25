@@ -18,6 +18,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const doctorId = searchParams.get("doctorId");
     const date = searchParams.get("date");
+    const patientId = searchParams.get("patientId");
+    const status = searchParams.get("status");
 
     const conditions = [eq(appointments.organisationId, orgId)];
     if (doctorId) {
@@ -25,6 +27,11 @@ export async function GET(request: Request) {
       if (!isNaN(parsedDoctorId)) conditions.push(eq(appointments.doctorId, parsedDoctorId));
     }
     if (date) conditions.push(eq(appointments.appointmentDate, date));
+    if (patientId) {
+      const parsedPatientId = parseInt(patientId);
+      if (!isNaN(parsedPatientId)) conditions.push(eq(appointments.patientId, parsedPatientId));
+    }
+    if (status) conditions.push(eq(appointments.status, status));
 
     const allAppointments = await db
       .select({
