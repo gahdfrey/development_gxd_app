@@ -22,6 +22,8 @@ import {
   ChatBubbleLeftEllipsisIcon,
   ClipboardDocumentListIcon,
   ArrowLeftIcon,
+  CheckCircleIcon,
+  EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 import { getBlobUrl } from "@/lib/appointmentUtils";
 
@@ -122,6 +124,7 @@ interface ResultEntry {
   fileType: string;
   message: string | null;
   createdAt: string;
+  viewedAt: string | null;
   uploadedByFirstname: string | null;
   uploadedByLastname: string | null;
 }
@@ -362,6 +365,20 @@ function ResultCard({ result }: { result: ResultEntry }) {
               </span>{" "}
               · {formatDateTime(result.createdAt)}
             </p>
+            {/* Read-only indication of whether the patient has seen this
+                result in their portal. Staff opening it here does NOT change
+                this — it reflects the patient's own view only. */}
+            {result.viewedAt ? (
+              <p className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-600">
+                <CheckCircleIcon className="h-3.5 w-3.5" />
+                Viewed by patient · {formatDateTime(result.viewedAt)}
+              </p>
+            ) : (
+              <p className="mt-1 inline-flex items-center gap-1 text-xs text-amber-600">
+                <EyeSlashIcon className="h-3.5 w-3.5" />
+                Not yet viewed by patient
+              </p>
+            )}
           </div>
           <span className="text-xs text-blue-500 group-hover:text-blue-700 font-medium shrink-0 mt-0.5">
             View

@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
 import {
   UserCircleIcon,
@@ -23,6 +23,7 @@ import {
   ShieldCheckIcon,
   ClipboardDocumentListIcon,
   ClockIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useMemo, useState } from "react";
 import { getBlobUrl } from "@/lib/appointmentUtils";
@@ -127,6 +128,7 @@ interface ResultEntry {
   fileType: string;
   message: string | null;
   createdAt: string;
+  viewedAt: string | null;
   uploadedByFirstname: string | null;
   uploadedByLastname: string | null;
 }
@@ -390,20 +392,46 @@ function ResultViewerModal({
 
 function ResultCard({ result }: { result: ResultEntry }) {
   const [viewing, setViewing] = useState(false);
+  // Track "seen" locally so the New badge clears instantly on open, before
+  // the server round-trip / SWR revalidation lands.
+  const [seen, setSeen] = useState(result.viewedAt != null);
   const isImage = isImageType(result.fileType);
+
+  const handleOpen = () => {
+    setViewing(true);
+    if (!seen) {
+      setSeen(true);
+      // Record the view server-side (first open only) and refresh history so
+      // the login banner / counts stay in sync. Fire-and-forget.
+      fetch(`/api/my-history/results/${result.id}/view`, { method: "PATCH" })
+        .then(() => mutate("/api/my-history"))
+        .catch(() => {});
+    }
+  };
 
   return (
     <>
       <button
-        onClick={() => setViewing(true)}
-        className="w-full text-left bg-white border border-gray-200 rounded-xl p-3 space-y-2 hover:border-blue-300 active:bg-blue-50/40 transition-colors group"
+        onClick={handleOpen}
+        className={`w-full text-left bg-white border rounded-xl p-3 space-y-2 transition-colors group ${
+          seen
+            ? "border-gray-200 hover:border-blue-300 active:bg-blue-50/40"
+            : "border-blue-300 bg-blue-50/40 hover:border-blue-400"
+        }`}
       >
         <div className="flex items-start gap-2.5">
           <DocumentArrowDownIcon className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-blue-600 group-hover:text-blue-800 truncate">
-              {result.fileName}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-blue-600 group-hover:text-blue-800 truncate">
+                {result.fileName}
+              </p>
+              {!seen && (
+                <span className="shrink-0 inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  New
+                </span>
+              )}
+            </div>
             {result.message && (
               <p className="text-xs text-gray-600 mt-0.5 italic truncate">
                 &ldquo;{result.message}&rdquo;
@@ -413,9 +441,16 @@ function ResultCard({ result }: { result: ResultEntry }) {
               {formatDateTime(result.createdAt)}
             </p>
           </div>
-          <span className="text-xs text-blue-500 group-hover:text-blue-700 font-medium shrink-0 mt-0.5">
-            View
-          </span>
+          {seen ? (
+            <span className="flex items-center gap-1 text-xs text-gray-400 font-medium shrink-0 mt-0.5">
+              <CheckCircleIcon className="h-3.5 w-3.5" />
+              Viewed
+            </span>
+          ) : (
+            <span className="text-xs text-blue-500 group-hover:text-blue-700 font-medium shrink-0 mt-0.5">
+              View
+            </span>
+          )}
         </div>
         {isImage && (
           <img
@@ -444,6 +479,7 @@ function RequestCard({
   const [expanded, setExpanded] = useState(false);
   const isPaid = request.paymentStatus === "paid";
   const hasResults = request.results.length > 0;
+  const unviewedCount = request.results.filter((r) => r.viewedAt == null).length;
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -492,10 +528,17 @@ function RequestCard({
             {isPaid ? "Paid" : "Not Paid"}
           </Pill>
           {hasResults ? (
-            <Pill kind="result">
-              {request.results.length} result
-              {request.results.length !== 1 ? "s" : ""}
-            </Pill>
+            <>
+              <Pill kind="result">
+                {request.results.length} result
+                {request.results.length !== 1 ? "s" : ""}
+              </Pill>
+              {unviewedCount > 0 && (
+                <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  {unviewedCount} new
+                </span>
+              )}
+            </>
           ) : (
             <Pill
               kind={request.status === "completed" ? "completed" : "pending"}

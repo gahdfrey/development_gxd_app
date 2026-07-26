@@ -127,6 +127,7 @@ export async function GET(
           fileType: requestResults.fileType,
           message: requestResults.message,
           createdAt: requestResults.createdAt,
+          viewedAt: requestResults.viewedAt,
           uploadedByFirstname: users.firstname,
           uploadedByLastname: users.lastname,
         })
