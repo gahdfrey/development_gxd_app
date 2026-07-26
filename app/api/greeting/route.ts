@@ -56,10 +56,12 @@ export async function GET() {
         SELECT count(*)::int AS n FROM appointments
         WHERE patient_id = ${ctx.patientId} AND status = 'scheduled'
           AND appointment_date >= ${today}`);
+      // Count only results the patient hasn't opened yet — otherwise the
+      // banner would re-nag about results they've already seen.
       const results = await num(sql`
         SELECT count(*)::int AS n FROM request_results rr
         JOIN requests r ON rr.request_id = r.id
-        WHERE r.patient_id = ${ctx.patientId} AND rr.created_at >= now() - interval '14 days'`);
+        WHERE r.patient_id = ${ctx.patientId} AND rr.viewed_at IS NULL`);
       if (upcoming) previews.push(`You have ${upcoming} upcoming appointment${plural(upcoming)}.`);
       if (results) previews.push(`${results} new test result${plural(results)} available.`);
     } else if (role.includes("doctor")) {

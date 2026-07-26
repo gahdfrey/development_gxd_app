@@ -234,6 +234,10 @@ export const requestResults = pgTable("request_results", {
   fileType: text("file_type").notNull(),
   message: text("message"),
   uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
+  // When the patient first opened this result in their portal. NULL = the
+  // patient hasn't seen it yet (drives the "new result" login banner and the
+  // New/Viewed badges). Only set by the patient viewing it, never by staff.
+  viewedAt: timestamp("viewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

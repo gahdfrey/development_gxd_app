@@ -129,6 +129,7 @@ export async function GET(_req: NextRequest) {
           fileType: requestResults.fileType,
           message: requestResults.message,
           createdAt: requestResults.createdAt,
+          viewedAt: requestResults.viewedAt,
           uploadedByFirstname: users.firstname,
           uploadedByLastname: users.lastname,
         })
