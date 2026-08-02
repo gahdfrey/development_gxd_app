@@ -10,6 +10,7 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import RaiseOrderModal from "../inventory/components/RaiseOrderModal";
+import DispenseModal from "./components/DispenseModal";
 
 interface PrescriptionRow {
   id: number;
@@ -18,8 +19,16 @@ interface PrescriptionRow {
   patientDob: string | null;
   requestedByFirstname: string | null;
   requestedByLastname: string | null;
+  genericId: number | null;
+  genericName: string | null;
+  genericStrength: string | null;
+  productId: number | null;
   productName: string | null;
   productPrice: number | null;
+  productManufacturer: string | null;
+  dispensedProductId: number | null;
+  dispensedProductName: string | null;
+  batchNumber: string | null;
   dosage: string;
   paymentStatus: string;
   status: string;
@@ -78,8 +87,10 @@ function CancelModal({
             Cancel Prescription
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            {prescription.productName} — {prescription.patientFirstname}{" "}
-            {prescription.patientLastname}
+            {prescription.genericName
+              ? `${prescription.genericName} ${prescription.genericStrength ?? ""}`.trim()
+              : prescription.productName}{" "}
+            — {prescription.patientFirstname} {prescription.patientLastname}
           </p>
         </div>
         <div className="px-6 py-5 space-y-3">
@@ -137,6 +148,9 @@ export default function PharmacyPage() {
   const [cancelTarget, setCancelTarget] = useState<PrescriptionRow | null>(
     null,
   );
+  const [dispenseTarget, setDispenseTarget] = useState<PrescriptionRow | null>(
+    null,
+  );
   const [orderModalOpen, setOrderModalOpen] = useState(false);
 
   const pharmacyDeptId = useMemo(
@@ -156,18 +170,22 @@ export default function PharmacyPage() {
     );
   }, [data, search]);
 
-  const handleDispatch = async (id: number) => {
+  const handleDispense = async (dispensedProductId: number, batchNumber: string) => {
+    if (!dispenseTarget) return;
+    const id = dispenseTarget.id;
     setActionLoading(id);
     try {
       const res = await fetch(`/api/prescriptions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "dispatched" }),
+        body: JSON.stringify({ status: "dispatched", dispensedProductId, batchNumber }),
       });
-      if (res.ok) mutate();
-      else {
+      if (res.ok) {
+        mutate();
+        setDispenseTarget(null);
+      } else {
         const d = await res.json();
-        alert(d.error ?? "Failed to dispatch");
+        throw new Error(d.error ?? "Failed to dispatch");
       }
     } finally {
       setActionLoading(null);
@@ -304,8 +322,22 @@ export default function PharmacyPage() {
                           Dr. {row.requestedByFirstname}{" "}
                           {row.requestedByLastname}
                         </td>
-                        <td className="px-5 py-4 text-sm font-medium text-gray-800 whitespace-nowrap">
-                          {row.productName ?? "—"}
+                        <td className="px-5 py-4 text-sm whitespace-nowrap">
+                          <p className="font-medium text-gray-800">
+                            {row.genericName
+                              ? `${row.genericName} ${row.genericStrength ?? ""}`.trim()
+                              : (row.productName ?? "—")}
+                          </p>
+                          {row.dispensedProductName ? (
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Dispensed: {row.dispensedProductName}
+                              {row.dispensedProductName !== row.productName && row.productName && (
+                                <span className="ml-1 text-amber-600">(sub.)</span>
+                              )}
+                            </p>
+                          ) : row.productName ? (
+                            <p className="text-xs text-gray-400 mt-0.5">Preferred: {row.productName}</p>
+                          ) : null}
                         </td>
                         <td className="px-5 py-4 text-sm text-gray-600 max-w-[180px]">
                           <span className="line-clamp-2">{row.dosage}</span>
@@ -335,7 +367,7 @@ export default function PharmacyPage() {
                             {isPending && (
                               <>
                                 <button
-                                  onClick={() => handleDispatch(row.id)}
+                                  onClick={() => setDispenseTarget(row)}
                                   disabled={busy || !isPaid}
                                   title={
                                     !isPaid
@@ -414,9 +446,16 @@ export default function PharmacyPage() {
                   </div>
                   <div className="px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-100">
                     <p className="text-sm font-medium text-gray-800">
-                      {row.productName ?? "—"}
+                      {row.genericName
+                        ? `${row.genericName} ${row.genericStrength ?? ""}`.trim()
+                        : (row.productName ?? "—")}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">{row.dosage}</p>
+                    {row.dispensedProductName ? (
+                      <p className="text-xs text-gray-500 mt-0.5">Dispensed: {row.dispensedProductName}</p>
+                    ) : row.productName ? (
+                      <p className="text-xs text-gray-400 mt-0.5">Preferred: {row.productName}</p>
+                    ) : null}
                     {row.productPrice != null && (
                       <p className="text-xs text-gray-500 mt-0.5">
                         ₦{row.productPrice.toLocaleString()}
@@ -432,7 +471,7 @@ export default function PharmacyPage() {
                     {isPending && (
                       <>
                         <button
-                          onClick={() => handleDispatch(row.id)}
+                          onClick={() => setDispenseTarget(row)}
                           disabled={busy || !isPaid}
                           className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ml-auto ${isPaid ? "text-white bg-green-600 hover:bg-green-700 disabled:opacity-50" : "text-green-700 bg-green-50 border border-green-200 opacity-50 cursor-not-allowed"}`}
                         >
@@ -468,6 +507,14 @@ export default function PharmacyPage() {
           prescription={cancelTarget}
           onClose={() => setCancelTarget(null)}
           onConfirm={(reason) => handleCancel(cancelTarget.id, reason)}
+        />
+      )}
+
+      {dispenseTarget && (
+        <DispenseModal
+          prescription={dispenseTarget}
+          onClose={() => setDispenseTarget(null)}
+          onConfirm={handleDispense}
         />
       )}
 

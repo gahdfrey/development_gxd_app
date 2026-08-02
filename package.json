@@ -23,7 +23,8 @@
     "db:migrate-admission-perf": "npx tsx lib/db/add-admission-perf-indexes.ts",
     "db:migrate-payments": "npx tsx lib/db/add-payments.ts",
     "db:fix-departments-name-unique": "npx tsx lib/db/drop-departments-name-unique.ts",
-    "db:migrate-result-viewed": "npx tsx lib/db/add-result-viewed.ts"
+    "db:migrate-result-viewed": "npx tsx lib/db/add-result-viewed.ts",
+    "db:migrate-drug-brands": "npx tsx lib/db/add-drug-brands.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

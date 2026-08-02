@@ -12,9 +12,11 @@ import {
   labTests,
   prescriptions,
   products,
+  drugGenerics,
   visitDiagnoses,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { auth } from "@/auth";
 
 /**
@@ -139,13 +141,18 @@ export async function GET(_req: NextRequest) {
     }
 
     // 5. All prescriptions for this patient (all statuses shown in patient portal)
+    const dispensedProduct = alias(products, "dispensed_product");
     const prescriptionRows = await db
       .select({
         id: prescriptions.id,
         appointmentId: prescriptions.appointmentId,
+        genericName: drugGenerics.name,
+        genericStrength: drugGenerics.strength,
         productId: prescriptions.productId,
         productName: products.name,
         productPrice: products.price,
+        dispensedProductName: dispensedProduct.name,
+        batchNumber: prescriptions.batchNumber,
         dosage: prescriptions.dosage,
         paymentStatus: prescriptions.paymentStatus,
         status: prescriptions.status,
@@ -153,6 +160,8 @@ export async function GET(_req: NextRequest) {
       })
       .from(prescriptions)
       .leftJoin(products, eq(prescriptions.productId, products.id))
+      .leftJoin(drugGenerics, eq(prescriptions.genericId, drugGenerics.id))
+      .leftJoin(dispensedProduct, eq(prescriptions.dispensedProductId, dispensedProduct.id))
       .where(eq(prescriptions.patientId, patientId))
       .orderBy(desc(prescriptions.createdAt));
 

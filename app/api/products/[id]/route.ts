@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { products } from "@/lib/db/schema";
+import { products, drugGenerics } from "@/lib/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
@@ -27,6 +27,12 @@ export async function GET(
         description: products.description,
         category: products.category,
         isPrescribable: products.isPrescribable,
+        genericId: products.genericId,
+        genericName: drugGenerics.name,
+        genericStrength: drugGenerics.strength,
+        genericForm: drugGenerics.form,
+        manufacturer: products.manufacturer,
+        nafdacRegNumber: products.nafdacRegNumber,
         casesInStock: products.casesInStock,
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
@@ -37,6 +43,7 @@ export async function GET(
         updatedAt: products.updatedAt,
       })
       .from(products)
+      .leftJoin(drugGenerics, eq(products.genericId, drugGenerics.id))
       .where(and(eq(products.id, id), eq(products.organisationId, orgId), isNull(products.deletedAt)));
 
     if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -63,7 +70,7 @@ export async function PATCH(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const body = await request.json();
-    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable, genericId, manufacturer, nafdacRegNumber } = body;
 
     if (unitsPerCase !== undefined && unitsPerCase < 1) {
       return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
@@ -125,6 +132,9 @@ export async function PATCH(
         ...(reorderLevel !== undefined && { reorderLevel }),
         ...(price !== undefined && { price }),
         ...(isPrescribable !== undefined && { isPrescribable }),
+        ...(genericId !== undefined && { genericId: genericId ?? null }),
+        ...(manufacturer !== undefined && { manufacturer: manufacturer?.trim() || null }),
+        ...(nafdacRegNumber !== undefined && { nafdacRegNumber: nafdacRegNumber?.trim() || null }),
         updatedAt: new Date(),
       })
       .where(and(eq(products.id, id), eq(products.organisationId, orgId), isNull(products.deletedAt)))

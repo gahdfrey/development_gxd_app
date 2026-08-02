@@ -20,6 +20,12 @@ interface Product {
   totalUnits: number;
   reorderLevel: number;
   price: number;
+  genericId: number | null;
+  genericName: string | null;
+  genericStrength: string | null;
+  genericForm: string | null;
+  manufacturer: string | null;
+  nafdacRegNumber: string | null;
   createdAt: string;
 }
 
@@ -128,10 +134,15 @@ export default function ProductTab() {
   const columns = useMemo(
     () => [
       columnHelper.accessor("name", {
-        header: "Product Name",
+        header: "Brand / Product",
         cell: (info) => (
           <div>
             <p className="font-semibold text-gray-900">{info.getValue()}</p>
+            {info.row.original.genericName && (
+              <p className="text-xs text-emerald-700 mt-0.5">
+                {info.row.original.genericName} {info.row.original.genericStrength}
+              </p>
+            )}
             {info.row.original.description && (
               <p className="text-xs text-gray-400 mt-0.5">{info.row.original.description}</p>
             )}
@@ -141,6 +152,16 @@ export default function ProductTab() {
       columnHelper.accessor("category", {
         header: "Category",
         cell: (info) => <CategoryBadge category={info.getValue()} />,
+      }),
+      columnHelper.display({
+        id: "manufacturer",
+        header: "Manufacturer",
+        cell: ({ row }) =>
+          row.original.manufacturer ? (
+            <span className="text-gray-600">{row.original.manufacturer}</span>
+          ) : (
+            <span className="text-gray-300">—</span>
+          ),
       }),
       columnHelper.accessor("unitsPerCase", {
         header: "Units / Case",

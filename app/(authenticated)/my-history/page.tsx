@@ -99,7 +99,11 @@ interface DiagnosisEntry {
 interface PrescriptionEntry {
   id: number;
   appointmentId: number | null;
+  genericName: string | null;
+  genericStrength: string | null;
   productName: string | null;
+  dispensedProductName: string | null;
+  batchNumber: string | null;
   dosage: string;
   paymentStatus: string;
   status: string;
@@ -694,8 +698,15 @@ function VisitCard({ entry }: { entry: TimelineEntry }) {
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900">
-                          {rx.productName ?? "—"}
+                          {rx.genericName
+                            ? `${rx.genericName} ${rx.genericStrength ?? ""}`.trim()
+                            : (rx.productName ?? "—")}
                         </p>
+                        {rx.dispensedProductName && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Dispensed: {rx.dispensedProductName}
+                          </p>
+                        )}
                         <p className="text-xs text-gray-500 mt-0.5">
                           {rx.dosage}
                         </p>
@@ -1381,9 +1392,16 @@ export default function MyHistoryPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">
-                      {rx.productName ?? "—"}
+                      {rx.genericName
+                        ? `${rx.genericName} ${rx.genericStrength ?? ""}`.trim()
+                        : (rx.productName ?? "—")}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">{rx.dosage}</p>
+                    {rx.dispensedProductName && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Dispensed: {rx.dispensedProductName}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-400 mt-0.5">
                       {formatDate(rx.createdAt)}
                     </p>

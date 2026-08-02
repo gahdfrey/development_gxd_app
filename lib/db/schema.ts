@@ -277,12 +277,46 @@ export const inventoryItems = pgTable("inventory_items", {
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type NewInventoryItem = typeof inventoryItems.$inferInsert;
 
+// ─── Drug Generics ────────────────────────────────────────────────────────────
+// The active-constituent level of the medication catalog (RxNorm's "Semantic
+// Clinical Drug": ingredient + strength + dose form, e.g. "Amlodipine 5mg
+// Tablet"), kept separate from the brand-specific SKUs in `products`. This is
+// what a clinician's prescribing intent should be recorded against — brand
+// availability and pricing vary and shouldn't be baked into the clinical
+// decision. See `products.genericId` for the brand/SKU link.
+export const drugGenerics = pgTable("drug_generics", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  name: text("name").notNull(),
+  strength: text("strength").notNull(),
+  form: text("form"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => ({
+  orgNameIdx: index("drug_generics_org_name_idx").on(t.organisationId, t.name),
+}));
+
+export type DrugGeneric = typeof drugGenerics.$inferSelect;
+export type NewDrugGeneric = typeof drugGenerics.$inferInsert;
+
 // ─── Products ─────────────────────────────────────────────────────────────────
+// One row per brand-specific SKU. For pharmacy items this is the RxNorm
+// "Semantic Branded Drug" level: `name` is the brand name (e.g. "Norvasc
+// 5mg"), `genericId` links back to the shared active constituent, and stock
+// + price are tracked per brand because different brands of the same
+// molecule are not interchangeable in cost, availability, or (per NAFDAC
+// post-market surveillance findings) always in bioequivalence.
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   name: text("name").notNull(),
   description: text("description"),
+  genericId: integer("generic_id").references(() => drugGenerics.id),
+  manufacturer: text("manufacturer"),
+  // NAFDAC product-registration number (e.g. "04-1234" / "A4-100137"),
+  // printed on packaging — lets pharmacy verify brand provenance.
+  nafdacRegNumber: text("nafdac_reg_number"),
   casesInStock: integer("cases_in_stock").notNull().default(0),
   unitsPerCase: integer("units_per_case").notNull().default(1),
   looseUnitsInStock: integer("loose_units_in_stock").notNull().default(0),
@@ -293,7 +327,9 @@ export const products = pgTable("products", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (t) => ({
+  genericIdx: index("products_generic_idx").on(t.genericId),
+}));
 
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
@@ -333,20 +369,34 @@ export type SupplyOrderItem = typeof supplyOrderItems.$inferSelect;
 export type NewSupplyOrderItem = typeof supplyOrderItems.$inferInsert;
 
 // ─── Prescriptions ────────────────────────────────────────────────────────────
+// genericId is the clinician's actual prescribing intent (active constituent
+// + strength) and drives allergy/interaction/formulary logic. productId is
+// now the *preferred* brand the clinician optionally names — some brands are
+// not bioequivalent and experienced clinicians legitimately want a say in
+// which one is dispensed. dispensedProductId + batchNumber are filled in by
+// pharmacy at dispatch time and record what was *actually* handed to the
+// patient (which may differ from productId if that brand was out of stock) —
+// required for accurate inventory depletion and for tracing adverse events
+// back to a specific brand/batch (NAFDAC pharmacovigilance).
 export const prescriptions = pgTable("prescriptions", {
   id: serial("id").primaryKey(),
   organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   appointmentId: integer("appointment_id").references(() => appointments.id),
   patientId: integer("patient_id").notNull().references(() => patients.id),
   requestedBy: integer("requested_by").notNull().references(() => users.id),
-  productId: integer("product_id").notNull().references(() => products.id),
+  genericId: integer("generic_id").references(() => drugGenerics.id),
+  productId: integer("product_id").references(() => products.id),
+  dispensedProductId: integer("dispensed_product_id").references(() => products.id),
+  batchNumber: text("batch_number"),
   dosage: text("dosage").notNull(),
   paymentStatus: text("payment_status").notNull().default("not_paid"),
   status: text("status").notNull().default("pending"),
   cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  genericIdx: index("prescriptions_generic_idx").on(t.genericId),
+}));
 
 export type Prescription = typeof prescriptions.$inferSelect;
 export type NewPrescription = typeof prescriptions.$inferInsert;
