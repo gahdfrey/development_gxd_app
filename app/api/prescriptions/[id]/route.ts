@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { prescriptions } from "@/lib/db/schema";
+import { prescriptions, products } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
@@ -15,7 +15,7 @@ export async function PATCH(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const body = await req.json();
-    const { paymentStatus, status, cancellationReason } = body;
+    const { paymentStatus, status, cancellationReason, dispensedProductId, batchNumber } = body;
 
     // ── Finance: mark paid (one-way) ────────────────────────────────────────
     if (paymentStatus === "paid") {
@@ -56,8 +56,17 @@ export async function PATCH(
       const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
       const orgFilter = eq(prescriptions.organisationId, orgId);
 
+      if (!dispensedProductId) {
+        return NextResponse.json({ error: "Select the brand actually being dispensed." }, { status: 400 });
+      }
+
       const [current] = await db
-        .select({ paymentStatus: prescriptions.paymentStatus, status: prescriptions.status })
+        .select({
+          paymentStatus: prescriptions.paymentStatus,
+          status: prescriptions.status,
+          genericId: prescriptions.genericId,
+          productId: prescriptions.productId,
+        })
         .from(prescriptions)
         .where(and(eq(prescriptions.id, id), orgFilter));
 
@@ -65,8 +74,38 @@ export async function PATCH(
       if (current.paymentStatus !== "paid") return NextResponse.json({ error: "Cannot dispatch before payment is confirmed." }, { status: 400 });
       if (current.status !== "pending") return NextResponse.json({ error: "Prescription is already finalised." }, { status: 400 });
 
+      // The dispensed brand must be a real, in-stock, in-org SKU of the same
+      // active ingredient the clinician prescribed — this is the one hard
+      // guard against a wrong-drug dispensing error.
+      const [dispensedBrand] = await db
+        .select({
+          id: products.id,
+          name: products.name,
+          genericId: products.genericId,
+          casesInStock: products.casesInStock,
+          unitsPerCase: products.unitsPerCase,
+          looseUnitsInStock: products.looseUnitsInStock,
+        })
+        .from(products)
+        .where(and(eq(products.id, dispensedProductId), eq(products.organisationId, orgId)));
+
+      if (!dispensedBrand) return NextResponse.json({ error: "Selected brand not found." }, { status: 404 });
+      if (current.genericId && dispensedBrand.genericId !== current.genericId) {
+        return NextResponse.json({ error: "That brand does not match the prescribed active ingredient." }, { status: 400 });
+      }
+      const dispensedStock =
+        dispensedBrand.casesInStock * dispensedBrand.unitsPerCase + dispensedBrand.looseUnitsInStock;
+      if (dispensedStock <= 0) {
+        return NextResponse.json({ error: `${dispensedBrand.name} is out of stock.` }, { status: 400 });
+      }
+
       await db.update(prescriptions)
-        .set({ status: "dispatched", updatedAt: new Date() })
+        .set({
+          status: "dispatched",
+          dispensedProductId,
+          batchNumber: batchNumber?.trim() || null,
+          updatedAt: new Date(),
+        })
         .where(and(eq(prescriptions.id, id), orgFilter));
 
       void logAudit({
@@ -76,7 +115,15 @@ export async function PATCH(
         action: "update",
         entityType: "prescription",
         entityId: id,
-        details: { status: "dispatched" },
+        details: {
+          status: "dispatched",
+          dispensedProductId,
+          dispensedBrand: dispensedBrand.name,
+          batchNumber: batchNumber?.trim() || null,
+          // Flags a pharmacy-side brand substitution — the one case
+          // pharmacovigilance and inventory reporting most need to see.
+          substitutedBrand: current.productId != null && current.productId !== dispensedProductId,
+        },
       });
 
       return NextResponse.json({ success: true }, { status: 200 });

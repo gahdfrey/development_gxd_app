@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import GenericSelect, { type GenericOption } from "@/app/components/ui/GenericSelect";
 
 export type ProductCategory = "pharmacy" | "laboratory" | "radiology" | "general";
 
@@ -13,6 +14,9 @@ export interface ProductForm {
   looseUnitsInStock: number;
   reorderLevel: number;
   price: number;
+  genericId: number | null;
+  manufacturer: string;
+  nafdacRegNumber: string;
 }
 
 interface Product {
@@ -25,6 +29,12 @@ interface Product {
   looseUnitsInStock: number;
   reorderLevel: number;
   price: number;
+  genericId?: number | null;
+  genericName?: string | null;
+  genericStrength?: string | null;
+  genericForm?: string | null;
+  manufacturer?: string | null;
+  nafdacRegNumber?: string | null;
 }
 
 interface Props {
@@ -50,10 +60,14 @@ const BLANK: ProductForm = {
   looseUnitsInStock: 0,
   reorderLevel: 20,
   price: 0,
+  genericId: null,
+  manufacturer: "",
+  nafdacRegNumber: "",
 };
 
 export default function ProductFormModal({ open, initial, onClose, onSave }: Props) {
   const [form, setForm] = useState<ProductForm>(BLANK);
+  const [generic, setGeneric] = useState<GenericOption | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -70,8 +84,16 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               looseUnitsInStock: initial.looseUnitsInStock,
               reorderLevel: initial.reorderLevel,
               price: initial.price ?? 0,
+              genericId: initial.genericId ?? null,
+              manufacturer: initial.manufacturer ?? "",
+              nafdacRegNumber: initial.nafdacRegNumber ?? "",
             }
           : BLANK,
+      );
+      setGeneric(
+        initial?.genericId && initial.genericName && initial.genericStrength
+          ? { id: initial.genericId, name: initial.genericName, strength: initial.genericStrength, form: initial.genericForm ?? null }
+          : null,
       );
       setError("");
     }
@@ -117,16 +139,60 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
           {/* Product name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Product Name <span className="text-red-500">*</span>
+              {form.category === "pharmacy" ? "Brand Name" : "Product Name"} <span className="text-red-500">*</span>
+              {form.category === "pharmacy" && (
+                <span className="ml-1 text-xs text-gray-400 font-normal">(the specific brand SKU, e.g. &quot;Norvasc 5mg&quot;)</span>
+              )}
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Amoxicillin 500mg Capsules"
+              placeholder={form.category === "pharmacy" ? "e.g. Norvasc 5mg Tablet" : "e.g. Amoxicillin 500mg Capsules"}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* Brand metadata — pharmacy only: active ingredient, manufacturer, NAFDAC reg */}
+          {form.category === "pharmacy" && (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-4 py-3 space-y-3">
+              <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
+                Brand Details
+              </p>
+              <GenericSelect
+                value={generic}
+                onChange={(g) => { setGeneric(g); setForm({ ...form, genericId: g?.id ?? null }); }}
+                label="Active Ingredient (Generic)"
+              />
+              <p className="text-xs text-gray-500 -mt-1">
+                Links this brand to its active constituent so clinicians can pick any available brand of the same drug, and pharmacy can substitute correctly when one brand runs out.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Manufacturer</label>
+                  <input
+                    type="text"
+                    value={form.manufacturer}
+                    onChange={(e) => setForm({ ...form, manufacturer: e.target.value })}
+                    placeholder="e.g. Pfizer"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    NAFDAC Reg. No.
+                  </label>
+                  <input
+                    type="text"
+                    value={form.nafdacRegNumber}
+                    onChange={(e) => setForm({ ...form, nafdacRegNumber: e.target.value })}
+                    placeholder="e.g. A4-1234"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Category */}
           <div>

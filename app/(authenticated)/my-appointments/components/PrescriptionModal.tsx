@@ -6,6 +6,7 @@ import Modal from "@/app/components/ui/Modal";
 import SearchableSelect, {
   type SearchableSelectOption,
 } from "@/app/components/ui/SearchableSelect";
+import GenericSelect, { type GenericOption } from "@/app/components/ui/GenericSelect";
 import { fetcher } from "@/lib/fetcher";
 import {
   PlusIcon,
@@ -16,11 +17,12 @@ import {
   PhoneIcon,
 } from "@heroicons/react/24/outline";
 
-interface Product {
+interface Brand {
   id: number;
   name: string;
   price: number;
-  description: string | null;
+  manufacturer: string | null;
+  totalUnits: number;
 }
 
 interface PrefilledPatient {
@@ -35,12 +37,13 @@ interface PrefilledPatient {
 
 interface PrescriptionRow {
   rowId: string;
+  genericOption: GenericOption | null;
   productOption: SearchableSelectOption | null;
   dosage: string;
 }
 
 interface RowErrors {
-  product?: string;
+  generic?: string;
   dosage?: string;
 }
 
@@ -54,6 +57,7 @@ interface PrescriptionModalProps {
 
 const newRow = (): PrescriptionRow => ({
   rowId: crypto.randomUUID(),
+  genericOption: null,
   productOption: null,
   dosage: "",
 });
@@ -77,6 +81,59 @@ const formatAge = (dob: string): string => {
   return `${days} ${days === 1 ? "day" : "days"}`;
 };
 
+/**
+ * Brand picker for one row, scoped to the chosen active ingredient. Lets a
+ * clinician optionally name a preferred brand (some brands aren't
+ * bioequivalent and experienced prescribers legitimately care) while
+ * defaulting to "let pharmacy choose" so a stock-out on one brand doesn't
+ * block the whole prescription.
+ */
+function BrandPicker({
+  genericId,
+  value,
+  onChange,
+  disabled,
+}: {
+  genericId: number;
+  value: SearchableSelectOption | null;
+  onChange: (opt: SearchableSelectOption | null) => void;
+  disabled?: boolean;
+}) {
+  const { data: brands, isLoading } = useSWR<Brand[]>(
+    `/api/products?genericId=${genericId}&prescribable=true`,
+    fetcher,
+  );
+
+  const options: SearchableSelectOption[] = (brands ?? []).map((b) => ({
+    id: b.id,
+    label: b.name,
+    sublabel: [
+      b.manufacturer ?? undefined,
+      b.price > 0 ? `₦${b.price.toLocaleString()}` : undefined,
+      b.totalUnits > 0 ? `${b.totalUnits} in stock` : "Out of stock",
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  }));
+
+  return (
+    <SearchableSelect
+      label="Preferred Brand (optional)"
+      options={options}
+      value={value}
+      onChange={onChange}
+      placeholder={
+        isLoading
+          ? "Loading brands…"
+          : options.length === 0
+            ? "No brands stocked for this ingredient"
+            : "Leave blank — pharmacy will choose an available brand"
+      }
+      disabled={disabled || isLoading}
+    />
+  );
+}
+
 export default function PrescriptionModal({
   isOpen,
   onClose,
@@ -84,23 +141,22 @@ export default function PrescriptionModal({
   prefilledPatient,
   onSuccess,
 }: PrescriptionModalProps) {
-  const { data: products, isLoading: productsLoading } = useSWR<Product[]>(
-    "/api/products?prescribable=true",
-    fetcher,
-  );
-
   const [rows, setRows] = useState<PrescriptionRow[]>([newRow()]);
   const [rowErrors, setRowErrors] = useState<Record<string, RowErrors>>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const productOptions: SearchableSelectOption[] = (products ?? []).map(
-    (p) => ({
-      id: p.id,
-      label: p.name,
-      sublabel: p.price > 0 ? `₦${p.price.toLocaleString()}` : undefined,
-    }),
-  );
+  const handleGenericChange = (rowId: string, generic: GenericOption | null) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.rowId === rowId ? { ...r, genericOption: generic, productOption: null } : r,
+      ),
+    );
+    setRowErrors((prev) => ({
+      ...prev,
+      [rowId]: { ...prev[rowId], generic: undefined },
+    }));
+  };
 
   const handleProductChange = (
     rowId: string,
@@ -109,10 +165,6 @@ export default function PrescriptionModal({
     setRows((prev) =>
       prev.map((r) => (r.rowId === rowId ? { ...r, productOption: opt } : r)),
     );
-    setRowErrors((prev) => ({
-      ...prev,
-      [rowId]: { ...prev[rowId], product: undefined },
-    }));
   };
 
   const handleDosageChange = (rowId: string, value: string) => {
@@ -141,15 +193,15 @@ export default function PrescriptionModal({
     let valid = true;
     rows.forEach((row) => {
       const errs: RowErrors = {};
-      if (!row.productOption) {
-        errs.product = "Select a drug";
+      if (!row.genericOption) {
+        errs.generic = "Select an active ingredient";
         valid = false;
       }
       if (!row.dosage.trim()) {
         errs.dosage = "Enter dosage instructions";
         valid = false;
       }
-      if (errs.product || errs.dosage) newRowErrors[row.rowId] = errs;
+      if (errs.generic || errs.dosage) newRowErrors[row.rowId] = errs;
     });
     setRowErrors(newRowErrors);
     return valid;
@@ -167,7 +219,8 @@ export default function PrescriptionModal({
           appointmentId: appointmentId ?? null,
           patientId: prefilledPatient!.id,
           items: rows.map((r) => ({
-            productId: r.productOption!.id,
+            genericId: r.genericOption!.id,
+            productId: r.productOption?.id ?? null,
             dosage: r.dosage.trim(),
           })),
         }),
@@ -194,7 +247,7 @@ export default function PrescriptionModal({
     onClose();
   };
 
-  const filledCount = rows.filter((r) => r.productOption).length;
+  const filledCount = rows.filter((r) => r.genericOption).length;
 
   return (
     <Modal
@@ -274,21 +327,24 @@ export default function PrescriptionModal({
                 </div>
 
                 <div className="space-y-3">
-                  <SearchableSelect
-                    label="Drug / Product"
-                    options={productOptions}
-                    value={row.productOption}
-                    onChange={(opt) => handleProductChange(row.rowId, opt)}
-                    placeholder={
-                      productsLoading
-                        ? "Loading drugs..."
-                        : productOptions.length === 0
-                          ? "No drugs available"
-                          : "Search drug..."
-                    }
-                    disabled={productsLoading || isSubmitting}
-                    error={errs.product}
+                  <GenericSelect
+                    label="Active Ingredient"
+                    value={row.genericOption}
+                    onChange={(g) => handleGenericChange(row.rowId, g)}
+                    onlyWithStock
+                    allowCreate={false}
+                    disabled={isSubmitting}
+                    error={errs.generic}
                   />
+
+                  {row.genericOption && (
+                    <BrandPicker
+                      genericId={row.genericOption.id}
+                      value={row.productOption}
+                      onChange={(opt) => handleProductChange(row.rowId, opt)}
+                      disabled={isSubmitting}
+                    />
+                  )}
 
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">

@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import {
   patients, hmos, appointments, visits, requests,
   requestResults, users, departments, labTests, prescriptions, products,
-  visitDiagnoses,
+  drugGenerics, visitDiagnoses,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getAuthContext } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
@@ -138,12 +139,20 @@ export async function GET(
     }
 
     // 5. Prescriptions for this patient
+    const dispensedProduct = alias(products, "dispensed_product");
     const prescriptionRows = await db
       .select({
         id: prescriptions.id,
         appointmentId: prescriptions.appointmentId,
+        genericName: drugGenerics.name,
+        genericStrength: drugGenerics.strength,
         productId: prescriptions.productId,
         productName: products.name,
+        productManufacturer: products.manufacturer,
+        dispensedProductId: prescriptions.dispensedProductId,
+        dispensedProductName: dispensedProduct.name,
+        dispensedProductManufacturer: dispensedProduct.manufacturer,
+        batchNumber: prescriptions.batchNumber,
         dosage: prescriptions.dosage,
         paymentStatus: prescriptions.paymentStatus,
         status: prescriptions.status,
@@ -151,6 +160,8 @@ export async function GET(
       })
       .from(prescriptions)
       .leftJoin(products, eq(prescriptions.productId, products.id))
+      .leftJoin(drugGenerics, eq(prescriptions.genericId, drugGenerics.id))
+      .leftJoin(dispensedProduct, eq(prescriptions.dispensedProductId, dispensedProduct.id))
       .where(eq(prescriptions.patientId, patientId))
       .orderBy(desc(prescriptions.createdAt));
 

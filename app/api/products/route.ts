@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { products } from "@/lib/db/schema";
-import { asc, ilike, eq, and, sql, isNull } from "drizzle-orm";
+import { products, drugGenerics } from "@/lib/db/schema";
+import { asc, ilike, eq, and, sql, isNull, gt } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
@@ -15,11 +15,19 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const category = searchParams.get("category");
     const prescribable = searchParams.get("prescribable");
+    const genericId = searchParams.get("genericId");
+    const inStock = searchParams.get("inStock");
 
     const conditions: any[] = [eq(products.organisationId, orgId), isNull(products.deletedAt)];
     if (search) conditions.push(ilike(products.name, `%${search}%`));
     if (category && category !== "all") conditions.push(eq(products.category, category));
     if (prescribable === "true") conditions.push(eq(products.isPrescribable, true));
+    if (genericId) conditions.push(eq(products.genericId, parseInt(genericId)));
+    if (inStock === "true") {
+      conditions.push(
+        gt(sql`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`, 0),
+      );
+    }
 
     const rows = await db
       .select({
@@ -28,6 +36,12 @@ export async function GET(request: NextRequest) {
         description: products.description,
         category: products.category,
         isPrescribable: products.isPrescribable,
+        genericId: products.genericId,
+        genericName: drugGenerics.name,
+        genericStrength: drugGenerics.strength,
+        genericForm: drugGenerics.form,
+        manufacturer: products.manufacturer,
+        nafdacRegNumber: products.nafdacRegNumber,
         casesInStock: products.casesInStock,
         unitsPerCase: products.unitsPerCase,
         looseUnitsInStock: products.looseUnitsInStock,
@@ -38,6 +52,7 @@ export async function GET(request: NextRequest) {
         updatedAt: products.updatedAt,
       })
       .from(products)
+      .leftJoin(drugGenerics, eq(products.genericId, drugGenerics.id))
       .where(and(...conditions))
       .orderBy(asc(products.name));
 
@@ -55,7 +70,7 @@ export async function POST(request: NextRequest) {
     const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
-    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable, genericId, manufacturer, nafdacRegNumber } = body;
 
     if (!name?.trim()) return NextResponse.json({ error: "Product name is required" }, { status: 400 });
     if (!unitsPerCase || unitsPerCase < 1) return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
@@ -72,6 +87,9 @@ export async function POST(request: NextRequest) {
         description: description?.trim() || null,
         category: category ?? "general",
         isPrescribable: isPrescribable ?? false,
+        genericId: genericId ?? null,
+        manufacturer: manufacturer?.trim() || null,
+        nafdacRegNumber: nafdacRegNumber?.trim() || null,
         casesInStock: casesInStock ?? 0,
         unitsPerCase,
         looseUnitsInStock: looseUnitsInStock ?? 0,

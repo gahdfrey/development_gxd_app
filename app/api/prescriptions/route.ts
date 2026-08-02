@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { prescriptions, patients, users, products } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { prescriptions, patients, users, products, drugGenerics } from "@/lib/db/schema";
+import { eq, desc, and, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+
+const dispensedProduct = alias(products, "dispensed_product");
 
 export async function GET(_req: NextRequest) {
   try {
@@ -22,9 +25,18 @@ export async function GET(_req: NextRequest) {
         requestedBy: prescriptions.requestedBy,
         requestedByFirstname: users.firstname,
         requestedByLastname: users.lastname,
+        genericId: prescriptions.genericId,
+        genericName: drugGenerics.name,
+        genericStrength: drugGenerics.strength,
+        genericForm: drugGenerics.form,
         productId: prescriptions.productId,
         productName: products.name,
         productPrice: products.price,
+        productManufacturer: products.manufacturer,
+        dispensedProductId: prescriptions.dispensedProductId,
+        dispensedProductName: dispensedProduct.name,
+        dispensedProductManufacturer: dispensedProduct.manufacturer,
+        batchNumber: prescriptions.batchNumber,
         dosage: prescriptions.dosage,
         paymentStatus: prescriptions.paymentStatus,
         status: prescriptions.status,
@@ -36,6 +48,8 @@ export async function GET(_req: NextRequest) {
       .leftJoin(patients, eq(prescriptions.patientId, patients.id))
       .leftJoin(users, eq(prescriptions.requestedBy, users.id))
       .leftJoin(products, eq(prescriptions.productId, products.id))
+      .leftJoin(drugGenerics, eq(prescriptions.genericId, drugGenerics.id))
+      .leftJoin(dispensedProduct, eq(prescriptions.dispensedProductId, dispensedProduct.id))
       .where(eq(prescriptions.organisationId, orgId))
       .orderBy(desc(prescriptions.createdAt));
 
@@ -66,20 +80,43 @@ export async function POST(req: NextRequest) {
     }
 
     for (const item of items) {
-      if (!item.productId || !item.dosage?.trim()) {
-        return NextResponse.json({ error: "Each item must have productId and dosage" }, { status: 400 });
+      if (!item.genericId || !item.dosage?.trim()) {
+        return NextResponse.json({ error: "Each item must have an active ingredient (genericId) and dosage" }, { status: 400 });
+      }
+    }
+
+    // A preferred brand, if given, must actually be a brand of the chosen
+    // active ingredient — otherwise the clinician's brand pick and the
+    // clinical intent (genericId) could silently disagree.
+    const preferredIds = items
+      .map((i: { productId?: number }) => i.productId)
+      .filter((id: number | undefined): id is number => !!id);
+    if (preferredIds.length > 0) {
+      const brandRows = await db
+        .select({ id: products.id, genericId: products.genericId })
+        .from(products)
+        .where(and(eq(products.organisationId, orgId), inArray(products.id, preferredIds)));
+      const brandGenericById = new Map(brandRows.map((b) => [b.id, b.genericId]));
+      for (const item of items as { productId?: number; genericId: number }[]) {
+        if (item.productId && brandGenericById.get(item.productId) !== item.genericId) {
+          return NextResponse.json(
+            { error: "The selected brand does not match the chosen active ingredient." },
+            { status: 400 },
+          );
+        }
       }
     }
 
     const created = await db
       .insert(prescriptions)
       .values(
-        items.map((item: { productId: number; dosage: string }) => ({
+        items.map((item: { genericId: number; productId?: number; dosage: string }) => ({
           organisationId: orgId,
           appointmentId: appointmentId ?? null,
           patientId,
           requestedBy: doctorId,
-          productId: item.productId,
+          genericId: item.genericId,
+          productId: item.productId ?? null,
           dosage: item.dosage.trim(),
         }))
       )
