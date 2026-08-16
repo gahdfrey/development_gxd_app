@@ -1,5 +1,6 @@
 export const APP_MODULES = [
   { key: "dashboard", label: "Patients" },
+  { key: "patient-history", label: "Patient History" },
   { key: "analytics", label: "Analytics" },
   { key: "appointments", label: "Appointments" },
   { key: "my-appointments", label: "My Appointments" },
@@ -18,6 +19,18 @@ export const APP_MODULES = [
   { key: "orders", label: "Orders" },
   { key: "pharmacy", label: "Pharmacy" },
 ];
+
+// How urgently the patient needs a bed, picked by the requesting doctor and
+// used to triage the admission queue. Order is least → most urgent; `rank`
+// drives the sort so the most urgent requests surface first.
+export const ADMISSION_SEVERITIES = [
+  { key: "routine", label: "Routine", rank: 0 },
+  { key: "high", label: "High", rank: 1 },
+  { key: "urgent", label: "Urgent", rank: 2 },
+  { key: "critical", label: "Critical", rank: 3 },
+] as const;
+
+export const ADMISSION_SEVERITY_KEYS = ADMISSION_SEVERITIES.map((s) => s.key);
 
 export const APP_PERMISSIONS = [
   { key: "view", label: "View" },

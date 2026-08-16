@@ -63,6 +63,14 @@ export async function GET(request: Request) {
           SELECT 1 FROM prescriptions
           WHERE prescriptions.appointment_id = ${appointments.id}
         )`,
+        // Status of the admission raised off this consultation, if any, so the
+        // doctor can see whether the desk has acted on their request.
+        admissionStatus: sql<string | null>`(
+          SELECT status FROM admissions
+          WHERE admissions.appointment_id = ${appointments.id}
+          ORDER BY admissions.created_at DESC
+          LIMIT 1
+        )`,
       })
       .from(appointments)
       .leftJoin(patients, eq(appointments.patientId, patients.id))

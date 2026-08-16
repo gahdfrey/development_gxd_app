@@ -7,7 +7,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { getAuthContext } from "@/lib/authz";
+import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
 export async function GET(
@@ -15,8 +15,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getAuthContext();
-    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Viewing a patient's full clinical record is its own permission — clinical
+    // staff (e.g. doctors) can hold it without access to the Patients module.
+    const authz = await requirePermission([["patient-history", "view"]]);
+    if (authz.error) return authz.error;
+    const { ctx } = authz;
     const orgId = ctx.orgId;
 
     const { id: idParam } = await params;

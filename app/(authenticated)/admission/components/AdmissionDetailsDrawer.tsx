@@ -4,6 +4,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import Modal from "@/app/components/ui/Modal";
+import SeverityBadge from "@/app/components/ui/SeverityBadge";
 import type { AdmissionDetail } from "./types";
 
 interface AdmissionDetailsDrawerProps {
@@ -47,6 +48,23 @@ export default function AdmissionDetailsDrawer({ admissionId, isOpen, onClose }:
                 {admission.doctor ? `Dr. ${admission.doctor.firstname} ${admission.doctor.lastname}` : "—"}
               </span>
             </div>
+            {admission.requestedBy && (
+              <div>
+                <span className="block text-gray-500">Requested By</span>
+                <span className="font-semibold">
+                  Dr. {admission.requestedBy.firstname} {admission.requestedBy.lastname}
+                </span>
+                {admission.requestedAt && (
+                  <span className="block text-gray-500 text-xs">
+                    {new Date(admission.requestedAt).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            )}
+            <div>
+              <span className="block text-gray-500">Severity</span>
+              <SeverityBadge severity={admission.severity} />
+            </div>
             <div>
               <span className="block text-gray-500">Current Location</span>
               <span className="font-semibold">
@@ -61,10 +79,12 @@ export default function AdmissionDetailsDrawer({ admissionId, isOpen, onClose }:
               <span className="block text-gray-500">Status</span>
               <span className="font-semibold capitalize">{admission.status}</span>
             </div>
-            <div>
-              <span className="block text-gray-500">Admitted At</span>
-              <span className="font-semibold">{new Date(admission.admittedAt).toLocaleString()}</span>
-            </div>
+            {admission.admittedAt && (
+              <div>
+                <span className="block text-gray-500">Admitted At</span>
+                <span className="font-semibold">{new Date(admission.admittedAt).toLocaleString()}</span>
+              </div>
+            )}
             {admission.dischargedAt && (
               <div>
                 <span className="block text-gray-500">Discharged At</span>
@@ -74,9 +94,24 @@ export default function AdmissionDetailsDrawer({ admissionId, isOpen, onClose }:
           </div>
 
           <div>
-            <span className="block text-gray-500 text-sm mb-1">Admission Reason</span>
-            <p className="text-gray-800 text-sm bg-gray-50 rounded-lg p-3">{admission.admissionReason}</p>
+            <span className="block text-gray-500 text-sm mb-1">
+              {admission.requestedBy ? "Reason / clinical notes" : "Admission Reason"}
+            </span>
+            <p className="text-gray-800 text-sm bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">
+              {admission.admissionReason}
+            </p>
           </div>
+
+          {admission.declineReason && (
+            <div>
+              <span className="block text-gray-500 text-sm mb-1">
+                Declined{admission.declinedAt && ` on ${new Date(admission.declinedAt).toLocaleString()}`}
+              </span>
+              <p className="text-gray-800 text-sm bg-red-50 border border-red-100 rounded-lg p-3 whitespace-pre-wrap">
+                {admission.declineReason}
+              </p>
+            </div>
+          )}
 
           {admission.dischargeSummary && (
             <div>

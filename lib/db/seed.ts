@@ -11,6 +11,7 @@ async function seed() {
             description: 'Medical professional with access to patient records',
             permissions: {
                 dashboard: ['view'],
+                'patient-history': ['view', 'print'],
                 analytics: [],
                 patients: ['add', 'view', 'edit', 'print'],
                 appointments: ['add', 'view', 'edit'],
@@ -28,6 +29,7 @@ async function seed() {
             description: 'Medical support staff',
             permissions: {
                 dashboard: ['view'],
+                'patient-history': ['view', 'print'],
                 analytics: [],
                 patients: ['view', 'add'],
                 appointments: ['view'],
@@ -45,6 +47,7 @@ async function seed() {
             description: 'Full system access',
             permissions: {
                 dashboard: ['add', 'edit', 'view', 'delete', 'print'],
+                'patient-history': ['view', 'print'],
                 analytics: ['view'],
                 patients: ['add', 'view', 'edit', 'delete', 'print'],
                 appointments: ['add', 'view', 'edit', 'delete', 'print'],

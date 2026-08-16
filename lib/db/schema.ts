@@ -537,21 +537,34 @@ export type Bed = typeof beds.$inferSelect;
 export type NewBed = typeof beds.$inferInsert;
 
 // ─── Admissions (ADT — Admission, Discharge, Transfer) ────────────────────────
+// A row starts life either as a doctor's admission request (status
+// "requested", no ward/bed yet — the admission desk assigns those) or as a
+// direct desk admission (status "admitted" straight away). That's why
+// wardId/bedId/admittedAt are nullable: they're only filled once a bed is
+// actually allocated.
 export const admissions = pgTable("admissions", {
   id: serial("id").primaryKey(),
   organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   patientId: integer("patient_id").notNull().references(() => patients.id),
   appointmentId: integer("appointment_id").references(() => appointments.id),
-  wardId: integer("ward_id").notNull().references(() => wards.id),
-  bedId: integer("bed_id").notNull().references(() => beds.id),
+  wardId: integer("ward_id").references(() => wards.id),
+  bedId: integer("bed_id").references(() => beds.id),
   admittingDoctorId: integer("admitting_doctor_id").notNull().references(() => users.id),
   admissionType: text("admission_type").notNull().default("elective"), // "elective" | "emergency" | "transfer-in"
   admissionReason: text("admission_reason").notNull(),
-  status: text("status").notNull().default("admitted"), // "admitted" | "discharged"
-  admittedAt: timestamp("admitted_at", { withTimezone: true }).notNull().defaultNow(),
+  severity: text("severity").notNull().default("routine"), // "routine" | "high" | "urgent" | "critical"
+  status: text("status").notNull().default("admitted"), // "requested" | "admitted" | "discharged" | "declined"
+  // Set when a doctor raises the request from a consultation; null for
+  // admissions the desk created directly.
+  requestedBy: integer("requested_by").references(() => users.id),
+  requestedAt: timestamp("requested_at", { withTimezone: true }),
+  admittedAt: timestamp("admitted_at", { withTimezone: true }),
   dischargedAt: timestamp("discharged_at", { withTimezone: true }),
   dischargeSummary: text("discharge_summary"),
   dischargedBy: integer("discharged_by").references(() => users.id),
+  declineReason: text("decline_reason"),
+  declinedBy: integer("declined_by").references(() => users.id),
+  declinedAt: timestamp("declined_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

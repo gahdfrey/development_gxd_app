@@ -25,16 +25,24 @@ export interface AdmissionRecord {
   id: number;
   admissionType: string;
   admissionReason: string;
+  severity: string;
+  /** "requested" | "admitted" | "discharged" | "declined" */
   status: string;
-  admittedAt: string;
+  requestedAt: string | null;
+  /** Null until a bed is allocated — a requested admission has no admit time. */
+  admittedAt: string | null;
   dischargedAt: string | null;
   dischargeSummary: string | null;
+  declineReason: string | null;
+  declinedAt: string | null;
   appointmentId: number | null;
   createdAt: string;
   patient: AdmissionPatient | null;
   ward: AdmissionWard | null;
   bed: AdmissionBed | null;
   doctor: AdmissionDoctor | null;
+  /** The doctor who raised the request; null for direct desk admissions. */
+  requestedBy: AdmissionDoctor | null;
 }
 
 export interface AdmissionTransferRecord {

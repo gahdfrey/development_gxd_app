@@ -7,21 +7,26 @@ import { fetcher } from "@/lib/fetcher";
 import { createColumnHelper } from "@tanstack/react-table";
 import { PlusIcon, ArrowsRightLeftIcon, EyeIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import Table from "@/app/components/ui/Table";
+import SeverityBadge from "@/app/components/ui/SeverityBadge";
 import AdmitPatientModal from "./AdmitPatientModal";
 import TransferPatientModal from "./TransferPatientModal";
 import DischargePatientModal from "./DischargePatientModal";
 import AdmissionDetailsDrawer from "./AdmissionDetailsDrawer";
+import { refreshAdmissions } from "./refresh";
 import type { AdmissionRecord } from "./types";
 
 const STATUS_FILTERS = [
   { key: "admitted", label: "Currently Admitted" },
   { key: "discharged", label: "Discharged" },
+  { key: "declined", label: "Declined" },
   { key: "", label: "All" },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
+  requested: "bg-amber-100 text-amber-700",
   admitted: "bg-green-100 text-green-700",
   discharged: "bg-gray-100 text-gray-700",
+  declined: "bg-red-100 text-red-700",
 };
 
 const TYPE_BADGE: Record<string, string> = {
@@ -38,7 +43,7 @@ export default function AdmissionsList() {
   const [viewingId, setViewingId] = useState<number | null>(null);
 
   const query = statusFilter ? `/api/admissions?status=${statusFilter}` : "/api/admissions";
-  const { data: admissions, error, mutate } = useSWR<AdmissionRecord[]>(query, fetcher);
+  const { data: admissions, error } = useSWR<AdmissionRecord[]>(query, fetcher);
 
   const columnHelper = createColumnHelper<AdmissionRecord>();
 
@@ -78,6 +83,10 @@ export default function AdmissionsList() {
           return d ? `Dr. ${d.firstname} ${d.lastname}` : "—";
         },
       }),
+      columnHelper.accessor("severity", {
+        header: "Severity",
+        cell: (info) => <SeverityBadge severity={info.getValue()} />,
+      }),
       columnHelper.accessor("admissionType", {
         header: "Type",
         cell: (info) => (
@@ -96,11 +105,24 @@ export default function AdmissionsList() {
       }),
       columnHelper.accessor("admittedAt", {
         header: "Admitted",
-        cell: (info) => (
-          <span className="text-gray-500 text-sm">
-            {new Date(info.getValue()).toLocaleString()}
-          </span>
-        ),
+        cell: (info) => {
+          // Requested and declined rows never got a bed, so there's no
+          // admission time to show — fall back to when it was raised.
+          const admittedAt = info.getValue();
+          const { requestedAt } = info.row.original;
+          if (admittedAt) {
+            return (
+              <span className="text-gray-500 text-sm">
+                {new Date(admittedAt).toLocaleString()}
+              </span>
+            );
+          }
+          return (
+            <span className="text-gray-400 text-sm">
+              {requestedAt ? `Requested ${new Date(requestedAt).toLocaleDateString()}` : "—"}
+            </span>
+          );
+        },
       }),
       columnHelper.display({
         id: "actions",
@@ -200,21 +222,21 @@ export default function AdmissionsList() {
       <AdmitPatientModal
         isOpen={isAdmitModalOpen}
         onClose={() => setIsAdmitModalOpen(false)}
-        onSuccess={() => mutate()}
+        onSuccess={() => refreshAdmissions()}
       />
 
       <TransferPatientModal
         admission={transferring}
         isOpen={!!transferring}
         onClose={() => setTransferring(null)}
-        onSuccess={() => mutate()}
+        onSuccess={() => refreshAdmissions()}
       />
 
       <DischargePatientModal
         admission={discharging}
         isOpen={!!discharging}
         onClose={() => setDischarging(null)}
-        onSuccess={() => mutate()}
+        onSuccess={() => refreshAdmissions()}
       />
 
       <AdmissionDetailsDrawer
