@@ -28,6 +28,13 @@ const ROUTE_MODULE_MAP: Record<string, string> = {
   '/pharmacy':         'pharmacy',
 };
 
+// Dynamic routes whose module differs from the prefix they sit under. These are
+// checked BEFORE ROUTE_MODULE_MAP so the more specific rule wins — e.g. a doctor
+// can open a patient's clinical record without needing the Patients module.
+const ROUTE_PATTERN_MAP: { pattern: RegExp; module: string }[] = [
+  { pattern: /^\/patients\/[^/]+\/history(\/|$)/, module: 'patient-history' },
+];
+
 function canViewModule(permissions: Record<string, unknown> | null | undefined, moduleKey: string): boolean {
   if (!permissions) return false;
   const perm = permissions[moduleKey];
@@ -53,9 +60,11 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   });
 
   // Compute access synchronously — no useEffect/useState so there's no stale render
-  const matchedModule = Object.entries(ROUTE_MODULE_MAP).find(([route]) =>
-    pathname === route || pathname.startsWith(route + '/')
-  )?.[1];
+  const matchedModule =
+    ROUTE_PATTERN_MAP.find(({ pattern }) => pattern.test(pathname))?.module ??
+    Object.entries(ROUTE_MODULE_MAP).find(([route]) =>
+      pathname === route || pathname.startsWith(route + '/')
+    )?.[1];
 
   const permissions = user?.permissions as Record<string, unknown> | null;
 

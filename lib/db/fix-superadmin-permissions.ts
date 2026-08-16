@@ -9,6 +9,7 @@ const db = drizzle(client, { schema: { roles } });
 
 const superadminPermissions = {
   dashboard:        { view: true,  add: true,  edit: true,  delete: true,  print: true  },
+  "patient-history":{ view: true,  add: false, edit: false, delete: false, print: true  },
   patients:         { view: true,  add: true,  edit: true,  delete: true,  print: true  },
   appointments:     { view: true,  add: true,  edit: true,  delete: true,  print: true  },
   "my-appointments":{ view: true,  add: false, edit: false, delete: false, print: false },

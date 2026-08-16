@@ -40,6 +40,9 @@ export async function POST(
 
         if (!admission) throw new Error("NOT_FOUND");
         if (admission.status !== "admitted") throw new Error("NOT_ADMITTED");
+        // An "admitted" row always has a bed — assert it so the bed-freeing
+        // step below isn't working off a nullable id.
+        if (!admission.bedId) throw new Error("NOT_ADMITTED");
         if (admission.bedId === parsedToBedId) throw new Error("SAME_BED");
 
         const [targetBed] = await tx

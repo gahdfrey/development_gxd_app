@@ -8,6 +8,7 @@ import Table from "@/app/components/ui/Table";
 import ConsultationModal from "./ConsultationModal";
 import RaiseRequestModal from "./RaiseRequestModal";
 import PrescriptionModal from "./PrescriptionModal";
+import RequestAdmissionModal from "./RequestAdmissionModal";
 import type { Session } from "next-auth";
 import {
   formatTime,
@@ -39,7 +40,17 @@ interface Appointment {
   patient: Patient | null;
   hasRequest: boolean;
   hasPrescription?: boolean;
+  /** Status of the admission raised off this consultation, if any. */
+  admissionStatus?: string | null;
 }
+
+// What the doctor sees once an admission has been raised off the appointment.
+const ADMISSION_LABEL: Record<string, { text: string; className: string }> = {
+  requested: { text: "Admission requested", className: "text-amber-600" },
+  admitted: { text: "Admitted", className: "text-green-600 font-medium" },
+  discharged: { text: "Admitted · discharged", className: "text-gray-500" },
+  declined: { text: "Admission declined", className: "text-red-600" },
+};
 
 interface DoctorAppointmentsTableProps {
   appointments: Appointment[];
@@ -60,6 +71,8 @@ export default function DoctorAppointmentsTable({
     useState<Appointment | null>(null);
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
   const [selectedPrescriptionAppointment, setSelectedPrescriptionAppointment] =
+    useState<Appointment | null>(null);
+  const [selectedAdmissionAppointment, setSelectedAdmissionAppointment] =
     useState<Appointment | null>(null);
 
   const getStatusColor = (status: string) => {
@@ -246,36 +259,60 @@ export default function DoctorAppointmentsTable({
                   </button>
                 </div>
               ) : appointment.status === "completed" ? (
-                <div className="flex flex-col gap-1.5">
-                  <select
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      e.target.value = ""; // reset
-                      if (val === "test") {
-                        if (appointment.hasRequest) return;
-                        setSelectedRaiseRequestAppointment(appointment);
-                        setIsRaiseRequestModalOpen(true);
-                      } else if (val === "prescription") {
-                        setSelectedPrescriptionAppointment(appointment);
-                        setIsPrescriptionModalOpen(true);
-                      }
-                    }}
-                    defaultValue=""
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="" disabled>Select Action</option>
-                    <option value="test" disabled={appointment.hasRequest}>
-                      {appointment.hasRequest ? "Test (Raised)" : "Raise Test Request"}
-                    </option>
-                    <option value="prescription">Write Prescription</option>
-                  </select>
-                  {appointment.hasRequest && (
-                    <span className="text-xs text-gray-400 text-center">Test request raised</span>
-                  )}
-                  {appointment.hasPrescription && (
-                    <span className="text-xs text-green-600 text-center font-medium">Rx ✓</span>
-                  )}
-                </div>
+                (() => {
+                  // An admission can only be raised once per consultation, and
+                  // only while the patient isn't already in the queue or on a ward.
+                  const admissionRaised =
+                    appointment.admissionStatus === "requested" ||
+                    appointment.admissionStatus === "admitted";
+                  const admissionLabel = appointment.admissionStatus
+                    ? ADMISSION_LABEL[appointment.admissionStatus]
+                    : undefined;
+
+                  return (
+                    <div className="flex flex-col gap-1.5">
+                      <select
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          e.target.value = ""; // reset
+                          if (val === "test") {
+                            if (appointment.hasRequest) return;
+                            setSelectedRaiseRequestAppointment(appointment);
+                            setIsRaiseRequestModalOpen(true);
+                          } else if (val === "prescription") {
+                            setSelectedPrescriptionAppointment(appointment);
+                            setIsPrescriptionModalOpen(true);
+                          } else if (val === "admission") {
+                            if (admissionRaised || !appointment.patient) return;
+                            setSelectedAdmissionAppointment(appointment);
+                          }
+                        }}
+                        defaultValue=""
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="" disabled>Select Action</option>
+                        <option value="test" disabled={appointment.hasRequest}>
+                          {appointment.hasRequest ? "Test (Raised)" : "Raise Test Request"}
+                        </option>
+                        <option value="prescription">Write Prescription</option>
+                        <option value="admission" disabled={admissionRaised || !appointment.patient}>
+                          {admissionRaised ? "Admission (Raised)" : "Request Admission"}
+                        </option>
+                      </select>
+                      {appointment.hasRequest && (
+                        <span className="text-xs text-gray-400 text-center">Test request raised</span>
+                      )}
+                      {appointment.hasPrescription && (
+                        <span className="text-xs text-green-600 text-center font-medium">Rx ✓</span>
+                      )}
+                      {admissionLabel && (
+                        <span className={`text-xs text-center ${admissionLabel.className}`}>
+                          {admissionLabel.text}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()
               ) : appointment.status !== "scheduled" ? (
                 <span className="text-xs text-gray-500 font-medium">
                   Status finalized
@@ -350,6 +387,24 @@ export default function DoctorAppointmentsTable({
           }}
           appointmentId={selectedPrescriptionAppointment.id}
           prefilledPatient={selectedPrescriptionAppointment.patient ?? undefined}
+          onSuccess={() => {
+            mutate(
+              (key) =>
+                typeof key === "string" &&
+                key.startsWith("/api/my-appointments"),
+              undefined,
+              { revalidate: true },
+            );
+          }}
+        />
+      )}
+
+      {selectedAdmissionAppointment?.patient && (
+        <RequestAdmissionModal
+          isOpen={!!selectedAdmissionAppointment}
+          onClose={() => setSelectedAdmissionAppointment(null)}
+          appointmentId={selectedAdmissionAppointment.id}
+          patient={selectedAdmissionAppointment.patient}
           onSuccess={() => {
             mutate(
               (key) =>

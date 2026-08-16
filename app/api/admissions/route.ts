@@ -1,32 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { admissions, patients, wards, beds, users } from "@/lib/db/schema";
-import { desc, eq, and } from "drizzle-orm";
+import { admissions, beds } from "@/lib/db/schema";
+import { desc, eq, and, sql } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { admissionQuery } from "@/lib/admissions";
+import { ADMISSION_SEVERITY_KEYS } from "@/lib/constants";
 
 const VALID_ADMISSION_TYPES = ["elective", "emergency", "transfer-in"];
-
-const admissionSelection = {
-  id: admissions.id,
-  admissionType: admissions.admissionType,
-  admissionReason: admissions.admissionReason,
-  status: admissions.status,
-  admittedAt: admissions.admittedAt,
-  dischargedAt: admissions.dischargedAt,
-  dischargeSummary: admissions.dischargeSummary,
-  appointmentId: admissions.appointmentId,
-  createdAt: admissions.createdAt,
-  patient: {
-    id: patients.id,
-    firstname: patients.firstname,
-    lastname: patients.lastname,
-    mrn: patients.mrn,
-  },
-  ward: { id: wards.id, name: wards.name },
-  bed: { id: beds.id, bedNumber: beds.bedNumber },
-  doctor: { id: users.id, firstname: users.firstname, lastname: users.lastname },
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,15 +21,11 @@ export async function GET(request: NextRequest) {
     const conditions = [eq(admissions.organisationId, orgId)];
     if (status) conditions.push(eq(admissions.status, status));
 
-    const allAdmissions = await db
-      .select(admissionSelection)
-      .from(admissions)
-      .leftJoin(patients, eq(admissions.patientId, patients.id))
-      .leftJoin(wards, eq(admissions.wardId, wards.id))
-      .leftJoin(beds, eq(admissions.bedId, beds.id))
-      .leftJoin(users, eq(admissions.admittingDoctorId, users.id))
+    const allAdmissions = await admissionQuery()
       .where(and(...conditions))
-      .orderBy(desc(admissions.admittedAt));
+      // Requested rows have no admittedAt yet, so fall back to when they were
+      // raised — otherwise they'd all sort together at one end of the list.
+      .orderBy(desc(sql`COALESCE(${admissions.admittedAt}, ${admissions.requestedAt}, ${admissions.createdAt})`));
 
     return NextResponse.json(allAdmissions, { status: 200 });
   } catch (error) {
@@ -66,7 +43,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       patientId, appointmentId, wardId, bedId,
-      admittingDoctorId, admissionType, admissionReason,
+      admittingDoctorId, admissionType, admissionReason, severity,
     } = body;
 
     if (!patientId || !wardId || !bedId || !admittingDoctorId || !admissionReason?.trim()) {
@@ -79,6 +56,11 @@ export async function POST(request: NextRequest) {
     const type = admissionType || "elective";
     if (!VALID_ADMISSION_TYPES.includes(type)) {
       return NextResponse.json({ error: "Invalid admission type" }, { status: 400 });
+    }
+
+    const caseSeverity = severity || "routine";
+    if (!ADMISSION_SEVERITY_KEYS.includes(caseSeverity)) {
+      return NextResponse.json({ error: "Invalid severity" }, { status: 400 });
     }
 
     const parsedPatientId = parseInt(patientId);
@@ -114,6 +96,9 @@ export async function POST(request: NextRequest) {
             admittingDoctorId: parsedDoctorId,
             admissionType: type,
             admissionReason: admissionReason.trim(),
+            severity: caseSeverity,
+            status: "admitted",
+            admittedAt: new Date(),
           })
           .returning();
 
@@ -128,14 +113,7 @@ export async function POST(request: NextRequest) {
       throw txError;
     }
 
-    const [created] = await db
-      .select(admissionSelection)
-      .from(admissions)
-      .leftJoin(patients, eq(admissions.patientId, patients.id))
-      .leftJoin(wards, eq(admissions.wardId, wards.id))
-      .leftJoin(beds, eq(admissions.bedId, beds.id))
-      .leftJoin(users, eq(admissions.admittingDoctorId, users.id))
-      .where(eq(admissions.id, newAdmissionId));
+    const [created] = await admissionQuery().where(eq(admissions.id, newAdmissionId));
 
     void logAudit({
       organisationId: orgId,

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { admissions, patients, wards, beds, users, admissionTransfers } from "@/lib/db/schema";
+import { admissions, wards, beds, users, admissionTransfers } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { admissionQuery } from "@/lib/admissions";
 
 export async function GET(
   _request: NextRequest,
@@ -19,26 +20,7 @@ export async function GET(
     const id = parseInt(idParam);
     if (isNaN(id)) return NextResponse.json({ error: "Invalid admission ID" }, { status: 400 });
 
-    const [admission] = await db
-      .select({
-        id: admissions.id,
-        admissionType: admissions.admissionType,
-        admissionReason: admissions.admissionReason,
-        status: admissions.status,
-        admittedAt: admissions.admittedAt,
-        dischargedAt: admissions.dischargedAt,
-        dischargeSummary: admissions.dischargeSummary,
-        appointmentId: admissions.appointmentId,
-        patient: { id: patients.id, firstname: patients.firstname, lastname: patients.lastname, mrn: patients.mrn },
-        ward: { id: wards.id, name: wards.name },
-        bed: { id: beds.id, bedNumber: beds.bedNumber },
-        doctor: { id: users.id, firstname: users.firstname, lastname: users.lastname },
-      })
-      .from(admissions)
-      .leftJoin(patients, eq(admissions.patientId, patients.id))
-      .leftJoin(wards, eq(admissions.wardId, wards.id))
-      .leftJoin(beds, eq(admissions.bedId, beds.id))
-      .leftJoin(users, eq(admissions.admittingDoctorId, users.id))
+    const [admission] = await admissionQuery()
       .where(and(eq(admissions.id, id), eq(admissions.organisationId, orgId)));
 
     if (!admission) return NextResponse.json({ error: "Admission not found" }, { status: 404 });
@@ -106,6 +88,9 @@ export async function PATCH(
 
         if (!admission) throw new Error("NOT_FOUND");
         if (admission.status !== "admitted") throw new Error("NOT_ADMITTED");
+        // An "admitted" row always has a bed; this keeps the freeing step below
+        // honest about it rather than assuming.
+        if (!admission.bedId) throw new Error("NO_BED");
 
         const [updated] = await tx
           .update(admissions)
@@ -126,6 +111,7 @@ export async function PATCH(
     } catch (txError: any) {
       if (txError.message === "NOT_FOUND") return NextResponse.json({ error: "Admission not found" }, { status: 404 });
       if (txError.message === "NOT_ADMITTED") return NextResponse.json({ error: "This patient has already been discharged" }, { status: 409 });
+      if (txError.message === "NO_BED") return NextResponse.json({ error: "This admission has no bed assigned" }, { status: 409 });
       throw txError;
     }
 

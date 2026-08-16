@@ -6,6 +6,7 @@ import { fetcher } from "@/lib/fetcher";
 import Modal from "@/app/components/ui/Modal";
 import SearchableSelect, { SearchableSelectOption } from "@/app/components/ui/SearchableSelect";
 import { UserIcon } from "@heroicons/react/24/outline";
+import { ADMISSION_SEVERITIES } from "@/lib/constants";
 import type { Ward, Bed } from "./types";
 
 interface AdmitPatientModalProps {
@@ -61,6 +62,7 @@ export default function AdmitPatientModal({ isOpen, onClose, onSuccess }: AdmitP
   const [wardId, setWardId] = useState<string>("");
   const [bedId, setBedId] = useState<string>("");
   const [admissionType, setAdmissionType] = useState("elective");
+  const [severity, setSeverity] = useState("routine");
   const [admissionReason, setAdmissionReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -84,6 +86,7 @@ export default function AdmitPatientModal({ isOpen, onClose, onSuccess }: AdmitP
     setWardId("");
     setBedId("");
     setAdmissionType("elective");
+    setSeverity("routine");
     setAdmissionReason("");
     setErrorMessage("");
   };
@@ -136,6 +139,7 @@ export default function AdmitPatientModal({ isOpen, onClose, onSuccess }: AdmitP
           wardId,
           bedId,
           admissionType,
+          severity,
           admissionReason,
         }),
       });
@@ -221,6 +225,19 @@ export default function AdmitPatientModal({ isOpen, onClose, onSuccess }: AdmitP
             >
               {ADMISSION_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Severity *</label>
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {ADMISSION_SEVERITIES.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
           </div>

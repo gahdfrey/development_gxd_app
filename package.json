@@ -24,7 +24,9 @@
     "db:migrate-payments": "npx tsx lib/db/add-payments.ts",
     "db:fix-departments-name-unique": "npx tsx lib/db/drop-departments-name-unique.ts",
     "db:migrate-result-viewed": "npx tsx lib/db/add-result-viewed.ts",
-    "db:migrate-drug-brands": "npx tsx lib/db/add-drug-brands.ts"
+    "db:migrate-drug-brands": "npx tsx lib/db/add-drug-brands.ts",
+    "db:migrate-patient-history-permission": "npx tsx lib/db/add-patient-history-permission.ts",
+    "db:migrate-admission-requests": "npx tsx lib/db/add-admission-requests.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
