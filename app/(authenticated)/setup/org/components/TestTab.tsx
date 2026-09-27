@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { createColumnHelper } from "@tanstack/react-table";
-import { PencilSquareIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, TrashIcon, PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import Table from "@/app/components/ui/Table";
 import Modal from "@/app/components/ui/Modal";
 import TestFormModal from "./TestFormModal";
@@ -20,6 +20,18 @@ export default function TestTab() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editing, setEditing] = useState<TestRow | null>(null);
   const [deleting, setDeleting] = useState<TestRow | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!tests) return [];
+    const q = search.trim().toLowerCase();
+    if (!q) return tests;
+    return tests.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.departmentName ?? "").toLowerCase().includes(q),
+    );
+  }, [tests, search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -131,7 +143,17 @@ export default function TestTab() {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search tests or departments…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
         <button
           onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
@@ -158,8 +180,12 @@ export default function TestTab() {
             Create Test
           </button>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
+          No tests match &quot;{search}&quot;.
+        </div>
       ) : (
-        <Table data={tests} columns={columns} />
+        <Table data={filtered} columns={columns} />
       )}
 
       <TestFormModal

@@ -56,7 +56,11 @@ interface Analytics {
 }
 
 const nairaShort = (v: number) =>
-  v >= 1_000_000 ? `₦${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `₦${(v / 1000).toFixed(0)}k` : `₦${v}`;
+  v >= 1_000_000
+    ? `₦${(v / 1_000_000).toFixed(1)}M`
+    : v >= 1000
+      ? `₦${(v / 1000).toFixed(0)}k`
+      : `₦${v}`;
 
 function StatTile({
   icon: Icon,
@@ -72,21 +76,36 @@ function StatTile({
   sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5" style={{ borderTopColor: accent, borderTopWidth: 3 }}>
+    <div
+      className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5"
+      style={{ borderTopColor: accent, borderTopWidth: 3 }}
+    >
       <div className="flex items-center justify-between">
-        <p className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">{value}</p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: `${accent}14`, color: accent }}>
+        <p className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+          {value}
+        </p>
+        <span
+          className="flex h-9 w-9 items-center justify-center rounded-lg"
+          style={{ background: `${accent}14`, color: accent }}
+        >
           <Icon className="h-5 w-5" />
         </span>
       </div>
       <p className="mt-1.5 text-xs sm:text-sm text-gray-500">{label}</p>
-      {sub && <p className="mt-0.5 text-xs font-medium" style={{ color: accent }}>{sub}</p>}
+      {sub && (
+        <p className="mt-0.5 text-xs font-medium" style={{ color: accent }}>
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
 
 export default function DashboardPage() {
-  const { data, isLoading, error } = useSWR<Analytics>("/api/analytics", fetcher);
+  const { data, isLoading, error } = useSWR<Analytics>(
+    "/api/analytics",
+    fetcher,
+  );
 
   if (isLoading) {
     return (
@@ -102,7 +121,8 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-red-600">
           <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
           <p className="text-sm font-medium">
-            Couldn&apos;t load analytics. You may not have dashboard access, or please try again.
+            Couldn&apos;t load analytics. You may not have dashboard access, or
+            please try again.
           </p>
         </div>
       </div>
@@ -118,7 +138,9 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-sm text-gray-500 mt-1">Facility overview and reporting</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Facility overview and reporting
+          </p>
         </div>
         <Link
           href="/patients"
@@ -131,34 +153,93 @@ export default function DashboardPage() {
 
       {/* KPI tiles */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile icon={UsersIcon} label="Total patients" value={t.patients.toLocaleString()} accent="#2563eb" sub={`+${t.patientsThisMonth} this month`} />
-        <StatTile icon={CalendarDaysIcon} label="Appointments" value={t.appointments.toLocaleString()} accent="#7c3aed" sub={`${t.apptsToday} today`} />
-        <StatTile icon={ClipboardDocumentCheckIcon} label="Consultations" value={t.visits.toLocaleString()} accent="#059669" />
-        <StatTile icon={BanknotesIcon} label="Revenue collected" value={nairaShort(t.revenue)} accent="#d97706" />
+        <StatTile
+          icon={UsersIcon}
+          label="Total patients"
+          value={t.patients.toLocaleString()}
+          accent="#2563eb"
+          sub={`+${t.patientsThisMonth} this month`}
+        />
+        <StatTile
+          icon={CalendarDaysIcon}
+          label="Appointments"
+          value={t.appointments.toLocaleString()}
+          accent="#7c3aed"
+          sub={`${t.apptsToday} today`}
+        />
+        <StatTile
+          icon={ClipboardDocumentCheckIcon}
+          label="Consultations"
+          value={t.visits.toLocaleString()}
+          accent="#059669"
+        />
+        <StatTile
+          icon={BanknotesIcon}
+          label="Revenue collected"
+          value={nairaShort(t.revenue)}
+          accent="#d97706"
+        />
       </div>
 
       {/* Operational alert row */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile icon={BeakerIcon} label="Test requests" value={t.requests.toLocaleString()} accent="#0891b2" />
-        <StatTile icon={ClockIcon} label="Pending requests" value={t.pendingRequests.toLocaleString()} accent="#e11d48" />
-        <StatTile icon={ExclamationTriangleIcon} label="Unpaid requests" value={t.unpaidRequests.toLocaleString()} accent="#e11d48" />
-        <StatTile icon={ClipboardDocumentCheckIcon} label="Results received" value={t.resultsReceived.toLocaleString()} accent="#059669" />
+        <StatTile
+          icon={BeakerIcon}
+          label="Test requests"
+          value={t.requests.toLocaleString()}
+          accent="#0891b2"
+        />
+        <StatTile
+          icon={ClockIcon}
+          label="Pending requests"
+          value={t.pendingRequests.toLocaleString()}
+          accent="#e11d48"
+        />
+        <StatTile
+          icon={ExclamationTriangleIcon}
+          label="Unpaid requests"
+          value={t.unpaidRequests.toLocaleString()}
+          accent="#e11d48"
+        />
+        <StatTile
+          icon={ClipboardDocumentCheckIcon}
+          label="Results received"
+          value={t.resultsReceived.toLocaleString()}
+          accent="#059669"
+        />
       </div>
 
       {/* Trends */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Activity" subtitle="Appointments & new patients · last 6 months">
+        <ChartCard
+          title="Activity"
+          subtitle="Appointments & new patients · last 6 months"
+        >
           <AreaChart
             labels={labels}
             series={[
-              { name: "Appointments", color: "#2563eb", points: data.monthlyActivity.map((m) => m.appointments) },
-              { name: "New patients", color: "#059669", points: data.monthlyActivity.map((m) => m.patients) },
+              {
+                name: "Appointments",
+                color: "#2563eb",
+                points: data.monthlyActivity.map((m) => m.appointments),
+              },
+              {
+                name: "New patients",
+                color: "#059669",
+                points: data.monthlyActivity.map((m) => m.patients),
+              },
             ]}
           />
         </ChartCard>
-        <ChartCard title="Revenue" subtitle="Collected from paid tests & prescriptions · last 6 months">
+        <ChartCard
+          title="Revenue"
+          subtitle="Collected from paid tests & prescriptions · last 6 months"
+        >
           <BarChart
-            data={data.monthlyRevenue.map((m) => ({ label: m.month, value: m.revenue }))}
+            data={data.monthlyRevenue.map((m) => ({
+              label: m.month,
+              value: m.revenue,
+            }))}
             color="#d97706"
             formatValue={nairaShort}
           />
@@ -169,13 +250,19 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <ChartCard title="Appointments by status">
           <DonutChart
-            data={data.apptByStatus.map((s) => ({ label: s.status, value: s.value }))}
+            data={data.apptByStatus.map((s) => ({
+              label: s.status,
+              value: s.value,
+            }))}
             colors={["#059669", "#2563eb", "#e11d48", "#d97706"]}
           />
         </ChartCard>
         <ChartCard title="Patients by gender">
           <DonutChart
-            data={data.patientsByGender.map((s) => ({ label: s.gender, value: s.value }))}
+            data={data.patientsByGender.map((s) => ({
+              label: s.gender,
+              value: s.value,
+            }))}
             colors={["#2563eb", "#e11d48", "#64748b"]}
           />
         </ChartCard>
@@ -186,22 +273,39 @@ export default function DashboardPage() {
 
       {/* Clinical top-lists */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Top diagnoses" subtitle="Most recorded ICD-11 conditions">
-          <HBarList data={data.topDiagnoses} color="#7c3aed" emptyText="No diagnoses recorded yet" />
+        <ChartCard
+          title="Top diagnoses"
+          subtitle="Most recorded ICD-11 conditions"
+        >
+          <HBarList
+            data={data.topDiagnoses}
+            color="#7c3aed"
+            emptyText="No diagnoses recorded yet"
+          />
         </ChartCard>
-        <ChartCard title="Top medications" subtitle="Most prescribed products">
-          <HBarList data={data.topMeds} color="#0891b2" emptyText="No prescriptions yet" />
+        <ChartCard title="Fast movers" subtitle="Most prescribed products">
+          <HBarList
+            data={data.topMeds}
+            color="#0891b2"
+            emptyText="No prescriptions yet"
+          />
         </ChartCard>
       </div>
 
       {/* Requests + prescriptions + low stock */}
       <div className="grid gap-4 lg:grid-cols-3">
         <ChartCard title="Requests by department">
-          <DonutChart data={data.requestsByDept} colors={["#2563eb", "#059669", "#d97706", "#7c3aed"]} />
+          <DonutChart
+            data={data.requestsByDept}
+            colors={["#2563eb", "#059669", "#d97706", "#7c3aed"]}
+          />
         </ChartCard>
         <ChartCard title="Prescriptions by status">
           <DonutChart
-            data={data.rxByStatus.map((s) => ({ label: s.status, value: s.value }))}
+            data={data.rxByStatus.map((s) => ({
+              label: s.status,
+              value: s.value,
+            }))}
             colors={["#d97706", "#059669", "#e11d48"]}
           />
         </ChartCard>
@@ -214,8 +318,13 @@ export default function DashboardPage() {
           ) : (
             <ul className="space-y-2">
               {data.lowStock.map((p, i) => (
-                <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-red-100 bg-red-50/60 px-3 py-2">
-                  <span className="truncate text-sm font-medium text-gray-800">{p.name}</span>
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-red-100 bg-red-50/60 px-3 py-2"
+                >
+                  <span className="truncate text-sm font-medium text-gray-800">
+                    {p.name}
+                  </span>
                   <span className="shrink-0 text-xs font-semibold text-red-600">
                     {p.total_units} / {p.reorder_level}
                   </span>

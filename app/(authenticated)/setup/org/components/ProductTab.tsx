@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { createColumnHelper } from "@tanstack/react-table";
-import { PencilSquareIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, TrashIcon, PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import Table from "@/app/components/ui/Table";
 import Modal from "@/app/components/ui/Modal";
 import ProductFormModal, { type ProductForm, type ProductCategory } from "./ProductFormModal";
@@ -72,6 +72,7 @@ export default function ProductTab() {
   const { data: products, error, mutate } = useSWR<Product[]>("/api/products", fetcher);
 
   const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [search, setSearch] = useState("");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -111,11 +112,24 @@ export default function ProductTab() {
   };
 
   // Filtered products by active tab
-  const filtered = useMemo(() => {
+  const byCategory = useMemo(() => {
     if (!products) return [];
     if (activeTab === "all") return products;
     return products.filter((p) => p.category === activeTab);
   }, [products, activeTab]);
+
+  // Further narrowed by search, on top of the category tab
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return byCategory;
+    return byCategory.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q) ||
+        (p.genericName ?? "").toLowerCase().includes(q) ||
+        (p.manufacturer ?? "").toLowerCase().includes(q),
+    );
+  }, [byCategory, search]);
 
   // Tab counts
   const counts = useMemo(() => {
@@ -281,10 +295,26 @@ export default function ProductTab() {
         </nav>
       </div>
 
+      {/* Search */}
+      <div className="relative max-w-sm mb-4">
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search products…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+
       {/* Table */}
       {!products ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      ) : filtered.length === 0 && search.trim() ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
+          No products match &quot;{search}&quot;{activeTab !== "all" ? ` in ${activeTab}` : ""}.
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">

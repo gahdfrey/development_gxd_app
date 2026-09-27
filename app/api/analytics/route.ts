@@ -101,7 +101,13 @@ export async function GET() {
              AND date_trunc('month', p.created_at) = months.m)::int AS patients
         FROM months ORDER BY m ASC
       `),
-      // ── Monthly revenue (paid requests + paid prescriptions) ─────────────
+      // ── Monthly revenue (paid requests + paid prescriptions + subscription
+      // charges — wallet top-ups are excluded, they're not revenue until
+      // spent; items settled via plan coverage (payment_items.method='plan')
+      // are also excluded from the requests/prescriptions sums since their
+      // value was already counted once as the subscription charge that
+      // funds the coverage — counting both would double-count the same
+      // money) ──────────────────────────────────────────────────────────────
       rows(sql`
         WITH months AS (
           SELECT date_trunc('month', now()) - (n || ' month')::interval AS m
@@ -111,10 +117,17 @@ export async function GET() {
           to_char(m, 'Mon') AS month,
           (COALESCE((SELECT sum(t.price) FROM requests r JOIN lab_tests t ON r.test_id = t.id
              WHERE r.organisation_id = ${orgId} AND r.payment_status = 'paid'
-             AND date_trunc('month', r.updated_at) = months.m), 0)
+             AND date_trunc('month', r.updated_at) = months.m
+             AND NOT EXISTS (SELECT 1 FROM payment_items pi JOIN payments pay ON pi.payment_id = pay.id
+               WHERE pi.item_type = 'request' AND pi.item_id = r.id AND pay.method = 'plan')), 0)
            + COALESCE((SELECT sum(p.price) FROM prescriptions pr JOIN products p ON pr.product_id = p.id
              WHERE pr.organisation_id = ${orgId} AND pr.payment_status = 'paid'
-             AND date_trunc('month', pr.updated_at) = months.m), 0))::int AS revenue
+             AND date_trunc('month', pr.updated_at) = months.m
+             AND NOT EXISTS (SELECT 1 FROM payment_items pi JOIN payments pay ON pi.payment_id = pay.id
+               WHERE pi.item_type = 'prescription' AND pi.item_id = pr.id AND pay.method = 'plan')), 0)
+           + COALESCE((SELECT sum(pay.amount) FROM payments pay
+             WHERE pay.organisation_id = ${orgId} AND pay.status = 'success' AND pay.purpose = 'subscription_charge'
+             AND date_trunc('month', pay.created_at) = months.m), 0))::int AS revenue
         FROM months ORDER BY m ASC
       `),
       // ── Low-stock products ───────────────────────────────────────────────
@@ -137,9 +150,15 @@ export async function GET() {
           (SELECT count(*) FROM appointments WHERE organisation_id = ${orgId}
              AND appointment_date = to_char(now(), 'YYYY-MM-DD'))::int AS appts_today,
           COALESCE((SELECT sum(t.price) FROM requests r JOIN lab_tests t ON r.test_id = t.id
-             WHERE r.organisation_id = ${orgId} AND r.payment_status = 'paid'), 0)::int AS revenue_requests,
+             WHERE r.organisation_id = ${orgId} AND r.payment_status = 'paid'
+             AND NOT EXISTS (SELECT 1 FROM payment_items pi JOIN payments pay ON pi.payment_id = pay.id
+               WHERE pi.item_type = 'request' AND pi.item_id = r.id AND pay.method = 'plan')), 0)::int AS revenue_requests,
           COALESCE((SELECT sum(p.price) FROM prescriptions pr JOIN products p ON pr.product_id = p.id
-             WHERE pr.organisation_id = ${orgId} AND pr.payment_status = 'paid'), 0)::int AS revenue_rx
+             WHERE pr.organisation_id = ${orgId} AND pr.payment_status = 'paid'
+             AND NOT EXISTS (SELECT 1 FROM payment_items pi JOIN payments pay ON pi.payment_id = pay.id
+               WHERE pi.item_type = 'prescription' AND pi.item_id = pr.id AND pay.method = 'plan')), 0)::int AS revenue_rx,
+          COALESCE((SELECT sum(pay.amount) FROM payments pay
+             WHERE pay.organisation_id = ${orgId} AND pay.status = 'success' AND pay.purpose = 'subscription_charge'), 0)::int AS revenue_subscriptions
       `),
     ]);
 
@@ -155,7 +174,7 @@ export async function GET() {
         prescriptions: t.prescriptions ?? 0,
         patientsThisMonth: t.patients_this_month ?? 0,
         apptsToday: op.appts_today ?? 0,
-        revenue: (op.revenue_requests ?? 0) + (op.revenue_rx ?? 0),
+        revenue: (op.revenue_requests ?? 0) + (op.revenue_rx ?? 0) + (op.revenue_subscriptions ?? 0),
         pendingRequests: op.pending_requests ?? 0,
         unpaidRequests: op.unpaid_requests ?? 0,
         resultsReceived: op.results_received ?? 0,

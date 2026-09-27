@@ -26,7 +26,10 @@
     "db:migrate-result-viewed": "npx tsx lib/db/add-result-viewed.ts",
     "db:migrate-drug-brands": "npx tsx lib/db/add-drug-brands.ts",
     "db:migrate-patient-history-permission": "npx tsx lib/db/add-patient-history-permission.ts",
-    "db:migrate-admission-requests": "npx tsx lib/db/add-admission-requests.ts"
+    "db:migrate-admission-requests": "npx tsx lib/db/add-admission-requests.ts",
+    "db:migrate-wallet-billing": "npx tsx lib/db/add-wallet-billing.ts",
+    "db:migrate-billing-plan-items": "npx tsx lib/db/add-billing-plan-items.ts",
+    "cron:subscriptions": "npx tsx lib/db/run-subscription-charges.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import RequestsTable, { type RequestRow } from "../components/requests/RequestsTable";
-import { CheckCircleIcon, LockClosedIcon, MagnifyingGlassIcon, BeakerIcon, CurrencyDollarIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon, LockClosedIcon, MagnifyingGlassIcon, BeakerIcon, CurrencyDollarIcon, WalletIcon } from "@heroicons/react/24/outline";
 
 interface PrescriptionRow {
   id: number;
@@ -29,11 +29,38 @@ function formatAge(dob: string): string {
   return `${years}y`;
 }
 
+interface PaymentRow {
+  id: number;
+  patientFirstname: string | null;
+  patientLastname: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  method: string;
+  purpose: string;
+  gatewayProvider: string | null;
+  createdAt: string;
+}
+
 const TABS = [
   { key: "lab", label: "Lab Requests", icon: BeakerIcon },
   { key: "prescriptions", label: "Drug Prescriptions", icon: CurrencyDollarIcon },
+  { key: "payments", label: "Payments", icon: WalletIcon },
 ] as const;
 type TabKey = typeof TABS[number]["key"];
+
+const PURPOSE_LABEL: Record<string, string> = {
+  bill: "Bill payment",
+  wallet_topup: "Wallet top-up",
+  subscription_charge: "Subscription charge",
+};
+
+const METHOD_LABEL: Record<string, string> = {
+  gateway: "Card / Online",
+  wallet: "Wallet",
+  bank_transfer: "Bank Transfer",
+  plan: "Plan Coverage",
+};
 
 export default function FinancePage() {
   const [activeTab, setActiveTab] = useState<TabKey>("lab");
@@ -99,10 +126,26 @@ export default function FinancePage() {
     finally { setUpdatingPrescrId(null); setConfirmPrescrId(null); }
   };
 
+  // ── Payments (unified ledger: bills, wallet top-ups, subscription charges) ─
+  const { data: paymentsData, isLoading: paymentsLoading, mutate: mutatePayments } = useSWR<PaymentRow[]>("/api/payments", fetcher);
+  const [confirmingPaymentId, setConfirmingPaymentId] = useState<number | null>(null);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<number | null>(null);
+
+  const handleConfirmBankTransfer = async (id: number) => {
+    setUpdatingPaymentId(id);
+    try {
+      const res = await fetch(`/api/payments/${id}/confirm`, { method: "PATCH" });
+      if (res.ok) mutatePayments();
+      else { const body = await res.json(); alert(body.error || "Failed to confirm payment"); }
+    } catch { alert("Failed to confirm payment"); }
+    finally { setUpdatingPaymentId(null); setConfirmingPaymentId(null); }
+  };
+
   // Badge counts — unpaid items per tab
   const unpaidLabCount = (requestsData ?? []).filter((r) => r.paymentStatus !== "paid").length;
   const unpaidPrescrCount = (prescrData ?? []).filter((r) => r.paymentStatus !== "paid" && r.status !== "cancelled").length;
-  const counts: Record<TabKey, number> = { lab: unpaidLabCount, prescriptions: unpaidPrescrCount };
+  const pendingPaymentsCount = (paymentsData ?? []).filter((p) => p.status === "pending").length;
+  const counts: Record<TabKey, number> = { lab: unpaidLabCount, prescriptions: unpaidPrescrCount, payments: pendingPaymentsCount };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -284,6 +327,111 @@ export default function FinancePage() {
                               >
                                 {isUpdating ? "Updating..." : "Mark as Paid"}
                               </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Payments Panel ── */}
+      {activeTab === "payments" && (
+        <div className="space-y-4">
+          {paymentsLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : !paymentsData || paymentsData.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+              <p className="text-gray-500 text-sm">No payments recorded yet.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {["Patient", "Type", "Method", "Amount (₦)", "Status", "Date", "Actions"].map((h) => (
+                        <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paymentsData.map((row) => {
+                      const isPending = row.status === "pending";
+                      const isBankTransfer = row.method === "bank_transfer";
+                      const isConfirming = confirmingPaymentId === row.id;
+                      const isUpdating = updatingPaymentId === row.id;
+                      return (
+                        <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                            {row.patientFirstname} {row.patientLastname}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-700 whitespace-nowrap">
+                            {PURPOSE_LABEL[row.purpose] ?? row.purpose}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
+                            {METHOD_LABEL[row.method] ?? row.method}
+                          </td>
+                          <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                            ₦{row.amount.toLocaleString()}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                              row.status === "success"
+                                ? "bg-green-100 text-green-800 border border-green-300"
+                                : row.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                  : "bg-red-100 text-red-800 border border-red-300"
+                            }`}>
+                              {row.status === "success" ? "Success" : row.status === "pending" ? "Pending" : "Failed"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">
+                            {new Date(row.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            {isPending && isBankTransfer ? (
+                              isConfirming ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-gray-600 whitespace-nowrap">Received?</span>
+                                  <button
+                                    onClick={() => handleConfirmBankTransfer(row.id)}
+                                    disabled={isUpdating}
+                                    className="px-2.5 py-1 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                                  >
+                                    Yes
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmingPaymentId(null)}
+                                    disabled={isUpdating}
+                                    className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmingPaymentId(row.id)}
+                                  disabled={isUpdating}
+                                  className="px-3 py-1.5 text-xs font-medium text-yellow-800 bg-yellow-50 border border-yellow-300 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isUpdating ? "Confirming..." : "Confirm Receipt"}
+                                </button>
+                              )
+                            ) : row.status === "success" ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg cursor-default select-none">
+                                <CheckCircleIcon className="h-3.5 w-3.5" />
+                                Settled
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
                             )}
                           </td>
                         </tr>

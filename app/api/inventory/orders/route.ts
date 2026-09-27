@@ -5,6 +5,11 @@ import { eq, and, inArray, ilike, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getOrgId } from "@/lib/org";
 
+// Departments named after one of these categories may only order products in
+// that category, plus "general" (uncategorized/shared supplies). Departments
+// with any other name are unrestricted, preserving existing behavior.
+const RESTRICTED_CATEGORIES = ["pharmacy", "laboratory", "radiology"];
+
 export async function GET(request: NextRequest) {
   try {
     const orgId = await getOrgId();
@@ -97,18 +102,51 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const [department] = await db
+      .select({ id: departments.id, name: departments.name })
+      .from(departments)
+      .where(and(eq(departments.id, departmentId), eq(departments.organisationId, orgId)));
+
+    if (!department) {
+      return NextResponse.json({ error: "Invalid department" }, { status: 400 });
+    }
+
+    const restrictedCategory = RESTRICTED_CATEGORIES.find(
+      (c) => c === department.name.toLowerCase(),
+    );
+
     // Stock check — scoped to this org's products
     const productIds = items.map((i: { productId: number }) => i.productId);
     const stockRows = await db
       .select({
         id: products.id,
         name: products.name,
+        category: products.category,
         totalUnits: sql<number>`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`,
       })
       .from(products)
       .where(and(inArray(products.id, productIds), eq(products.organisationId, orgId)));
 
     const stockMap = Object.fromEntries(stockRows.map((s) => [s.id, s]));
+
+    if (restrictedCategory) {
+      const mismatched = items
+        .filter((item: { productId: number }) => {
+          const product = stockMap[item.productId];
+          return product && product.category !== restrictedCategory && product.category !== "general";
+        })
+        .map((item: { productId: number }) => {
+          const product = stockMap[item.productId];
+          return { name: product?.name ?? "Unknown product", category: product?.category ?? "unknown" };
+        });
+
+      if (mismatched.length > 0) {
+        return NextResponse.json(
+          { error: "category_mismatch", department: department.name, allowedCategory: restrictedCategory, items: mismatched },
+          { status: 400 },
+        );
+      }
+    }
 
     const insufficient = items
       .filter((item: { productId: number; quantityRequested: number }) => {

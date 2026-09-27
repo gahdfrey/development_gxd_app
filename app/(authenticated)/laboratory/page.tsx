@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import useSWR from "swr";
+import useSWR, { mutate as mutateGlobal } from "swr";
 import { fetcher } from "@/lib/fetcher";
-import RequestsTable, { type RequestRow } from "../components/requests/RequestsTable";
+import RequestsTable, {
+  type RequestRow,
+} from "../components/requests/RequestsTable";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import RaiseOrderModal from "../inventory/components/RaiseOrderModal";
+import { useToast } from "@/app/contexts/ToastContext";
 
 interface Department {
   id: number;
@@ -17,7 +20,12 @@ export default function LaboratoryPage() {
     "/api/requests?department=laboratory",
     fetcher,
   );
-  const { data: departments } = useSWR<Department[]>("/api/departments", fetcher);
+  const { data: departments } = useSWR<Department[]>(
+    "/api/departments",
+    fetcher,
+  );
+
+  const { showToast } = useToast();
 
   const [patientSearch, setPatientSearch] = useState("");
   const [doctorSearch, setDoctorSearch] = useState("");
@@ -33,8 +41,10 @@ export default function LaboratoryPage() {
     const patient = patientSearch.trim().toLowerCase();
     const doctor = doctorSearch.trim().toLowerCase();
     return rows.filter((row) => {
-      const patientName = `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.toLowerCase();
-      const doctorName = `${row.requestedByFirstname ?? ""} ${row.requestedByLastname ?? ""}`.toLowerCase();
+      const patientName =
+        `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.toLowerCase();
+      const doctorName =
+        `${row.requestedByFirstname ?? ""} ${row.requestedByLastname ?? ""}`.toLowerCase();
       return (
         (!patient || patientName.includes(patient)) &&
         (!doctor || doctorName.includes(doctor))
@@ -55,9 +65,18 @@ export default function LaboratoryPage() {
           onClick={() => setOrderModalOpen(true)}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
           </svg>
           Raise Order
         </button>
@@ -102,8 +121,12 @@ export default function LaboratoryPage() {
       <RaiseOrderModal
         open={orderModalOpen}
         departmentId={labDeptId}
+        productCategory="laboratory"
         onClose={() => setOrderModalOpen(false)}
-        onSuccess={() => {}}
+        onSuccess={() => {
+          mutateGlobal("/api/inventory/orders");
+          showToast("Supply order raised successfully", "success");
+        }}
       />
     </div>
   );

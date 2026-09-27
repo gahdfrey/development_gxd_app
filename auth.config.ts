@@ -36,14 +36,16 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user;
 
       // API routes: deny by default. Only NextAuth, login/signup, the
-      // public landing-page contact form, and the payment gateway webhook
-      // are public; everything else requires a session. Individual routes
-      // still perform their own org/permission checks (or, for the
-      // webhook, signature verification) on top of this.
+      // public landing-page contact form, the payment gateway webhook, and
+      // the subscription-charge cron job are public; everything else
+      // requires a session. Individual routes still perform their own
+      // org/permission checks (or, for the webhook/cron routes, their own
+      // signature/secret verification) on top of this.
       if (nextUrl.pathname.startsWith("/api")) {
         if (nextUrl.pathname.startsWith("/api/auth")) return true;
         if (nextUrl.pathname === "/api/contact") return true;
         if (nextUrl.pathname === "/api/payments/webhook") return true;
+        if (nextUrl.pathname === "/api/cron/subscriptions/process") return true;
         if (isLoggedIn) return true;
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }
