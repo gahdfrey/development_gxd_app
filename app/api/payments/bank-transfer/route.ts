@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { patients, requests, prescriptions, labTests, products, payments, paymentItems } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getPaymentGateway } from "@/lib/payments";
+import { DUMMY_BANK_ACCOUNT } from "@/lib/payments/bank-account";
 import { findInFlightPaymentConflicts } from "@/lib/payments/guard";
 
 interface RequestedItem {
@@ -12,19 +12,21 @@ interface RequestedItem {
   itemId: number;
 }
 
+/**
+ * Records a bill payment as "pending bank transfer" and hands back the
+ * dummy test account to display — same re-validation as /api/payments/
+ * initialize, but no gateway call. A finance officer later confirms receipt
+ * via PATCH /api/payments/:id/confirm, which marks the items paid.
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
     const patientId = (session.user as any).patientId;
     if (!patientId || typeof patientId !== "number") {
-      return NextResponse.json(
-        { error: "No patient profile linked to this account" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "No patient profile linked to this account" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -38,20 +40,15 @@ export async function POST(request: NextRequest) {
     }
 
     const [patient] = await db
-      .select({ id: patients.id, email: patients.email, organisationId: patients.organisationId })
+      .select({ id: patients.id, organisationId: patients.organisationId })
       .from(patients)
       .where(eq(patients.id, patientId))
       .limit(1);
     if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
-    if (!patient.email) {
-      return NextResponse.json({ error: "No email on file — required for online payment" }, { status: 400 });
-    }
 
     const requestIds = items.filter((i) => i.itemType === "request").map((i) => i.itemId);
     const prescriptionIds = items.filter((i) => i.itemType === "prescription").map((i) => i.itemId);
 
-    // Re-fetch every item from the DB — never trust a client-sent amount.
-    // Ownership (patientId) and payment status are both re-verified here.
     const requestRows = requestIds.length > 0
       ? await db
           .select({ id: requests.id, price: labTests.price, paymentStatus: requests.paymentStatus })
@@ -69,18 +66,12 @@ export async function POST(request: NextRequest) {
       : [];
 
     if (requestRows.length !== requestIds.length || prescriptionRows.length !== prescriptionIds.length) {
-      return NextResponse.json(
-        { error: "One or more items were not found on your account" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "One or more items were not found on your account" }, { status: 404 });
     }
 
     const alreadyPaid = [...requestRows, ...prescriptionRows].some((r) => r.paymentStatus === "paid");
     if (alreadyPaid) {
-      return NextResponse.json(
-        { error: "One or more selected items have already been paid for" },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "One or more selected items have already been paid for" }, { status: 409 });
     }
 
     const conflicts = await findInFlightPaymentConflicts(items);
@@ -101,8 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nothing payable was found for the selected items" }, { status: 400 });
     }
 
-    const reference = `cv_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
-    const gateway = getPaymentGateway();
+    const reference = `cv_btr_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
 
     const [payment] = await db
       .insert(payments)
@@ -110,7 +100,8 @@ export async function POST(request: NextRequest) {
         organisationId: patient.organisationId,
         patientId,
         amount: totalAmount,
-        gatewayProvider: gateway.provider,
+        method: "bank_transfer",
+        purpose: "bill",
         gatewayReference: reference,
       })
       .returning();
@@ -124,20 +115,12 @@ export async function POST(request: NextRequest) {
       })),
     );
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const { authorizationUrl } = await gateway.initialize({
-      reference,
-      amountKobo: totalAmount * 100,
-      email: patient.email,
-      callbackUrl: `${appUrl}/payments/callback`,
-    });
-
     return NextResponse.json(
-      { paymentId: payment.id, reference, amount: totalAmount, provider: gateway.provider, authorizationUrl },
+      { paymentId: payment.id, reference, amount: totalAmount, method: "bank_transfer", bankAccount: DUMMY_BANK_ACCOUNT },
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error initializing payment:", error);
-    return NextResponse.json({ error: "Failed to initialize payment" }, { status: 500 });
+    console.error("Error recording bank transfer payment:", error);
+    return NextResponse.json({ error: "Failed to record bank transfer payment" }, { status: 500 });
   }
 }

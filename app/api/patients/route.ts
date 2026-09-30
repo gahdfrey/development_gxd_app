@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { patients, users, roles, patientConsents } from "@/lib/db/schema";
+import { patients, users, roles, patientConsents, wallets } from "@/lib/db/schema";
 import { desc, asc, or, ilike, and, gte, lte, eq, isNull } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
@@ -225,6 +225,15 @@ export async function POST(request: Request) {
     const mrn = `MRN-${orgId}-${String(newPatient.id).padStart(6, "0")}`;
     await db.update(patients).set({ mrn }).where(eq(patients.id, newPatient.id));
     newPatient.mrn = mrn;
+
+    // Every patient gets a wallet at registration. Non-fatal on failure —
+    // getOrCreateWallet() self-heals this on first wallet access if it's
+    // ever missing (see lib/wallet.ts).
+    try {
+      await db.insert(wallets).values({ organisationId: orgId, patientId: newPatient.id });
+    } catch (walletErr) {
+      console.warn("Could not create patient wallet:", walletErr);
+    }
 
     if (allowDuplicate === true) {
       void logAudit({

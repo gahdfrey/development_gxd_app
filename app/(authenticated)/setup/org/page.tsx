@@ -4,13 +4,15 @@ import { useState } from "react";
 import DepartmentTab from "./components/DepartmentTab";
 import TestTab from "./components/TestTab";
 import ProductTab from "./components/ProductTab";
+import BillingPlansTab from "./components/BillingPlansTab";
 
-type ActiveTab = "department" | "test" | "product";
+type ActiveTab = "department" | "test" | "product" | "billing";
 
 const tabs: { key: ActiveTab; label: string }[] = [
   { key: "department", label: "Department" },
   { key: "test", label: "Test" },
   { key: "product", label: "Products" },
+  { key: "billing", label: "Billing Plans" },
 ];
 
 export default function OrgSetupPage() {
@@ -47,6 +49,7 @@ export default function OrgSetupPage() {
       {activeTab === "department" && <DepartmentTab />}
       {activeTab === "test" && <TestTab />}
       {activeTab === "product" && <ProductTab />}
+      {activeTab === "billing" && <BillingPlansTab />}
     </div>
   );
 }

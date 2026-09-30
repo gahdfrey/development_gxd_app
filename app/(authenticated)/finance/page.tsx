@@ -3,8 +3,17 @@
 import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import RequestsTable, { type RequestRow } from "../components/requests/RequestsTable";
-import { CheckCircleIcon, LockClosedIcon, MagnifyingGlassIcon, BeakerIcon, CurrencyDollarIcon } from "@heroicons/react/24/outline";
+import RequestsTable, {
+  type RequestRow,
+} from "../components/requests/RequestsTable";
+import {
+  CheckCircleIcon,
+  LockClosedIcon,
+  MagnifyingGlassIcon,
+  BeakerIcon,
+  CurrencyDollarIcon,
+  WalletIcon,
+} from "@heroicons/react/24/outline";
 
 interface PrescriptionRow {
   id: number;
@@ -29,17 +38,52 @@ function formatAge(dob: string): string {
   return `${years}y`;
 }
 
+interface PaymentRow {
+  id: number;
+  patientFirstname: string | null;
+  patientLastname: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  method: string;
+  purpose: string;
+  gatewayProvider: string | null;
+  createdAt: string;
+}
+
 const TABS = [
   { key: "lab", label: "Lab Requests", icon: BeakerIcon },
-  { key: "prescriptions", label: "Drug Prescriptions", icon: CurrencyDollarIcon },
+  {
+    key: "prescriptions",
+    label: "Drug Prescriptions",
+    icon: CurrencyDollarIcon,
+  },
+  { key: "payments", label: "Payments", icon: WalletIcon },
 ] as const;
-type TabKey = typeof TABS[number]["key"];
+type TabKey = (typeof TABS)[number]["key"];
+
+const PURPOSE_LABEL: Record<string, string> = {
+  bill: "Bill payment",
+  wallet_topup: "Wallet top-up",
+  subscription_charge: "Subscription charge",
+};
+
+const METHOD_LABEL: Record<string, string> = {
+  gateway: "Card / Online",
+  wallet: "Wallet",
+  bank_transfer: "Bank Transfer",
+  plan: "Plan Coverage",
+};
 
 export default function FinancePage() {
   const [activeTab, setActiveTab] = useState<TabKey>("lab");
 
   // ── Lab Requests ──────────────────────────────────────────────────────────
-  const { data: requestsData, isLoading: reqLoading, mutate: mutatReqs } = useSWR<RequestRow[]>("/api/requests", fetcher);
+  const {
+    data: requestsData,
+    isLoading: reqLoading,
+    mutate: mutatReqs,
+  } = useSWR<RequestRow[]>("/api/requests", fetcher);
   const [updatingReqId, setUpdatingReqId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState("");
   const [doctorSearch, setDoctorSearch] = useState("");
@@ -49,9 +93,14 @@ export default function FinancePage() {
     const patient = patientSearch.trim().toLowerCase();
     const doctor = doctorSearch.trim().toLowerCase();
     return rows.filter((row) => {
-      const patientName = `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.toLowerCase();
-      const doctorName = `${row.requestedByFirstname ?? ""} ${row.requestedByLastname ?? ""}`.toLowerCase();
-      return (!patient || patientName.includes(patient)) && (!doctor || doctorName.includes(doctor));
+      const patientName =
+        `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.toLowerCase();
+      const doctorName =
+        `${row.requestedByFirstname ?? ""} ${row.requestedByLastname ?? ""}`.toLowerCase();
+      return (
+        (!patient || patientName.includes(patient)) &&
+        (!doctor || doctorName.includes(doctor))
+      );
     });
   }, [requestsData, patientSearch, doctorSearch]);
 
@@ -64,13 +113,23 @@ export default function FinancePage() {
         body: JSON.stringify({ paymentStatus: "paid" }),
       });
       if (res.ok) mutatReqs();
-      else { const body = await res.json(); alert(body.error || "Failed to update payment status"); }
-    } catch { alert("Failed to update payment status"); }
-    finally { setUpdatingReqId(null); }
+      else {
+        const body = await res.json();
+        alert(body.error || "Failed to update payment status");
+      }
+    } catch {
+      alert("Failed to update payment status");
+    } finally {
+      setUpdatingReqId(null);
+    }
   };
 
   // ── Prescriptions ─────────────────────────────────────────────────────────
-  const { data: prescrData, isLoading: prescrLoading, mutate: mutatePrescrip } = useSWR<PrescriptionRow[]>("/api/prescriptions", fetcher);
+  const {
+    data: prescrData,
+    isLoading: prescrLoading,
+    mutate: mutatePrescrip,
+  } = useSWR<PrescriptionRow[]>("/api/prescriptions", fetcher);
   const [updatingPrescrId, setUpdatingPrescrId] = useState<number | null>(null);
   const [confirmPrescrId, setConfirmPrescrId] = useState<number | null>(null);
   const [prescrSearch, setPrescrSearch] = useState("");
@@ -79,9 +138,14 @@ export default function FinancePage() {
     const rows = prescrData ?? [];
     const q = prescrSearch.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((r) =>
-      `${r.patientFirstname ?? ""} ${r.patientLastname ?? ""}`.toLowerCase().includes(q) ||
-      `${r.requestedByFirstname ?? ""} ${r.requestedByLastname ?? ""}`.toLowerCase().includes(q)
+    return rows.filter(
+      (r) =>
+        `${r.patientFirstname ?? ""} ${r.patientLastname ?? ""}`
+          .toLowerCase()
+          .includes(q) ||
+        `${r.requestedByFirstname ?? ""} ${r.requestedByLastname ?? ""}`
+          .toLowerCase()
+          .includes(q),
     );
   }, [prescrData, prescrSearch]);
 
@@ -94,22 +158,74 @@ export default function FinancePage() {
         body: JSON.stringify({ paymentStatus: "paid" }),
       });
       if (res.ok) mutatePrescrip();
-      else { const body = await res.json(); alert(body.error || "Failed to update payment status"); }
-    } catch { alert("Failed to update payment status"); }
-    finally { setUpdatingPrescrId(null); setConfirmPrescrId(null); }
+      else {
+        const body = await res.json();
+        alert(body.error || "Failed to update payment status");
+      }
+    } catch {
+      alert("Failed to update payment status");
+    } finally {
+      setUpdatingPrescrId(null);
+      setConfirmPrescrId(null);
+    }
+  };
+
+  // ── Payments (unified ledger: bills, wallet top-ups, subscription charges) ─
+  const {
+    data: paymentsData,
+    isLoading: paymentsLoading,
+    mutate: mutatePayments,
+  } = useSWR<PaymentRow[]>("/api/payments", fetcher);
+  const [confirmingPaymentId, setConfirmingPaymentId] = useState<number | null>(
+    null,
+  );
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<number | null>(
+    null,
+  );
+
+  const handleConfirmBankTransfer = async (id: number) => {
+    setUpdatingPaymentId(id);
+    try {
+      const res = await fetch(`/api/payments/${id}/confirm`, {
+        method: "PATCH",
+      });
+      if (res.ok) mutatePayments();
+      else {
+        const body = await res.json();
+        alert(body.error || "Failed to confirm payment");
+      }
+    } catch {
+      alert("Failed to confirm payment");
+    } finally {
+      setUpdatingPaymentId(null);
+      setConfirmingPaymentId(null);
+    }
   };
 
   // Badge counts — unpaid items per tab
-  const unpaidLabCount = (requestsData ?? []).filter((r) => r.paymentStatus !== "paid").length;
-  const unpaidPrescrCount = (prescrData ?? []).filter((r) => r.paymentStatus !== "paid" && r.status !== "cancelled").length;
-  const counts: Record<TabKey, number> = { lab: unpaidLabCount, prescriptions: unpaidPrescrCount };
+  const unpaidLabCount = (requestsData ?? []).filter(
+    (r) => r.paymentStatus !== "paid",
+  ).length;
+  const unpaidPrescrCount = (prescrData ?? []).filter(
+    (r) => r.paymentStatus !== "paid" && r.status !== "cancelled",
+  ).length;
+  const pendingPaymentsCount = (paymentsData ?? []).filter(
+    (p) => p.status === "pending",
+  ).length;
+  const counts: Record<TabKey, number> = {
+    lab: unpaidLabCount,
+    prescriptions: unpaidPrescrCount,
+    payments: pendingPaymentsCount,
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Finance</h1>
-        <p className="text-gray-600 text-sm mt-1">Manage payment status for lab requests and drug prescriptions</p>
+        <p className="text-gray-600 text-sm mt-1">
+          Manage payment status for lab requests and drug prescriptions
+        </p>
       </div>
 
       {/* Tabs */}
@@ -132,9 +248,13 @@ export default function FinancePage() {
                 <Icon className="h-4 w-4" />
                 {t.label}
                 {count > 0 && (
-                  <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-semibold ${
-                    isActive ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                  }`}>
+                  <span
+                    className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-semibold ${
+                      isActive
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
                     {count}
                   </span>
                 )}
@@ -204,7 +324,9 @@ export default function FinancePage() {
             </div>
           ) : filteredPrescriptions.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-              <p className="text-gray-500 text-sm">No drug prescriptions found.</p>
+              <p className="text-gray-500 text-sm">
+                No drug prescriptions found.
+              </p>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -212,8 +334,21 @@ export default function FinancePage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      {["Patient", "Age", "Doctor", "Drug",  "Price (₦)", "Payment Status", "Actions"].map((h) => (
-                        <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      {[
+                        "Patient",
+                        "Age",
+                        "Doctor",
+                        "Drug",
+                        "Price (₦)",
+                        "Payment Status",
+                        "Actions",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap"
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -223,7 +358,10 @@ export default function FinancePage() {
                       const isUpdating = updatingPrescrId === row.id;
                       const isConfirming = confirmPrescrId === row.id;
                       return (
-                        <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                        <tr
+                          key={row.id}
+                          className="hover:bg-gray-50/50 transition-colors"
+                        >
                           <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                             {row.patientFirstname} {row.patientLastname}
                           </td>
@@ -231,7 +369,8 @@ export default function FinancePage() {
                             {row.patientDob ? formatAge(row.patientDob) : "—"}
                           </td>
                           <td className="px-5 py-4 text-sm text-gray-700 whitespace-nowrap">
-                            Dr. {row.requestedByFirstname} {row.requestedByLastname}
+                            Dr. {row.requestedByFirstname}{" "}
+                            {row.requestedByLastname}
                           </td>
                           <td className="px-5 py-4 text-sm font-medium text-gray-800 whitespace-nowrap">
                             {row.productName ?? "—"}
@@ -240,14 +379,18 @@ export default function FinancePage() {
                             <span className="line-clamp-2">{row.dosage}</span>
                           </td> */}
                           <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                            {row.productPrice != null ? `₦${row.productPrice.toLocaleString()}` : "—"}
+                            {row.productPrice != null
+                              ? `₦${row.productPrice.toLocaleString()}`
+                              : "—"}
                           </td>
                           <td className="px-5 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                              isPaid
-                                ? "bg-green-100 text-green-800 border border-green-300"
-                                : "bg-red-100 text-red-800 border border-red-300"
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                isPaid
+                                  ? "bg-green-100 text-green-800 border border-green-300"
+                                  : "bg-red-100 text-red-800 border border-red-300"
+                              }`}
+                            >
                               {isPaid ? "Paid" : "Not Paid"}
                             </span>
                           </td>
@@ -260,7 +403,9 @@ export default function FinancePage() {
                               </span>
                             ) : isConfirming ? (
                               <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-gray-600 whitespace-nowrap">Confirm?</span>
+                                <span className="text-xs text-gray-600 whitespace-nowrap">
+                                  Confirm?
+                                </span>
                                 <button
                                   onClick={() => handleMarkPrescrPaid(row.id)}
                                   disabled={isUpdating}
@@ -284,6 +429,146 @@ export default function FinancePage() {
                               >
                                 {isUpdating ? "Updating..." : "Mark as Paid"}
                               </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Payments Panel ── */}
+      {activeTab === "payments" && (
+        <div className="space-y-4">
+          {paymentsLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : !paymentsData || paymentsData.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+              <p className="text-gray-500 text-sm">No payments recorded yet.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {[
+                        "Patient",
+                        "Type",
+                        "Method",
+                        "Amount (₦)",
+                        "Status",
+                        "Date",
+                        "Actions",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap"
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paymentsData.map((row) => {
+                      const isPending = row.status === "pending";
+                      const isBankTransfer = row.method === "bank_transfer";
+                      const isConfirming = confirmingPaymentId === row.id;
+                      const isUpdating = updatingPaymentId === row.id;
+                      return (
+                        <tr
+                          key={row.id}
+                          className="hover:bg-gray-50/50 transition-colors"
+                        >
+                          <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                            {row.patientFirstname} {row.patientLastname}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-700 whitespace-nowrap">
+                            {PURPOSE_LABEL[row.purpose] ?? row.purpose}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
+                            {METHOD_LABEL[row.method] ?? row.method}
+                          </td>
+                          <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                            ₦{row.amount.toLocaleString()}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                row.status === "success"
+                                  ? "bg-green-100 text-green-800 border border-green-300"
+                                  : row.status === "pending"
+                                    ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                    : "bg-red-100 text-red-800 border border-red-300"
+                              }`}
+                            >
+                              {row.status === "success"
+                                ? "Success"
+                                : row.status === "pending"
+                                  ? "Pending"
+                                  : "Failed"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">
+                            {new Date(row.createdAt).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            {isPending && isBankTransfer ? (
+                              isConfirming ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-gray-600 whitespace-nowrap">
+                                    Received?
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      handleConfirmBankTransfer(row.id)
+                                    }
+                                    disabled={isUpdating}
+                                    className="px-2.5 py-1 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                                  >
+                                    Yes
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmingPaymentId(null)}
+                                    disabled={isUpdating}
+                                    className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmingPaymentId(row.id)}
+                                  disabled={isUpdating}
+                                  className="px-3 py-1.5 text-xs font-medium text-yellow-800 bg-yellow-50 border border-yellow-300 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isUpdating
+                                    ? "Confirming..."
+                                    : "Confirm Receipt"}
+                                </button>
+                              )
+                            ) : row.status === "success" ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg cursor-default select-none">
+                                <CheckCircleIcon className="h-3.5 w-3.5" />
+                                Settled
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
                             )}
                           </td>
                         </tr>

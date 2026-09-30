@@ -18,6 +18,7 @@ import {
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { auth } from "@/auth";
+import { getPatientPlanCoverage } from "@/lib/subscriptions";
 
 /**
  * GET /api/my-history
@@ -105,6 +106,7 @@ export async function GET(_req: NextRequest) {
         status: requests.status,
         paymentStatus: requests.paymentStatus,
         createdAt: requests.createdAt,
+        testId: requests.testId,
         testName: labTests.name,
         testPrice: labTests.price,
         departmentName: departments.name,
@@ -257,11 +259,22 @@ export async function GET(_req: NextRequest) {
 
     // Pending Payment tab: every unpaid request/prescription, flattened
     // across both the timeline and the unlinked-requests bucket (same shape
-    // the Test Results tab already flattens client-side).
+    // the Test Results tab already flattens client-side). Each item is
+    // flagged with whether an active subscription's plan already covers it
+    // for free, so the UI can offer "Use plan coverage" instead of payment.
+    const coverage = await getPatientPlanCoverage(patientId);
     const unpaidRequests = requestRows
       .filter((r) => r.paymentStatus !== "paid")
-      .map((req) => ({ ...req, results: resultsByRequest[req.id] ?? [] }));
-    const unpaidPrescriptions = prescriptionRows.filter((p) => p.paymentStatus !== "paid");
+      .map((req) => {
+        const covered = req.testId != null ? coverage.get(`lab_test:${req.testId}`) : undefined;
+        return { ...req, results: resultsByRequest[req.id] ?? [], coveredByPlan: covered?.planName ?? null };
+      });
+    const unpaidPrescriptions = prescriptionRows
+      .filter((p) => p.paymentStatus !== "paid")
+      .map((p) => {
+        const covered = p.productId != null ? coverage.get(`product:${p.productId}`) : undefined;
+        return { ...p, coveredByPlan: covered?.planName ?? null };
+      });
 
     return NextResponse.json({
       patient,

@@ -592,10 +592,12 @@ export type AdmissionTransfer = typeof admissionTransfers.$inferSelect;
 export type NewAdmissionTransfer = typeof admissionTransfers.$inferInsert;
 
 // ─── Payments ───────────────────────────────────────────────────────────────
-// A patient-initiated online payment (e.g. from the patient portal), which
-// may cover several requests/prescriptions at once — see paymentItems.
-// Desk payments recorded by Finance staff stay as a direct paymentStatus
-// flip on `requests`/`prescriptions` and do NOT go through this table.
+// A patient-initiated payment (e.g. from the patient portal), which may
+// cover several requests/prescriptions at once — see paymentItems. Desk
+// payments recorded by Finance staff stay as a direct paymentStatus flip on
+// `requests`/`prescriptions` and do NOT go through this table. This is the
+// single ledger Finance/dashboard views read for "successful payments",
+// covering bill payments, wallet top-ups, and subscription charges alike.
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   organisationId: integer("organisation_id").notNull().references(() => organisations.id),
@@ -603,9 +605,21 @@ export const payments = pgTable("payments", {
   amount: integer("amount").notNull(),
   currency: text("currency").notNull().default("NGN"),
   status: text("status").notNull().default("pending"), // "pending" | "success" | "failed"
-  gatewayProvider: text("gateway_provider").notNull(), // "paystack" | "flutterwave" | "mock"
-  gatewayReference: text("gateway_reference").notNull().unique(),
+  // How the payment was settled. "gateway" goes through gatewayProvider below
+  // and is confirmed via webhook/verify; "wallet" is settled instantly from
+  // the patient's wallet balance (see walletTransactions); "bank_transfer"
+  // stays "pending" until a finance officer confirms receipt; "plan" means
+  // no money moved at all — the item was covered by an active subscription's
+  // billingPlanItems entitlement (amount is still recorded for audit value,
+  // but analytics excludes "plan" payments from revenue to avoid double-
+  // counting the subscription charge that already funded the coverage).
+  method: text("method").notNull().default("gateway"), // "gateway" | "wallet" | "bank_transfer" | "plan"
+  purpose: text("purpose").notNull().default("bill"), // "bill" | "wallet_topup" | "subscription_charge"
+  gatewayProvider: text("gateway_provider"), // "paystack" | "flutterwave" | "mock" — null for wallet/bank_transfer
+  gatewayReference: text("gateway_reference").unique(),
   initiatedBy: text("initiated_by").notNull().default("patient"),
+  // Finance officer who confirmed a bank_transfer payment as received.
+  confirmedBy: integer("confirmed_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -630,3 +644,135 @@ export const paymentItems = pgTable("payment_items", {
 
 export type PaymentItem = typeof paymentItems.$inferSelect;
 export type NewPaymentItem = typeof paymentItems.$inferInsert;
+
+// ─── Wallets ──────────────────────────────────────────────────────────────────
+// One wallet per patient, created together with the patient record. Balance
+// is denormalized here for fast reads but must only ever change inside a
+// db.transaction alongside a matching walletTransactions row — never written
+// to directly.
+export const wallets = pgTable("wallets", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  balance: integer("balance").notNull().default(0),
+  currency: text("currency").notNull().default("NGN"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  patientUnique: uniqueIndex("wallets_patient_idx").on(t.patientId),
+}));
+
+export type Wallet = typeof wallets.$inferSelect;
+export type NewWallet = typeof wallets.$inferInsert;
+
+// ─── Wallet Transactions ──────────────────────────────────────────────────────
+// Append-only ledger of every wallet balance movement. balanceAfter snapshots
+// the running balance so history renders without re-summing. referenceType/
+// referenceId point at whatever caused the movement (a payments row for a
+// top-up or a wallet-paid bill, a subscriptionCharges row for a subscription
+// debit) — no FK since the source table varies by referenceType.
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  walletId: integer("wallet_id").notNull().references(() => wallets.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  type: text("type").notNull(), // "credit" | "debit"
+  amount: integer("amount").notNull(),
+  balanceAfter: integer("balance_after").notNull(),
+  source: text("source").notNull(), // "topup" | "bill_payment" | "subscription_charge" | "refund" | "adjustment"
+  referenceType: text("reference_type"), // "payment" | "subscription_charge"
+  referenceId: integer("reference_id"),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  walletIdx: index("wallet_transactions_wallet_idx").on(t.walletId),
+}));
+
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type NewWalletTransaction = typeof walletTransactions.$inferInsert;
+
+// ─── Billing Plans ────────────────────────────────────────────────────────────
+// Org-defined recurring subscription plans a patient can subscribe to.
+// Deactivating a plan (isActive=false) stops new subscriptions without
+// touching existing patientSubscriptions rows.
+export const billingPlans = pgTable("billing_plans", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  amount: integer("amount").notNull(),
+  billingInterval: text("billing_interval").notNull().default("monthly"), // "weekly" | "monthly" | "yearly"
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export type BillingPlan = typeof billingPlans.$inferSelect;
+export type NewBillingPlan = typeof billingPlans.$inferInsert;
+
+// ─── Patient Subscriptions ────────────────────────────────────────────────────
+// A patient's enrollment in a billing plan. nextChargeDate drives the daily
+// cron sweep (see /api/cron/subscriptions/process) and is advanced by one
+// billing interval after every charge attempt — success or failure — so a
+// subscription can never be charged twice in the same cycle.
+export const patientSubscriptions = pgTable("patient_subscriptions", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  billingPlanId: integer("billing_plan_id").notNull().references(() => billingPlans.id),
+  status: text("status").notNull().default("active"), // "active" | "paused" | "cancelled" | "past_due"
+  startDate: timestamp("start_date", { withTimezone: true }).notNull().defaultNow(),
+  nextChargeDate: timestamp("next_charge_date", { withTimezone: true }).notNull(),
+  lastChargedAt: timestamp("last_charged_at", { withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  // Drives the cron sweep's "find subscriptions due today" query.
+  statusChargeIdx: index("patient_subscriptions_status_charge_idx").on(t.status, t.nextChargeDate),
+}));
+
+export type PatientSubscription = typeof patientSubscriptions.$inferSelect;
+export type NewPatientSubscription = typeof patientSubscriptions.$inferInsert;
+
+// ─── Subscription Charges ─────────────────────────────────────────────────────
+// One row per charge attempt (success or failure) against a subscription —
+// the billing history shown to a patient/finance officer, distinct from
+// patientSubscriptions which only tracks current state.
+export const subscriptionCharges = pgTable("subscription_charges", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientSubscriptionId: integer("patient_subscription_id").notNull().references(() => patientSubscriptions.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  amount: integer("amount").notNull(),
+  status: text("status").notNull(), // "success" | "failed"
+  failureReason: text("failure_reason"),
+  walletTransactionId: integer("wallet_transaction_id").references(() => walletTransactions.id),
+  chargedAt: timestamp("charged_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SubscriptionCharge = typeof subscriptionCharges.$inferSelect;
+export type NewSubscriptionCharge = typeof subscriptionCharges.$inferInsert;
+
+// ─── Billing Plan Items ───────────────────────────────────────────────────────
+// Which catalog services a billing plan entitles a subscriber to for free
+// (e.g. a specific lab test or drug product), on top of — or instead of —
+// being a flat recurring charge. itemId points at labTests.id or products.id
+// depending on itemType; no FK since it's polymorphic (same reasoning as
+// paymentItems). A patient with an active subscription to this plan gets
+// their matching requests/prescriptions marked paid via plan coverage
+// instead of paying per-item — see lib/subscriptions.ts#getPatientPlanCoverage.
+export const billingPlanItems = pgTable("billing_plan_items", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  billingPlanId: integer("billing_plan_id").notNull().references(() => billingPlans.id),
+  itemType: text("item_type").notNull(), // "lab_test" | "product"
+  itemId: integer("item_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  planItemUnique: uniqueIndex("billing_plan_items_unique_idx").on(t.billingPlanId, t.itemType, t.itemId),
+}));
+
+export type BillingPlanItem = typeof billingPlanItems.$inferSelect;
+export type NewBillingPlanItem = typeof billingPlanItems.$inferInsert;

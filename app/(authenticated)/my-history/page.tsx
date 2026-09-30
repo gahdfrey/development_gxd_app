@@ -28,6 +28,7 @@ import {
 import { useMemo, useState } from "react";
 import { getBlobUrl } from "@/lib/appointmentUtils";
 import PendingPaymentTab from "./components/PendingPaymentTab";
+import WalletTab from "./components/WalletTab";
 import type { UnpaidRequest, UnpaidPrescription } from "./components/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -137,7 +138,7 @@ interface ResultEntry {
   uploadedByLastname: string | null;
 }
 
-type TabKey = "visits" | "results" | "prescriptions" | "pending-payment" | "privacy";
+type TabKey = "visits" | "results" | "prescriptions" | "pending-payment" | "wallet" | "privacy";
 
 interface DataRequestRow {
   id: number;
@@ -1035,6 +1036,7 @@ export default function MyHistoryPage() {
       label: "Pending Payment",
       count: data.unpaidRequests.length + data.unpaidPrescriptions.length,
     },
+    { key: "wallet", label: "Wallet", count: 0 },
     { key: "privacy", label: "Privacy & My Data", count: 0 },
   ];
 
@@ -1421,6 +1423,9 @@ export default function MyHistoryPage() {
           onPaid={() => mutate()}
         />
       )}
+
+      {/* ── Tab: Wallet ────────────────────────────────────────────────── */}
+      {activeTab === "wallet" && <WalletTab />}
 
       {/* ── Tab: Privacy & My Data ─────────────────────────────────────── */}
       {activeTab === "privacy" && <PrivacyPanel history={data} />}

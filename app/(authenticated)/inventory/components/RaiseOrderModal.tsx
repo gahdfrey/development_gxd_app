@@ -25,6 +25,7 @@ interface LineItem {
 interface Props {
   open: boolean;
   departmentId?: number;
+  productCategory?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -146,8 +147,11 @@ function ProductCombobox({
 }
 
 // ── Main modal ────────────────────────────────────────────────────────────────
-export default function RaiseOrderModal({ open, departmentId, onClose, onSuccess }: Props) {
-  const { data: productList } = useSWR<Product[]>("/api/products", fetcher);
+export default function RaiseOrderModal({ open, departmentId, productCategory, onClose, onSuccess }: Props) {
+  const { data: productList } = useSWR<Product[]>(
+    productCategory ? `/api/products?category=${productCategory}` : "/api/products",
+    fetcher
+  );
   const { data: departments } = useSWR<Department[]>("/api/departments", fetcher);
 
   const [selectedDeptId, setSelectedDeptId] = useState<number | "">(departmentId ?? "");
@@ -250,6 +254,9 @@ export default function RaiseOrderModal({ open, departmentId, onClose, onSuccess
       if (!res.ok) {
         if (data.error === "insufficient_stock") {
           setInsufficientItems(data.items);
+        } else if (data.error === "category_mismatch") {
+          const names = (data.items ?? []).map((i: { name: string }) => i.name).join(", ");
+          setServerError(`Not allowed for the ${data.department} department: ${names}`);
         } else {
           setServerError(data.error ?? "Failed to raise order");
         }

@@ -18,6 +18,7 @@ export const APP_MODULES = [
   { key: "products", label: "Products" },
   { key: "orders", label: "Orders" },
   { key: "pharmacy", label: "Pharmacy" },
+  { key: "billing", label: "Billing Plans" },
 ];
 
 // How urgently the patient needs a bed, picked by the requesting doctor and
