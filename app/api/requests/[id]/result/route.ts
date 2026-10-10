@@ -5,6 +5,7 @@ import { requestResults, requests, notifications, patients, departments } from "
 import { eq, and } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { notifyResultsReady } from "@/lib/messaging/events";
 
 const ACCEPTED_TYPES = [
   "application/pdf",
@@ -150,6 +151,15 @@ export async function POST(
     } catch (notifErr) {
       console.error("Failed to create notification:", notifErr);
     }
+
+    // Result file uploaded → tell the patient (once per request), unless a
+    // critical value on this request is still waiting for the doctor.
+    const [reqRow] = await db
+      .select({ patientId: requests.patientId })
+      .from(requests)
+      .where(eq(requests.id, requestId))
+      .limit(1);
+    if (reqRow) await notifyResultsReady(orgId, reqRow.patientId, requestId, null);
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

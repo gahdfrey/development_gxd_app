@@ -46,6 +46,7 @@ export const authConfig = {
         if (nextUrl.pathname === "/api/contact") return true;
         if (nextUrl.pathname === "/api/payments/webhook") return true;
         if (nextUrl.pathname === "/api/cron/subscriptions/process") return true;
+        if (nextUrl.pathname === "/api/cron/messages/process") return true;
         if (isLoggedIn) return true;
         return Response.json({ error: "Unauthorized" }, { status: 401 });
       }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getValuesForRequests } from "@/lib/lab/results";
 import { db } from "@/lib/db";
 import {
   patients,
@@ -14,11 +15,16 @@ import {
   products,
   drugGenerics,
   visitDiagnoses,
+  patientCharges,
 } from "@/lib/db/schema";
 import { eq, desc, and, isNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { auth } from "@/auth";
+import { getOrgId } from "@/lib/org";
+import { priceBillItems, itemKey } from "@/lib/billing/pricing";
+import { getClinicalSummary } from "@/lib/clinical/summary";
 import { getPatientPlanCoverage } from "@/lib/subscriptions";
+import { getPatientVaccinations } from "@/lib/vaccination";
 
 /**
  * GET /api/my-history
@@ -44,6 +50,7 @@ export async function GET(_req: NextRequest) {
     const patientRows = await db
       .select({
         id: patients.id,
+        mrn: patients.mrn,
         firstname: patients.firstname,
         lastname: patients.lastname,
         gender: patients.gender,
@@ -189,6 +196,36 @@ export async function GET(_req: NextRequest) {
     }
 
     // Build maps
+    // Structured (numeric/coded) lab results alongside any uploaded files.
+    const orgIdForValues = await getOrgId();
+    const allValues = orgIdForValues
+      ? await getValuesForRequests(db, orgIdForValues, requestRows.map((r) => r.id))
+      : null;
+    // A critical result reaches the patient only after their doctor has
+    // acknowledged it (so they hear it from a clinician first, not a screen).
+    const underReview = new Set<number>();
+    const valuesByRequest = new Map<number, unknown[]>();
+    for (const [requestId, vals] of allValues ?? []) {
+      if (vals.some((v) => v.critical && !v.critical.acknowledgedAt)) {
+        underReview.add(requestId);
+        continue;
+      }
+      valuesByRequest.set(
+        requestId,
+        vals.map((v) => ({
+          id: v.id,
+          name: v.name,
+          valueNumeric: v.valueNumeric,
+          valueText: v.valueText,
+          unit: v.unit,
+          refLow: v.refLow,
+          refHigh: v.refHigh,
+          flag: v.flag,
+          comment: v.comment,
+          amendedAt: v.amendedAt,
+        })),
+      );
+    }
     const resultsByRequest: Record<number, typeof resultRows> = {};
     for (const r of resultRows) {
       if (!resultsByRequest[r.requestId]) resultsByRequest[r.requestId] = [];
@@ -244,6 +281,8 @@ export async function GET(_req: NextRequest) {
       requests: (requestsByAppointment[appt.id] ?? []).map((req) => ({
         ...req,
         results: resultsByRequest[req.id] ?? [],
+        values: valuesByRequest.get(req.id) ?? [],
+        valuesUnderReview: underReview.has(req.id),
       })),
       prescriptions: (prescriptionsByAppointment[appt.id] ?? []),
     }));
@@ -257,35 +296,110 @@ export async function GET(_req: NextRequest) {
       0,
     );
 
-    // Pending Payment tab: every unpaid request/prescription, flattened
+    // Pending Payment tab: every unpaid request/prescription (and vaccination
+    // dose, below), flattened
     // across both the timeline and the unlinked-requests bucket (same shape
     // the Test Results tab already flattens client-side). Each item is
     // flagged with whether an active subscription's plan already covers it
     // for free, so the UI can offer "Use plan coverage" instead of payment.
+    // Prices shown here are the patient's own share: for HMO-covered items
+    // that's the co-pay (hmoCovers carries the HMO's part, for display).
     const coverage = await getPatientPlanCoverage(patientId);
-    const unpaidRequests = requestRows
-      .filter((r) => r.paymentStatus !== "paid")
-      .map((req) => {
-        const covered = req.testId != null ? coverage.get(`lab_test:${req.testId}`) : undefined;
-        return { ...req, results: resultsByRequest[req.id] ?? [], coveredByPlan: covered?.planName ?? null };
-      });
-    const unpaidPrescriptions = prescriptionRows
-      .filter((p) => p.paymentStatus !== "paid")
-      .map((p) => {
-        const covered = p.productId != null ? coverage.get(`product:${p.productId}`) : undefined;
-        return { ...p, coveredByPlan: covered?.planName ?? null };
-      });
+    const orgId = await getOrgId();
+    const unpaidRequestRows = requestRows.filter((r) => r.paymentStatus !== "paid");
+    const unpaidPrescriptionRows = prescriptionRows.filter((p) => p.paymentStatus !== "paid");
+    // Vaccination doses are billed when booked, so the patient can pay ahead.
+    const unpaidChargeRows = orgId
+      ? await db
+          .select({ id: patientCharges.id, description: patientCharges.description, chargeDate: patientCharges.chargeDate, createdAt: patientCharges.createdAt })
+          .from(patientCharges)
+          .where(and(
+            eq(patientCharges.organisationId, orgId),
+            eq(patientCharges.patientId, patientId),
+            eq(patientCharges.sourceType, "vaccine"),
+            eq(patientCharges.paymentStatus, "not_paid"),
+            isNull(patientCharges.deletedAt),
+          ))
+      : [];
+    const priced = orgId
+      ? await priceBillItems(orgId, [
+          ...unpaidRequestRows.map((r) => ({ itemType: "request" as const, itemId: r.id })),
+          ...unpaidPrescriptionRows.map((p) => ({ itemType: "prescription" as const, itemId: p.id })),
+          ...unpaidChargeRows.map((c) => ({ itemType: "charge" as const, itemId: c.id })),
+        ])
+      : new Map();
+    const hmoShare = (k: string) => {
+      const p = priced.get(k);
+      return p?.basis === "covered"
+        ? { patientAmount: p.patientAmount as number, hmoCovers: p.hmoAmount as number, hmoName: p.hmoName as string | null }
+        : null;
+    };
+    const unpaidRequests = unpaidRequestRows.map((req) => {
+      const covered = req.testId != null ? coverage.get(`lab_test:${req.testId}`) : undefined;
+      const hmo = hmoShare(itemKey("request", req.id));
+      return {
+        ...req,
+        testPrice: hmo ? hmo.patientAmount : req.testPrice,
+        hmoCovers: hmo?.hmoCovers ?? 0,
+        hmoName: hmo?.hmoName ?? null,
+        results: resultsByRequest[req.id] ?? [],
+        values: valuesByRequest.get(req.id) ?? [],
+        valuesUnderReview: underReview.has(req.id),
+        coveredByPlan: covered?.planName ?? null,
+      };
+    });
+    const unpaidPrescriptions = unpaidPrescriptionRows.map((p) => {
+      const covered = p.productId != null ? coverage.get(`product:${p.productId}`) : undefined;
+      const hmo = hmoShare(itemKey("prescription", p.id));
+      return {
+        ...p,
+        productPrice: hmo ? hmo.patientAmount : p.productPrice,
+        hmoCovers: hmo?.hmoCovers ?? 0,
+        hmoName: hmo?.hmoName ?? null,
+        coveredByPlan: covered?.planName ?? null,
+      };
+    });
+
+    const unpaidCharges = unpaidChargeRows.map((c) => {
+      const p = priced.get(itemKey("charge", c.id));
+      return {
+        ...c,
+        amount: p ? (p.patientAmount as number) : null,
+        hmoCovers: p?.basis === "covered" ? (p.hmoAmount as number) : 0,
+        hmoName: p?.basis === "covered" ? (p.hmoName as string | null) : null,
+      };
+    });
+
+    // The patient's own allergies / ongoing conditions / weight (read-only
+    // in the portal — recorded by staff). Ruled-out allergies and resolved
+    // conditions are left out to keep it simple for the patient.
+    const summary = orgId ? await getClinicalSummary(db, orgId, patientId) : null;
+    const clinical = summary && {
+      allergyStatus: summary.allergyStatus,
+      allergies: summary.allergies
+        .filter((a) => a.verification !== "refuted")
+        .map((a) => ({ id: a.id, substance: a.substance, type: a.type, reaction: a.reaction, severity: a.severity })),
+      problems: summary.problems
+        .filter((p) => p.status !== "resolved")
+        .map((p) => ({ id: p.id, icdCode: p.icdCode, title: p.icdTitle || p.clinicalText, onsetDate: p.onsetDate })),
+      latest: summary.latest,
+    };
 
     return NextResponse.json({
       patient,
+      clinical,
       stats: { completedVisits, totalRequests, paidRequests, resultsReceived },
       timeline,
       unlinkedRequests: unlinkedRequests.map((req) => ({
         ...req,
         results: resultsByRequest[req.id] ?? [],
+        values: valuesByRequest.get(req.id) ?? [],
+        valuesUnderReview: underReview.has(req.id),
       })),
       unpaidRequests,
       unpaidPrescriptions,
+      unpaidCharges,
+      vaccinations: orgId ? await getPatientVaccinations(orgId, patientId) : [],
     });
   } catch (error) {
     console.error("Error fetching patient history:", error);

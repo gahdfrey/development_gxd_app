@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { patients, users, roles, patientConsents, wallets } from "@/lib/db/schema";
-import { desc, asc, or, ilike, and, gte, lte, eq, isNull } from "drizzle-orm";
+import { patients, users, roles, patientConsents, wallets, admissions, wards, beds } from "@/lib/db/schema";
+import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { applyRegistrationInsurance, hmoBelongsToOrg } from "@/lib/billing/coverage";
+import { findMatches } from "@/lib/mpi/candidates";
 import bcrypt from "bcryptjs";
 
 export async function GET(request: Request) {
@@ -36,6 +38,9 @@ export async function GET(request: Request) {
         ilike(patients.lastname, searchTerm),
         ilike(patients.mrn, searchTerm),
         ilike(patients.nin, searchTerm),
+        // Previous hospital numbers / other identifiers (incl. MRNs of
+        // merged duplicate records).
+        sql`EXISTS (SELECT 1 FROM patient_identifiers i WHERE i.patient_id = ${patients.id} AND i.deleted_at IS NULL AND i.value ILIKE ${searchTerm})`,
       ));
     }
 
@@ -61,7 +66,41 @@ export async function GET(request: Request) {
           ? await query.orderBy(desc(patients.firstname))
           : await query.orderBy(desc(patients.createdAt));
 
-    return NextResponse.json(allPatients);
+    // Attach each patient's current (status "admitted") admission so the
+    // patients table can flag in-patients — e.g. so the front desk can tell a
+    // visitor which ward/bed the patient is on.
+    const patientIds = allPatients.map((p: { id: number }) => p.id);
+    const activeAdmissions = patientIds.length
+      ? await db
+          .select({
+            id: admissions.id,
+            patientId: admissions.patientId,
+            admittedAt: admissions.admittedAt,
+            wardName: wards.name,
+            bedNumber: beds.bedNumber,
+          })
+          .from(admissions)
+          .leftJoin(wards, eq(admissions.wardId, wards.id))
+          .leftJoin(beds, eq(admissions.bedId, beds.id))
+          .where(and(
+            eq(admissions.organisationId, orgId),
+            eq(admissions.status, "admitted"),
+            inArray(admissions.patientId, patientIds),
+          ))
+      : [];
+    const admissionByPatient = new Map(activeAdmissions.map((a) => [a.patientId, a]));
+
+    return NextResponse.json(
+      allPatients.map((p: { id: number }) => {
+        const a = admissionByPatient.get(p.id);
+        return {
+          ...p,
+          currentAdmission: a
+            ? { id: a.id, admittedAt: a.admittedAt, wardName: a.wardName, bedNumber: a.bedNumber }
+            : null,
+        };
+      }),
+    );
   } catch (error) {
     console.error("Error fetching patients:", error);
     return NextResponse.json({ error: "Failed to fetch patients" }, { status: 500 });
@@ -99,6 +138,9 @@ export async function POST(request: Request) {
     if (insuranceType === "hmo") {
       if (!hmoId) return NextResponse.json({ error: "HMO selection is required for HMO insurance type" }, { status: 400 });
       if (!policyNumber?.trim()) return NextResponse.json({ error: "Policy number is required for HMO insurance type" }, { status: 400 });
+      if (!(await hmoBelongsToOrg(db, orgId, parseInt(hmoId)))) {
+        return NextResponse.json({ error: "Selected HMO was not found" }, { status: 400 });
+      }
     }
 
     if (email?.trim()) {
@@ -161,40 +203,37 @@ export async function POST(request: Request) {
       }
     }
 
-    // Soft warn (CRF-1/2 duplicate detection): same phone number, or same
-    // name + date of birth. Staff can override with allowDuplicate after
-    // confirming it is genuinely a different person.
+    // Soft warn (CRF-1/2 duplicate detection): probabilistic matching on
+    // phone, date of birth, NIN and fuzzy / sound-alike names (lib/mpi).
+    // Staff can override with allowDuplicate after confirming it is
+    // genuinely a different person.
     if (allowDuplicate !== true) {
-      const potentialMatches = await db
-        .select({
-          id: patients.id,
-          mrn: patients.mrn,
-          firstname: patients.firstname,
-          lastname: patients.lastname,
-          dob: patients.dob,
-          phone: patients.phone,
-          countryCode: patients.countryCode,
-        })
-        .from(patients)
-        .where(and(
-          activePatientInOrg,
-          or(
-            and(eq(patients.phone, phone), eq(patients.countryCode, countryCode)),
-            and(
-              ilike(patients.firstname, firstname.trim()),
-              ilike(patients.lastname, lastname.trim()),
-              eq(patients.dob, dob),
-            ),
-          ),
-        ))
-        .limit(5);
+      const potentialMatches = await findMatches(db, orgId, {
+        firstname: firstname.trim(),
+        lastname: lastname.trim(),
+        dob,
+        gender,
+        phone,
+        nin: cleanNin,
+      });
 
       if (potentialMatches.length > 0) {
         return NextResponse.json(
           {
             error: "Possible duplicate patient found",
             duplicateWarning: true,
-            matches: potentialMatches,
+            matches: potentialMatches.map((m) => ({
+              id: m.id,
+              mrn: m.mrn,
+              firstname: m.firstname,
+              lastname: m.lastname,
+              dob: m.dob,
+              phone: m.phone,
+              countryCode: m.countryCode,
+              score: m.score,
+              level: m.level,
+              reasons: m.reasons,
+            })),
           },
           { status: 409 },
         );
@@ -225,6 +264,19 @@ export async function POST(request: Request) {
     const mrn = `MRN-${orgId}-${String(newPatient.id).padStart(6, "0")}`;
     await db.update(patients).set({ mrn }).where(eq(patients.id, newPatient.id));
     newPatient.mrn = mrn;
+
+    // Opens the patient's HMO coverage (enrollee record) from the form's
+    // HMO + policy number; billing reads coverage, not patients.hmoId.
+    if (insuranceType === "hmo") {
+      await applyRegistrationInsurance(db, {
+        orgId,
+        patientId: newPatient.id,
+        actorId,
+        insuranceType,
+        hmoId: parseInt(hmoId),
+        policyNumber: policyNumber?.trim() || null,
+      });
+    }
 
     // Every patient gets a wallet at registration. Non-fatal on failure —
     // getOrCreateWallet() self-heals this on first wallet access if it's

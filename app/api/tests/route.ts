@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isTaxCode, DEFAULT_TAX_CODE } from "@/lib/billing/tax";
 import { db } from "@/lib/db";
 import { labTests, departments } from "@/lib/db/schema";
 import { eq, asc, and, isNull } from "drizzle-orm";
@@ -18,6 +19,7 @@ export async function GET() {
         id: labTests.id,
         name: labTests.name,
         price: labTests.price,
+        taxCode: labTests.taxCode,
         departmentId: labTests.departmentId,
         departmentName: departments.name,
         createdAt: labTests.createdAt,
@@ -42,7 +44,8 @@ export async function POST(request: NextRequest) {
     const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
-    const { name, price, departmentId } = body;
+    const { name, price, departmentId, taxCode } = body;
+    if (taxCode !== undefined && !isTaxCode(taxCode)) return NextResponse.json({ error: "Invalid tax code" }, { status: 400 });
 
     if (!name?.trim()) return NextResponse.json({ error: "Test name is required" }, { status: 400 });
     if (!departmentId || isNaN(parseInt(departmentId))) return NextResponse.json({ error: "A valid department is required" }, { status: 400 });
@@ -52,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const [newTest] = await db
       .insert(labTests)
-      .values({ organisationId: orgId, name: name.trim(), price: parsedPrice, departmentId: parseInt(departmentId) })
+      .values({ organisationId: orgId, name: name.trim(), price: parsedPrice, departmentId: parseInt(departmentId), taxCode: taxCode ?? DEFAULT_TAX_CODE })
       .returning();
 
     void logAudit({

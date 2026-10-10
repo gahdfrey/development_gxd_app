@@ -3,6 +3,7 @@
 import { useSidebar } from '@/app/contexts/SidebarContext';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import CriticalAlertsBar from '@/app/(authenticated)/components/lab/CriticalAlertsBar';
 
 export default function MainContent({ children }: { children: React.ReactNode }) {
   const { isLocked } = useSidebar();
@@ -20,6 +21,8 @@ export default function MainContent({ children }: { children: React.ReactNode })
 
   return (
     <main className={`pt-24 ${sidebarWidth} transition-all duration-500 ease-out`}>
+      {/* Unacknowledged critical lab results addressed to this clinician. */}
+      {!isPatient && <CriticalAlertsBar />}
       {children}
     </main>
   );

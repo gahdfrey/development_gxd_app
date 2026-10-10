@@ -1,6 +1,7 @@
 "use client";
 
 import {useState, useMemo} from "react";
+import Link from "next/link";
 import {createColumnHelper} from "@tanstack/react-table";
 import useSWR, {mutate} from "swr";
 import {fetcher} from "@/lib/fetcher";
@@ -10,9 +11,10 @@ import Modal from "@/app/components/ui/Modal";
 import CreatePatientModal from "./components/CreatePatientModal";
 import EditPatientModal from "./components/EditPatientModal";
 import ViewPatientModal from "./components/ViewPatientModal";
-import {PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon} from "@heroicons/react/24/outline";
+import {PencilSquareIcon, TrashIcon, EyeIcon, PlusIcon, DocumentDuplicateIcon} from "@heroicons/react/24/outline";
 import {useToast} from "@/app/contexts/ToastContext";
 import PermissionDenied from "@/app/components/ui/PermissionDenied";
+import AdmissionDetailsDrawer from "../admission/components/AdmissionDetailsDrawer";
 
 interface Patient {
     id: number;
@@ -26,6 +28,12 @@ interface Patient {
     insuranceType: string;
     createdAt: string;
     updatedAt: string;
+    currentAdmission: {
+        id: number;
+        admittedAt: string | null;
+        wardName: string | null;
+        bedNumber: string | null;
+    } | null;
 }
 
 export default function PatientsPage() {
@@ -42,6 +50,7 @@ export default function PatientsPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState < Patient | null > (null);
     const [selectedPatientId, setSelectedPatientId] = useState < number | null > (null,);
+    const [viewingAdmissionId, setViewingAdmissionId] = useState < number | null > (null);
     const {showToast} = useToast();
 
     const handleDeletePatient = async () => {
@@ -71,13 +80,39 @@ export default function PatientsPage() {
     const columnHelper = createColumnHelper < Patient > ();
 
     const columns = useMemo(() => [
-        columnHelper.accessor("firstname", {
-            header: "First Name",
-            cell: (info) => info.getValue()
+        columnHelper.accessor((row) => `${row.firstname} ${row.lastname}`, {
+            id: "name",
+            header: "Patient Name",
+            cell: (info) => (
+                <Link href={`/patients/${info.row.original.id}/history`}
+                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                    {info.getValue()}
+                </Link>
+            )
         }),
-        columnHelper.accessor("lastname", {
-            header: "Last Name",
-            cell: (info) => info.getValue()
+        columnHelper.accessor("currentAdmission", {
+            header: "Admission",
+            cell: (info) => {
+                const admission = info.getValue();
+                if (!admission) 
+                    return <span className="text-gray-400">—</span>;
+                
+                const location = [admission.wardName, admission.bedNumber && `Bed ${admission.bedNumber}`].filter(Boolean).join(" · ");
+                return (
+                    <button onClick={
+                            () => setViewingAdmissionId(admission.id)
+                        }
+                        className="inline-flex flex-col items-start text-left group"
+                        title="View admission details">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 group-hover:bg-red-100 transition-colors">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-600"/>
+                            On Admission
+                        </span>
+                        {
+                        location && <span className="mt-0.5 text-xs text-gray-500">{location}</span>
+                    } </button>
+                );
+            }
         }),
         columnHelper.accessor("gender", {
             header: "Gender",
@@ -235,6 +270,11 @@ export default function PatientsPage() {
                         </button>
                     )
                 }
+                    <Link href="/patients/duplicates"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <DocumentDuplicateIcon className="w-5 h-5"/>
+                        Duplicates
+                    </Link>
                     <button onClick={
                             () => setIsCreateModalOpen(true)
                         }
@@ -288,6 +328,14 @@ export default function PatientsPage() {
                     }/>
             )
         }
+
+            <AdmissionDetailsDrawer admissionId={viewingAdmissionId}
+                isOpen={
+                    viewingAdmissionId !== null
+                }
+                onClose={
+                    () => setViewingAdmissionId(null)
+                }/>
 
             {/* Delete Confirmation Modal */}
             <Modal isOpen={isDeleteModalOpen}

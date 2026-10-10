@@ -26,12 +26,18 @@ import {
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 import { getBlobUrl } from "@/lib/appointmentUtils";
+import ResultValuesTable, { type ResultValue } from "../../../components/requests/ResultValuesTable";
+import ClinicalBanner from "../../../components/clinical/ClinicalBanner";
+import ClinicalRecordPanel from "../../../components/clinical/ClinicalRecordPanel";
+import ObservationsPanel from "../../../components/clinical/ObservationsPanel";
+import PatientVaccinationsPanel from "../../../components/vaccination/PatientVaccinationsPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PatientHistory {
   patient: {
     id: number;
+    mrn: string | null;
     firstname: string;
     lastname: string;
     gender: string;
@@ -120,6 +126,8 @@ interface RequestEntry {
   requestedByFirstname: string | null;
   requestedByLastname: string | null;
   results: ResultEntry[];
+  /** Structured (entered) lab values, if the test has result fields. */
+  values?: ResultValue[];
 }
 
 interface ResultEntry {
@@ -135,7 +143,7 @@ interface ResultEntry {
   uploadedByLastname: string | null;
 }
 
-type TabKey = "visits" | "results" | "prescriptions";
+type TabKey = "visits" | "results" | "prescriptions" | "vaccinations";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -416,7 +424,10 @@ function RequestCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const isPaid = request.paymentStatus === "paid";
-  const hasResults = request.results.length > 0;
+  const values = request.values ?? [];
+  const hasResults = request.results.length > 0 || values.length > 0;
+  const abnormal = values.filter((v) => v.flag !== "normal").length;
+  const critical = values.some((v) => v.flag.startsWith("critical"));
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -467,10 +478,14 @@ function RequestCard({
           <Pill kind={isPaid ? "paid" : "not_paid"}>
             {isPaid ? "Paid" : "Not Paid"}
           </Pill>
+          {abnormal > 0 && (
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${critical ? "bg-red-600 text-white" : "bg-amber-100 text-amber-800"}`}>
+              {critical ? "Critical result" : `${abnormal} abnormal`}
+            </span>
+          )}
           {hasResults ? (
             <Pill kind="result">
-              {request.results.length} result
-              {request.results.length !== 1 ? "s" : ""}
+              {values.length > 0 ? "Results ready" : <>{request.results.length} result{request.results.length !== 1 ? "s" : ""}</>}
             </Pill>
           ) : (
             <Pill
@@ -484,6 +499,7 @@ function RequestCard({
 
       {expanded && hasResults && (
         <div className="border-t border-gray-100 bg-gray-50/60 p-3 space-y-2">
+          <ResultValuesTable values={values} />
           {request.results.map((result) => (
             <ResultCard key={result.id} result={result} />
           ))}
@@ -690,6 +706,7 @@ export default function PatientHistoryPage({
 
   const [activeTab, setActiveTab] = useState<TabKey>("visits");
   const [nokExpanded, setNokExpanded] = useState(false);
+  const [clinicalExpanded, setClinicalExpanded] = useState(false);
   const [timelinePage, setTimelinePage] = useState(1);
 
   // Flatten every request (visit-linked + unlinked) for the Test Results tab.
@@ -717,6 +734,23 @@ export default function PatientHistoryPage({
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  const mergedIntoId = (error as { status?: number; info?: { mergedIntoId?: number } } | undefined)?.info?.mergedIntoId;
+  if (mergedIntoId) {
+    return (
+      <div className="p-3 sm:p-6 max-w-4xl mx-auto">
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-900">
+          <p className="font-semibold">This record was merged into another patient record.</p>
+          <p className="mt-1">
+            All of its visits, results and bills are now on the kept record.{" "}
+            <Link href={`/patients/${mergedIntoId}/history`} className="font-semibold text-blue-700 underline">
+              Open the kept record
+            </Link>
+          </p>
+        </div>
       </div>
     );
   }
@@ -753,6 +787,7 @@ export default function PatientHistoryPage({
     { key: "visits", label: "Visits", count: timeline.length },
     { key: "results", label: "Test Results", count: allRequests.length },
     { key: "prescriptions", label: "Prescriptions", count: allPrescriptions.length },
+    { key: "vaccinations", label: "Vaccinations", count: 0 },
   ];
 
   return (
@@ -783,6 +818,12 @@ export default function PatientHistoryPage({
               <p className="text-xs sm:text-sm text-blue-100 mt-0.5">
                 {capitalise(patient.gender)} · {formatAge(patient.dob)} old
               </p>
+              {patient.mrn && (
+                <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-white">
+                  <span className="uppercase tracking-wider text-blue-100">Hospital No.</span>
+                  <span className="font-mono">{patient.mrn}</span>
+                </p>
+              )}
             </div>
             <div className="text-right shrink-0 hidden sm:flex sm:flex-col sm:items-end sm:gap-2">
               <div>
@@ -949,6 +990,27 @@ export default function PatientHistoryPage({
             )}
           </div>
         )}
+      </div>
+
+      {/* ── Allergies, ongoing conditions, weight ─────────────────────── */}
+      {clinicalExpanded ? (
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">Allergies &amp; medical background</h2>
+            <button onClick={() => setClinicalExpanded(false)} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+              Done
+            </button>
+          </div>
+          <ClinicalRecordPanel patientId={Number(id)} />
+        </div>
+      ) : (
+        <ClinicalBanner patientId={Number(id)} onManage={() => setClinicalExpanded(true)} />
+      )}
+
+      {/* ── Observations & early-warning score ────────────────────────── */}
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5">
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-700">Observations</h2>
+        <ObservationsPanel patientId={Number(id)} />
       </div>
 
       {/* ── Stats ──────────────────────────────────────────────────────── */}
@@ -1133,6 +1195,11 @@ export default function PatientHistoryPage({
             ))}
           </div>
         ))}
+
+      {/* ── Tab: Vaccinations ──────────────────────────────────────────── */}
+      {activeTab === "vaccinations" && (
+        <PatientVaccinationsPanel patient={{ id: patient.id, name: fullName, mrn: patient.mrn }} />
+      )}
 
       {/* Bottom safe-area padding for mobile */}
       <div className="h-4 sm:h-0" />

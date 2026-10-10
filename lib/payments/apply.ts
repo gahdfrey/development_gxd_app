@@ -1,9 +1,13 @@
 import { db } from "@/lib/db";
-import { payments, paymentItems, requests, prescriptions, type Payment } from "@/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { payments, paymentItems, type Payment } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { getPaymentGateway } from "./index";
 import { logAudit } from "@/lib/audit";
 import { getWalletByPatientId, creditWallet } from "@/lib/wallet";
+import { priceBillItems } from "@/lib/billing/pricing";
+import { settleHmoItems } from "@/lib/billing/settle";
+import { notifyPaymentReceipt } from "@/lib/messaging/events";
+import { markBillItemsPaid } from "@/lib/payments/billItems";
 
 export type ApplyPaymentResult =
   | { outcome: "applied" }
@@ -71,8 +75,14 @@ async function settlePayment(payment: Payment): Promise<ApplyPaymentResult> {
     return { outcome: "applied" };
   }
 
-  // purpose "bill": mark the covered requests/prescriptions as paid.
+  // purpose "bill": mark the covered requests/prescriptions/charges as paid.
   const items = await db.select().from(paymentItems).where(eq(paymentItems.paymentId, payment.id));
+  // HMO patients' payments only covered their co-pay; the HMO's share of
+  // each item becomes a receivable once the item is settled.
+  const priced = await priceBillItems(
+    payment.organisationId,
+    items.map((i) => ({ itemType: i.itemType as "request" | "prescription" | "charge", itemId: i.itemId })),
+  );
 
   const applied = await db.transaction(async (tx) => {
     const updated = await tx
@@ -82,26 +92,15 @@ async function settlePayment(payment: Payment): Promise<ApplyPaymentResult> {
       .returning({ id: payments.id });
     if (updated.length === 0) return false;
 
-    const requestIds = items.filter((i) => i.itemType === "request").map((i) => i.itemId);
-    const prescriptionIds = items.filter((i) => i.itemType === "prescription").map((i) => i.itemId);
-
-    if (requestIds.length > 0) {
-      await tx
-        .update(requests)
-        .set({ paymentStatus: "paid", updatedAt: new Date() })
-        .where(inArray(requests.id, requestIds));
-    }
-    if (prescriptionIds.length > 0) {
-      await tx
-        .update(prescriptions)
-        .set({ paymentStatus: "paid", updatedAt: new Date() })
-        .where(inArray(prescriptions.id, prescriptionIds));
-    }
+    await settleHmoItems(tx, payment.organisationId, [...priced.values()]);
+    await markBillItemsPaid(tx, items);
 
     return true;
   });
 
   if (!applied) return { outcome: "already-applied" };
+
+  await notifyPaymentReceipt(payment.organisationId, payment.patientId, payment.id, payment.amount);
 
   for (const item of items) {
     void logAudit({

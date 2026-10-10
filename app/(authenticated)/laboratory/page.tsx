@@ -7,6 +7,7 @@ import RequestsTable, {
   type RequestRow,
 } from "../components/requests/RequestsTable";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import CriticalFollowUpPanel from "../components/lab/CriticalFollowUpPanel";
 import RaiseOrderModal from "../inventory/components/RaiseOrderModal";
 import { useToast } from "@/app/contexts/ToastContext";
 
@@ -54,6 +55,7 @@ export default function LaboratoryPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      <CriticalFollowUpPanel />
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Laboratory</h1>

@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
         currency: payments.currency,
         status: payments.status,
         method: payments.method,
+        channel: payments.channel,
+        posReference: payments.posReference,
         purpose: payments.purpose,
         gatewayProvider: payments.gatewayProvider,
         gatewayReference: payments.gatewayReference,

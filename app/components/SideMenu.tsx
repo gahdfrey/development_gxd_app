@@ -244,6 +244,47 @@ export default function SideMenu() {
             </Link>
           )}
 
+          {/* Vaccination Link */}
+          {hasPermission("vaccination", "view") && (
+            <Link
+              href="/vaccination"
+              className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm font-medium transition-all duration-200 ${
+                isActive("/vaccination")
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+              }`}
+              aria-current={isActive("/vaccination") ? "page" : undefined}
+            >
+              <div className="shrink-0 relative p-1">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18 2l4 4M17 3l-2 2 4 4 2-2M15 5l-9.5 9.5V19H10l9.5-9.5M9 11l2 2M6.5 13.5l2 2M5.5 18.5L2 22"
+                  />
+                </svg>
+              </div>
+              <span
+                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isExpanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0"
+                }`}
+              >
+                Vaccination
+              </span>
+              {!isExpanded && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                  Vaccination
+                </div>
+              )}
+            </Link>
+          )}
+
           {/* My History Link - Patient portal */}
           {hasPermission("my-history", "view") && (
             <Link

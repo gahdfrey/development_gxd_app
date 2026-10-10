@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { getDefaultRoute } from '@/lib/utils/getDefaultRoute';
@@ -26,6 +27,7 @@ const ROUTE_MODULE_MAP: Record<string, string> = {
   '/product-inventory': 'products',
   '/orders':           'orders',
   '/pharmacy':         'pharmacy',
+  '/vaccination':      'vaccination',
 };
 
 // Dynamic routes whose module differs from the prefix they sit under. These are
@@ -53,13 +55,13 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
 
   // Reuses the same SWR key as SideMenu and MainContent — no extra network request
-  const { data: user, isLoading } = useSWR('/api/wai', fetcher, {
+  const { data: user, isLoading, mutate } = useSWR('/api/wai', fetcher, {
     shouldRetryOnError: false,
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });
 
-  // Compute access synchronously — no useEffect/useState so there's no stale render
+  // Compute access synchronously from the cached permissions
   const matchedModule =
     ROUTE_PATTERN_MAP.find(({ pattern }) => pattern.test(pathname))?.module ??
     Object.entries(ROUTE_MODULE_MAP).find(([route]) =>
@@ -67,12 +69,22 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
     )?.[1];
 
   const permissions = user?.permissions as Record<string, unknown> | null;
+  const deniedByCache = !!user && !!matchedModule && !canViewModule(permissions, matchedModule);
+
+  // The cached permissions can predate a role change (e.g. a module granted
+  // since the page loaded), so re-read them once per route before denying.
+  const [recheckedPath, setRecheckedPath] = useState<string | null>(null);
+  const awaitingRecheck = deniedByCache && recheckedPath !== pathname;
+  useEffect(() => {
+    if (!awaitingRecheck) return;
+    mutate().finally(() => setRecheckedPath(pathname));
+  }, [awaitingRecheck, pathname, mutate]);
 
   // Still fetching — render nothing so the page never flashes
-  if (isLoading || !user) return null;
+  if (isLoading || !user || awaitingRecheck) return null;
 
   // Route has a module guard and user lacks view permission
-  const isDenied = !!matchedModule && !canViewModule(permissions, matchedModule);
+  const isDenied = deniedByCache;
 
   if (isDenied) {
     return (

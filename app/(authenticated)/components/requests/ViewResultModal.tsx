@@ -11,6 +11,7 @@ import {
 import { getBlobUrl } from "@/lib/appointmentUtils";
 import { fetcher } from "@/lib/fetcher";
 import type { RequestRow } from "./RequestsTable";
+import ResultValuesTable, { type ResultValue } from "./ResultValuesTable";
 
 interface ResultEntry {
   id: number;
@@ -130,6 +131,11 @@ export default function ViewResultModal({ isOpen, onClose, row }: ViewResultModa
     fetcher,
   );
   const results = data ?? [];
+  const { data: structured } = useSWR<{ values: ResultValue[] }>(
+    isOpen && row && (row.hasValues || row.hasParameters) ? `/api/requests/${row.id}/values` : null,
+    fetcher,
+  );
+  const values = structured?.values ?? [];
 
   if (!isOpen || !row) return null;
 
@@ -180,12 +186,15 @@ export default function ViewResultModal({ isOpen, onClose, row }: ViewResultModa
               <ExclamationCircleIcon className="h-5 w-5 shrink-0" />
               <p className="text-sm font-medium">Could not load the result. Please try again.</p>
             </div>
-          ) : results.length === 0 ? (
+          ) : results.length === 0 && values.length === 0 ? (
             <div className="text-center py-12 text-gray-500 text-sm">
-              No result files found for this request.
+              No results found for this request.
             </div>
           ) : (
-            results.map((result) => <ResultFile key={result.id} result={result} />)
+            <>
+              <ResultValuesTable values={values} />
+              {results.map((result) => <ResultFile key={result.id} result={result} />)}
+            </>
           )}
         </div>
       </div>

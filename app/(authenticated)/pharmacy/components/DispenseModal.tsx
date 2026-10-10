@@ -83,6 +83,10 @@ export default function DispenseModal({ prescription, onClose, onConfirm }: Prop
 
   const patientName = `${prescription.patientFirstname ?? ""} ${prescription.patientLastname ?? ""}`.trim();
 
+  const genericLabel = prescription.genericName
+    ? `${prescription.genericName}${prescription.genericStrength ? ` ${prescription.genericStrength}` : ""}`
+    : (prescription.productName ?? "this drug");
+
   const handleConfirm = async () => {
     if (!selected) {
       setError("Select the brand being dispensed.");
@@ -105,7 +109,7 @@ export default function DispenseModal({ prescription, onClose, onConfirm }: Prop
         <div className="px-6 py-5 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Confirm Dispensing</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            {prescription.genericName} {prescription.genericStrength} — {patientName}
+            {genericLabel} — {patientName}
           </p>
         </div>
 
@@ -120,7 +124,14 @@ export default function DispenseModal({ prescription, onClose, onConfirm }: Prop
             </p>
           )}
 
-          {isLoading ? (
+          {!prescription.genericId ? (
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
+              <ExclamationTriangleIcon className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+              <span>
+                This prescription isn&apos;t linked to a generic drug, so no brands can be matched for dispensing. Ask a doctor to update the prescription before dispensing.
+              </span>
+            </div>
+          ) : isLoading ? (
             <div className="flex justify-center py-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
             </div>
@@ -128,7 +139,7 @@ export default function DispenseModal({ prescription, onClose, onConfirm }: Prop
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
               <ExclamationTriangleIcon className="mt-0.5 h-4.5 w-4.5 shrink-0" />
               <span>
-                No brand of {prescription.genericName} {prescription.genericStrength} is currently in stock. Raise a supply order before dispensing.
+                No brand of {genericLabel} is currently in stock. Raise a supply order before dispensing.
               </span>
             </div>
           ) : (

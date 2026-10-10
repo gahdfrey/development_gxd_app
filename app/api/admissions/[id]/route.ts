@@ -5,6 +5,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { getAdmissionBill, syncBedDayCharges, trimBedDaysAfterDischarge } from "@/lib/billing/admissionBill";
 import { admissionQuery } from "@/lib/admissions";
 
 export async function GET(
@@ -73,12 +74,18 @@ export async function PATCH(
 
     const body = await request.json();
     const { dischargeSummary } = body;
+    const balanceNote = typeof body.balanceNote === "string" ? body.balanceNote.trim() : "";
 
     if (!dischargeSummary?.trim()) {
       return NextResponse.json({ error: "Discharge summary is required" }, { status: 400 });
     }
 
+    // Bring bed-day charges up to date before the discharge so the final
+    // bill is complete.
+    await syncBedDayCharges(db, orgId, id, actorId);
+
     let result: any;
+    let dischargeBalance = 0;
     try {
       result = await db.transaction(async (tx) => {
         const [admission] = await tx
@@ -106,12 +113,37 @@ export async function PATCH(
 
         await tx.update(beds).set({ status: "available", updatedAt: new Date() }).where(eq(beds.id, admission.bedId));
 
+        // Discharge clearance: an unpaid balance needs a recorded reason
+        // (e.g. "HMO to pay", "family paying Monday") or the discharge is refused.
+        await trimBedDaysAfterDischarge(tx, orgId, id);
+        const bill = await getAdmissionBill(tx, orgId, id);
+        dischargeBalance = bill?.totals.outstanding ?? 0;
+        if (dischargeBalance > 0) {
+          if (!balanceNote) throw new Error("BALANCE_OUTSTANDING");
+          const [withNote] = await tx
+            .update(admissions)
+            .set({ dischargeBalance, dischargeBalanceNote: balanceNote })
+            .where(eq(admissions.id, id))
+            .returning();
+          return withNote;
+        }
+
         return updated;
       });
     } catch (txError: any) {
       if (txError.message === "NOT_FOUND") return NextResponse.json({ error: "Admission not found" }, { status: 404 });
       if (txError.message === "NOT_ADMITTED") return NextResponse.json({ error: "This patient has already been discharged" }, { status: 409 });
       if (txError.message === "NO_BED") return NextResponse.json({ error: "This admission has no bed assigned" }, { status: 409 });
+      if (txError.message === "BALANCE_OUTSTANDING") {
+        return NextResponse.json(
+          {
+            error: `This patient still owes ₦${dischargeBalance.toLocaleString()}. Settle the bill, or record why they may leave with a balance.`,
+            outstanding: dischargeBalance,
+            requiresBalanceNote: true,
+          },
+          { status: 409 },
+        );
+      }
       throw txError;
     }
 
@@ -122,7 +154,7 @@ export async function PATCH(
       action: "discharge",
       entityType: "admission",
       entityId: id,
-      details: { dischargeSummary: dischargeSummary.trim() },
+      details: { dischargeSummary: dischargeSummary.trim(), dischargeBalance, balanceNote: balanceNote || undefined },
     });
 
     return NextResponse.json(result, { status: 200 });

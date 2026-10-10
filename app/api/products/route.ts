@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isTaxCode, DEFAULT_TAX_CODE } from "@/lib/billing/tax";
 import { db } from "@/lib/db";
 import { products, drugGenerics } from "@/lib/db/schema";
 import { asc, ilike, eq, and, sql, isNull, gt } from "drizzle-orm";
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
         looseUnitsInStock: products.looseUnitsInStock,
         reorderLevel: products.reorderLevel,
         price: products.price,
+        taxCode: products.taxCode,
         totalUnits: sql<number>`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
@@ -70,7 +72,8 @@ export async function POST(request: NextRequest) {
     const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
 
     const body = await request.json();
-    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable, genericId, manufacturer, nafdacRegNumber } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable, genericId, manufacturer, nafdacRegNumber, taxCode } = body;
+    if (taxCode !== undefined && !isTaxCode(taxCode)) return NextResponse.json({ error: "Invalid tax code" }, { status: 400 });
 
     if (!name?.trim()) return NextResponse.json({ error: "Product name is required" }, { status: 400 });
     if (!unitsPerCase || unitsPerCase < 1) return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
@@ -95,6 +98,7 @@ export async function POST(request: NextRequest) {
         looseUnitsInStock: looseUnitsInStock ?? 0,
         reorderLevel: reorderLevel ?? 20,
         price: price ?? 0,
+        taxCode: taxCode ?? DEFAULT_TAX_CODE,
       })
       .returning();
 

@@ -6,6 +6,7 @@ export const APP_MODULES = [
   { key: "my-appointments", label: "My Appointments" },
   { key: "all-appointments", label: "All Appointments" },
   { key: "admission", label: "Admission" },
+  { key: "vaccination", label: "Vaccination" },
   { key: "users", label: "Users" },
   { key: "data-requests", label: "Data Requests" },
   { key: "roles", label: "Roles" },

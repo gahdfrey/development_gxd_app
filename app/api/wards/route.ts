@@ -19,6 +19,7 @@ export async function GET() {
       .select({
         id: wards.id,
         name: wards.name,
+        dailyRate: wards.dailyRate,
         departmentId: wards.departmentId,
         departmentName: departments.name,
         createdAt: wards.createdAt,
@@ -45,6 +46,10 @@ export async function POST(request: NextRequest) {
     const { name, departmentId } = body;
 
     if (!name?.trim()) return NextResponse.json({ error: "Ward name is required" }, { status: 400 });
+    const dailyRate = body.dailyRate === undefined || body.dailyRate === null || body.dailyRate === "" ? null : Number(body.dailyRate);
+    if (dailyRate != null && (!Number.isInteger(dailyRate) || dailyRate < 0)) {
+      return NextResponse.json({ error: "Daily bed rate must be a whole Naira amount" }, { status: 400 });
+    }
 
     const [newWard] = await db
       .insert(wards)
@@ -52,6 +57,7 @@ export async function POST(request: NextRequest) {
         organisationId: orgId,
         name: name.trim(),
         departmentId: departmentId ? parseInt(departmentId) : null,
+        dailyRate,
       })
       .returning();
 

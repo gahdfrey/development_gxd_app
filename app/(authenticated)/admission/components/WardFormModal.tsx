@@ -22,6 +22,7 @@ export default function WardFormModal({ isOpen, onClose, editing, onSuccess }: W
   const { data: departments = [] } = useSWR<Department[]>("/api/departments", fetcher);
   const [name, setName] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [dailyRate, setDailyRate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -29,6 +30,7 @@ export default function WardFormModal({ isOpen, onClose, editing, onSuccess }: W
     if (isOpen) {
       setName(editing?.name ?? "");
       setDepartmentId(editing?.departmentId ? String(editing.departmentId) : "");
+      setDailyRate(editing?.dailyRate != null ? String(editing.dailyRate) : "");
       setErrorMessage("");
     }
   }, [isOpen, editing]);
@@ -49,7 +51,7 @@ export default function WardFormModal({ isOpen, onClose, editing, onSuccess }: W
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, departmentId: departmentId || null }),
+        body: JSON.stringify({ name, departmentId: departmentId || null, dailyRate: dailyRate === "" ? null : Number(dailyRate) }),
       });
 
       const data = await res.json();
@@ -102,6 +104,19 @@ export default function WardFormModal({ isOpen, onClose, editing, onSuccess }: W
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Daily bed charge (₦, optional)</label>
+          <input
+            type="number"
+            min={0}
+            value={dailyRate}
+            onChange={(e) => setDailyRate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g. 15000 — charged automatically for each day of an admission"
+          />
+          <p className="mt-1 text-xs text-gray-500">Self-pay rate. Set HMO rates on each HMO&apos;s price list.</p>
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

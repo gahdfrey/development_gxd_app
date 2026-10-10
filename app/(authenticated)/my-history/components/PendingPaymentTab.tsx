@@ -10,14 +10,16 @@ import {
   SparklesIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
-import type { UnpaidRequest, UnpaidPrescription } from "./types";
+import type { UnpaidRequest, UnpaidPrescription, UnpaidCharge } from "./types";
 
 type PaymentMethod = "gateway" | "wallet" | "bank_transfer" | "plan";
 
 interface PendingPaymentTabProps {
   unpaidRequests: UnpaidRequest[];
   unpaidPrescriptions: UnpaidPrescription[];
+  unpaidCharges: UnpaidCharge[];
   onPaid: () => void;
 }
 
@@ -33,13 +35,14 @@ function naira(amount: number): string {
   return `₦${amount.toLocaleString()}`;
 }
 
-function key(itemType: "request" | "prescription", itemId: number): string {
+function key(itemType: "request" | "prescription" | "charge", itemId: number): string {
   return `${itemType}:${itemId}`;
 }
 
 export default function PendingPaymentTab({
   unpaidRequests,
   unpaidPrescriptions,
+  unpaidCharges,
   onPaid,
 }: PendingPaymentTabProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -62,7 +65,7 @@ export default function PendingPaymentTab({
       .catch(() => setWalletBalance(null));
   }, []);
 
-  const rows = useMemo(
+  const allRows = useMemo(
     () => [
       ...unpaidRequests
         .filter((r) => r.testPrice != null)
@@ -76,6 +79,8 @@ export default function PendingPaymentTab({
           createdAt: r.createdAt,
           icon: BeakerIcon,
           coveredByPlan: r.coveredByPlan,
+          hmoCovers: r.hmoCovers,
+          hmoName: r.hmoName,
         })),
       ...unpaidPrescriptions
         .filter((p) => p.productPrice != null)
@@ -89,10 +94,31 @@ export default function PendingPaymentTab({
           createdAt: p.createdAt,
           icon: ClipboardDocumentListIcon,
           coveredByPlan: p.coveredByPlan,
+          hmoCovers: p.hmoCovers,
+          hmoName: p.hmoName,
+        })),
+      ...unpaidCharges
+        .filter((c) => c.amount != null)
+        .map((c) => ({
+          key: key("charge", c.id),
+          itemType: "charge" as const,
+          itemId: c.id,
+          label: c.description,
+          sublabel: `Vaccination due ${formatDate(c.chargeDate)}`,
+          amount: c.amount as number,
+          createdAt: c.createdAt,
+          icon: ShieldCheckIcon,
+          coveredByPlan: null as string | null,
+          hmoCovers: c.hmoCovers,
+          hmoName: c.hmoName,
         })),
     ],
-    [unpaidRequests, unpaidPrescriptions],
+    [unpaidRequests, unpaidPrescriptions, unpaidCharges],
   );
+  // Items the HMO pays for in full have nothing for the patient to pay —
+  // the finance desk clears them — so they're listed but not selectable.
+  const rows = allRows.filter((r) => !(r.hmoCovers > 0 && r.amount === 0));
+  const hmoFullyCovered = allRows.filter((r) => r.hmoCovers > 0 && r.amount === 0);
 
   const selectedRows = rows.filter((r) => selected.has(r.key));
   const total = selectedRows.reduce((sum, r) => sum + r.amount, 0);
@@ -199,7 +225,24 @@ export default function PendingPaymentTab({
   const walletInsufficient = method === "wallet" && walletBalance != null && walletBalance < total;
   const planNotFullyCovered = method === "plan" && !allSelectedCovered;
 
+  const hmoCoveredNotice = hmoFullyCovered.length > 0 && (
+    <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+      <p className="font-semibold">
+        {hmoFullyCovered.length} item{hmoFullyCovered.length !== 1 ? "s are" : " is"} fully covered by{" "}
+        {hmoFullyCovered[0].hmoName ?? "your HMO"} — nothing for you to pay.
+      </p>
+      <ul className="mt-1 space-y-0.5 text-xs text-teal-700">
+        {hmoFullyCovered.map((r) => (
+          <li key={r.key}>
+            {r.label} · HMO covers {naira(r.hmoCovers)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   if (rows.length === 0) {
+    if (hmoCoveredNotice) return <div className="space-y-4">{hmoCoveredNotice}</div>;
     return (
       <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-10 sm:p-14 text-center">
         <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
@@ -214,6 +257,7 @@ export default function PendingPaymentTab({
 
   return (
     <div className="space-y-4">
+      {hmoCoveredNotice}
       {error && (
         <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           <ExclamationCircleIcon className="h-4 w-4 shrink-0" />
@@ -276,6 +320,11 @@ export default function PendingPaymentTab({
                 <p className="text-xs text-gray-500">
                   {row.sublabel ?? "—"} · {formatDate(row.createdAt)}
                 </p>
+                {row.hmoCovers > 0 && (
+                  <span className="mt-1 mr-1 inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-200">
+                    {row.hmoName ?? "HMO"} covers {naira(row.hmoCovers)} · your co-pay
+                  </span>
+                )}
                 {row.coveredByPlan && (
                   <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-200">
                     <SparklesIcon className="h-3 w-3" />

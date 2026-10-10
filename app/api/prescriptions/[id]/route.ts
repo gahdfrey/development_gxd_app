@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { prescriptions, products } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { priceBillItems, itemKey } from "@/lib/billing/pricing";
+import { settleHmoItems } from "@/lib/billing/settle";
+import { prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
 
 export async function PATCH(
   req: NextRequest,
@@ -15,7 +18,39 @@ export async function PATCH(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const body = await req.json();
-    const { paymentStatus, status, cancellationReason, dispensedProductId, batchNumber } = body;
+    const { paymentStatus, status, cancellationReason, dispensedProductId, batchNumber, authorizationCode } = body;
+
+    // ── Clinician: stop an inpatient drug (eMAR) ────────────────────────────
+    if (body.action === "stop") {
+      const authz = await requirePermission([
+        ["my-appointments", "add"],
+        ["my-appointments", "edit"],
+        ["appointments", "edit"],
+        ["admission", "edit"],
+      ]);
+      if (authz.error) return authz.error;
+      const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
+      const stopReason = typeof body.stopReason === "string" ? body.stopReason.trim() : "";
+      if (!stopReason) return NextResponse.json({ error: "Give a reason for stopping" }, { status: 400 });
+
+      const [updated] = await db
+        .update(prescriptions)
+        .set({ stoppedAt: new Date(), stoppedBy: actorId, stopReason, updatedAt: new Date() })
+        .where(and(eq(prescriptions.id, id), eq(prescriptions.organisationId, orgId), isNull(prescriptions.stoppedAt)))
+        .returning({ id: prescriptions.id });
+      if (!updated) return NextResponse.json({ error: "Prescription not found or already stopped" }, { status: 404 });
+
+      void logAudit({
+        organisationId: orgId,
+        userId: actorId,
+        userEmail: actorEmail,
+        action: "update",
+        entityType: "prescription",
+        entityId: id,
+        details: { stopped: true, stopReason },
+      });
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
 
     // ── Finance: mark paid (one-way) ────────────────────────────────────────
     if (paymentStatus === "paid") {
@@ -24,11 +59,23 @@ export async function PATCH(
       const { orgId, userId: actorId, userEmail: actorEmail } = authz.ctx;
       const orgFilter = eq(prescriptions.organisationId, orgId);
 
-      const [updated] = await db
-        .update(prescriptions)
-        .set({ paymentStatus: "paid", updatedAt: new Date() })
-        .where(and(eq(prescriptions.id, id), eq(prescriptions.paymentStatus, "not_paid"), orgFilter))
-        .returning({ id: prescriptions.id });
+      // HMO patients: the desk collects only the co-pay and the HMO's share
+      // is recorded as a receivable, atomically with the status flip.
+      const priced = await priceBillItems(orgId, [{ itemType: "prescription", itemId: id }]);
+      const prep = await prepareDeskPayment(orgId, actorId, body, priced.get(itemKey("prescription", id))?.patientAmount ?? 0);
+      if ("error" in prep) return NextResponse.json({ error: prep.error, code: prep.code }, { status: prep.status });
+      const updated = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(prescriptions)
+          .set({ paymentStatus: "paid", updatedAt: new Date() })
+          .where(and(eq(prescriptions.id, id), eq(prescriptions.paymentStatus, "not_paid"), orgFilter))
+          .returning({ id: prescriptions.id });
+        if (row) {
+          const final = await settleHmoItems(tx, orgId, [...priced.values()], { authorizationCode, actorId });
+          if (prep.desk) await recordDeskPayment(tx, { orgId, userId: actorId, desk: prep.desk, items: final });
+        }
+        return row;
+      });
 
       if (!updated) {
         const [exists] = await db.select({ id: prescriptions.id }).from(prescriptions).where(and(eq(prescriptions.id, id), orgFilter));
@@ -43,7 +90,14 @@ export async function PATCH(
         action: "update",
         entityType: "prescription",
         entityId: id,
-        details: { paymentStatus: "paid" },
+        details: {
+          paymentStatus: "paid",
+          ...(priced.get(itemKey("prescription", id))?.basis === "covered" && {
+            hmoAmount: priced.get(itemKey("prescription", id))!.hmoAmount,
+            patientAmount: priced.get(itemKey("prescription", id))!.patientAmount,
+            authorizationCode: authorizationCode || null,
+          }),
+        },
       });
 
       return NextResponse.json({ success: true }, { status: 200 });

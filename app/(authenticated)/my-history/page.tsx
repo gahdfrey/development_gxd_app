@@ -27,15 +27,19 @@ import {
 } from "@heroicons/react/24/outline";
 import { useMemo, useState } from "react";
 import { getBlobUrl } from "@/lib/appointmentUtils";
+import ResultValuesTable, { type ResultValue } from "../components/requests/ResultValuesTable";
 import PendingPaymentTab from "./components/PendingPaymentTab";
 import WalletTab from "./components/WalletTab";
-import type { UnpaidRequest, UnpaidPrescription } from "./components/types";
+import type { UnpaidRequest, UnpaidPrescription, UnpaidCharge } from "./components/types";
+import VaccinationRecord from "../components/vaccination/VaccinationRecord";
+import type { Course } from "../components/vaccination/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PatientHistory {
   patient: {
     id: number;
+    mrn: string | null;
     firstname: string;
     lastname: string;
     gender: string;
@@ -65,6 +69,14 @@ interface PatientHistory {
   unlinkedRequests: RequestEntry[];
   unpaidRequests: UnpaidRequest[];
   unpaidPrescriptions: UnpaidPrescription[];
+  unpaidCharges: UnpaidCharge[];
+  vaccinations: Course[];
+  clinical: {
+    allergyStatus: "not_assessed" | "nkda" | "has_allergies";
+    allergies: { id: number; substance: string; type: string; reaction: string | null; severity: string }[];
+    problems: { id: number; icdCode: string | null; title: string | null; onsetDate: string | null }[];
+    latest: { weightKg: number | null; weightMeasuredAt: string | null; heightCm: number | null; bmi: number | null };
+  } | null;
 }
 
 interface TimelineEntry {
@@ -123,6 +135,10 @@ interface RequestEntry {
   requestedByFirstname: string | null;
   requestedByLastname: string | null;
   results: ResultEntry[];
+  /** Structured (entered) lab values, if the test has result fields. */
+  values?: ResultValue[];
+  /** A critical value your doctor hasn't reviewed yet — values withheld. */
+  valuesUnderReview?: boolean;
 }
 
 interface ResultEntry {
@@ -138,7 +154,7 @@ interface ResultEntry {
   uploadedByLastname: string | null;
 }
 
-type TabKey = "visits" | "results" | "prescriptions" | "pending-payment" | "wallet" | "privacy";
+type TabKey = "visits" | "results" | "prescriptions" | "vaccinations" | "pending-payment" | "wallet" | "privacy";
 
 interface DataRequestRow {
   id: number;
@@ -483,7 +499,10 @@ function RequestCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const isPaid = request.paymentStatus === "paid";
-  const hasResults = request.results.length > 0;
+  const values = request.values ?? [];
+  const hasResults = request.results.length > 0 || values.length > 0;
+  const abnormal = values.filter((v) => v.flag !== "normal").length;
+  const critical = values.some((v) => v.flag.startsWith("critical"));
   const unviewedCount = request.results.filter((r) => r.viewedAt == null).length;
 
   return (
@@ -532,11 +551,20 @@ function RequestCard({
           <Pill kind={isPaid ? "paid" : "not_paid"}>
             {isPaid ? "Paid" : "Not Paid"}
           </Pill>
+          {request.valuesUnderReview && (
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-200">
+              Being reviewed by your doctor
+            </span>
+          )}
+          {abnormal > 0 && (
+            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+              {abnormal} outside normal range
+            </span>
+          )}
           {hasResults ? (
             <>
               <Pill kind="result">
-                {request.results.length} result
-                {request.results.length !== 1 ? "s" : ""}
+                {values.length > 0 ? "Results ready" : <>{request.results.length} result{request.results.length !== 1 ? "s" : ""}</>}
               </Pill>
               {unviewedCount > 0 && (
                 <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
@@ -556,6 +584,10 @@ function RequestCard({
 
       {expanded && hasResults && (
         <div className="border-t border-gray-100 bg-gray-50/60 p-3 space-y-2">
+          <ResultValuesTable values={values} />
+          {abnormal > 0 && (
+            <p className="text-xs text-gray-500">Results outside the normal range aren&apos;t always a problem — discuss them with your doctor.</p>
+          )}
           {request.results.map((result) => (
             <ResultCard key={result.id} result={result} />
           ))}
@@ -1032,9 +1064,14 @@ export default function MyHistoryPage() {
       count: allPrescriptions.length,
     },
     {
+      key: "vaccinations",
+      label: "Vaccinations",
+      count: (data.vaccinations ?? []).filter((c) => c.status === "active").length,
+    },
+    {
       key: "pending-payment",
       label: "Pending Payment",
-      count: data.unpaidRequests.length + data.unpaidPrescriptions.length,
+      count: data.unpaidRequests.length + data.unpaidPrescriptions.length + (data.unpaidCharges ?? []).length,
     },
     { key: "wallet", label: "Wallet", count: 0 },
     { key: "privacy", label: "Privacy & My Data", count: 0 },
@@ -1059,6 +1096,12 @@ export default function MyHistoryPage() {
               <p className="text-xs sm:text-sm text-blue-100 mt-0.5">
                 {capitalise(patient.gender)} · {formatAge(patient.dob)} old
               </p>
+              {patient.mrn && (
+                <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-white">
+                  <span className="uppercase tracking-wider text-blue-100">Hospital No.</span>
+                  <span className="font-mono">{patient.mrn}</span>
+                </p>
+              )}
             </div>
             <div className="text-right shrink-0 hidden sm:block">
               <p className="text-[11px] font-medium uppercase tracking-wider text-blue-200">
@@ -1207,6 +1250,59 @@ export default function MyHistoryPage() {
           </div>
         )}
       </div>
+
+      {/* ── My allergies & conditions (read-only) ─────────────────────── */}
+      {data.clinical && (
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">My allergies &amp; conditions</h2>
+            <span className="text-[11px] text-gray-400">Recorded by your care team</span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1.5">Allergies</p>
+            {data.clinical.allergies.length > 0 ? (
+              <ul className="flex flex-wrap gap-1.5">
+                {data.clinical.allergies.map((a) => (
+                  <li
+                    key={a.id}
+                    className="rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-800"
+                    title={a.reaction ?? undefined}
+                  >
+                    {a.substance}
+                    {a.reaction && <span className="font-normal text-red-600"> · {a.reaction}</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : data.clinical.allergyStatus === "nkda" ? (
+              <p className="text-sm text-green-700">No known allergies</p>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Not recorded yet — tell your doctor or nurse about any allergies at your next visit.
+              </p>
+            )}
+          </div>
+          {data.clinical.problems.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1.5">Ongoing conditions</p>
+              <ul className="flex flex-wrap gap-1.5">
+                {data.clinical.problems.map((p) => (
+                  <li key={p.id} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-800 ring-1 ring-blue-100">
+                    {p.title}
+                    {p.onsetDate && <span className="text-blue-600"> · since {p.onsetDate}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data.clinical.latest.weightKg != null && (
+            <p className="text-xs text-gray-600">
+              Last weight: <span className="font-semibold text-gray-800">{data.clinical.latest.weightKg} kg</span>
+              {data.clinical.latest.heightCm != null && <> · height {data.clinical.latest.heightCm} cm</>}
+              {data.clinical.latest.bmi != null && <> · BMI {data.clinical.latest.bmi}</>}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Stats ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
@@ -1420,8 +1516,14 @@ export default function MyHistoryPage() {
         <PendingPaymentTab
           unpaidRequests={data.unpaidRequests}
           unpaidPrescriptions={data.unpaidPrescriptions}
+          unpaidCharges={data.unpaidCharges ?? []}
           onPaid={() => mutate()}
         />
+      )}
+
+      {/* ── Tab: Vaccinations ──────────────────────────────────────────── */}
+      {activeTab === "vaccinations" && (
+        <VaccinationRecord courses={data.vaccinations ?? []} onPay={() => setActiveTab("pending-payment")} />
       )}
 
       {/* ── Tab: Wallet ────────────────────────────────────────────────── */}
