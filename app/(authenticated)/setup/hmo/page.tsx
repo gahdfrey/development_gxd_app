@@ -12,6 +12,18 @@ import {
   TrashIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
+import { PAYER_TYPE_LABEL } from "../../finance/components/billing";
+
+const EMPTY_FORM = {
+  name: "",
+  description: "",
+  payerType: "hmo",
+  code: "",
+  contactPerson: "",
+  phone: "",
+  email: "",
+  claimSubmissionDays: "",
+};
 
 export default function HMOSetupPage() {
   const { data: hmos, error, mutate } = useSWR<HMO[]>("/api/hmo", fetcher);
@@ -19,17 +31,26 @@ export default function HMOSetupPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingHMO, setEditingHMO] = useState<HMO | null>(null);
   const [selectedHMO, setSelectedHMO] = useState<HMO | null>(null);
-  const [formData, setFormData] = useState({ name: "", description: "" });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleOpenModal = (hmo?: HMO) => {
     if (hmo) {
       setEditingHMO(hmo);
-      setFormData({ name: hmo.name, description: hmo.description || "" });
+      setFormData({
+        name: hmo.name,
+        description: hmo.description || "",
+        payerType: hmo.payerType,
+        code: hmo.code || "",
+        contactPerson: hmo.contactPerson || "",
+        phone: hmo.phone || "",
+        email: hmo.email || "",
+        claimSubmissionDays: hmo.claimSubmissionDays != null ? String(hmo.claimSubmissionDays) : "",
+      });
     } else {
       setEditingHMO(null);
-      setFormData({ name: "", description: "" });
+      setFormData(EMPTY_FORM);
     }
     setErrorMessage("");
     setIsModalOpen(true);
@@ -38,7 +59,7 @@ export default function HMOSetupPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingHMO(null);
-    setFormData({ name: "", description: "" });
+    setFormData(EMPTY_FORM);
     setErrorMessage("");
   };
 
@@ -99,21 +120,45 @@ export default function HMOSetupPage() {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("id", {
-        header: "ID",
-        cell: (info) => <span className="font-medium">#{info.getValue()}</span>,
-      }),
       columnHelper.accessor("name", {
-        header: "HMO Name",
+        header: "HMO / Payer",
         cell: (info) => (
-          <span className="font-semibold">{info.getValue()}</span>
+          <div>
+            <span className="font-semibold">{info.getValue()}</span>
+            {info.row.original.code && (
+              <span className="ml-2 text-xs font-medium text-gray-500">{info.row.original.code}</span>
+            )}
+            {info.row.original.description && (
+              <span className="block text-xs text-gray-500">{info.row.original.description}</span>
+            )}
+          </div>
         ),
       }),
-      columnHelper.accessor("description", {
-        header: "Description",
+      columnHelper.accessor("payerType", {
+        header: "Type",
+        cell: (info) => <span className="text-gray-700">{PAYER_TYPE_LABEL[info.getValue()] ?? info.getValue()}</span>,
+      }),
+      columnHelper.display({
+        id: "contact",
+        header: "Contact",
+        cell: (props) => {
+          const h = props.row.original;
+          if (!h.contactPerson && !h.phone && !h.email) return <span className="text-gray-400">—</span>;
+          return (
+            <div className="text-sm text-gray-700">
+              {h.contactPerson && <span className="block">{h.contactPerson}</span>}
+              {(h.phone || h.email) && (
+                <span className="block text-xs text-gray-500">{[h.phone, h.email].filter(Boolean).join(" · ")}</span>
+              )}
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("claimSubmissionDays", {
+        header: "Claim window",
         cell: (info) => {
-          const description = info.getValue();
-          return <span className="text-gray-600">{description || "—"}</span>;
+          const days = info.getValue();
+          return <span className="text-gray-600">{days != null ? `${days} days` : "—"}</span>;
         },
       }),
       columnHelper.accessor("createdAt", {
@@ -170,7 +215,7 @@ export default function HMOSetupPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">HMO Setup</h1>
           <p className="text-gray-600 text-sm mt-1">
-            Manage Health Maintenance Organizations
+            The HMOs and schemes this hospital has contracts with. Each organisation keeps its own list.
           </p>
         </div>
         <button
@@ -236,6 +281,89 @@ export default function HMOSetupPage() {
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="payerType" className="block text-sm font-medium text-gray-700 mb-1">
+                Payer type
+              </label>
+              <select
+                id="payerType"
+                value={formData.payerType}
+                onChange={(e) => setFormData({ ...formData, payerType: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Object.entries(PAYER_TYPE_LABEL).map(([k, label]) => (
+                  <option key={k} value={k}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
+                Short code <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                id="code"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. LWH"
+              />
+            </div>
+            <div>
+              <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700 mb-1">
+                Contact person <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                id="contactPerson"
+                value={formData.contactPerson}
+                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Provider relations officer"
+              />
+            </div>
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Authorization / call-centre phone <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="claimSubmissionDays" className="block text-sm font-medium text-gray-700 mb-1">
+                Claim submission window (days) <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="number"
+                id="claimSubmissionDays"
+                min={1}
+                max={365}
+                value={formData.claimSubmissionDays}
+                onChange={(e) => setFormData({ ...formData, claimSubmissionDays: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. 30"
+              />
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="description"
@@ -291,7 +419,8 @@ export default function HMOSetupPage() {
         <div className="space-y-4">
           <p className="text-gray-600">
             Are you sure you want to delete HMO{" "}
-            <strong>{selectedHMO?.name}</strong>? This action cannot be undone.
+            <strong>{selectedHMO?.name}</strong>? Patients still enrolled with it must have their coverage ended
+            first. Past bills and claims keep the HMO&apos;s name.
           </p>
           <div className="flex justify-end gap-3">
             <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import Modal from "@/app/components/ui/Modal";
 import SearchableSelect, {
@@ -8,6 +8,9 @@ import SearchableSelect, {
 } from "@/app/components/ui/SearchableSelect";
 import GenericSelect, { type GenericOption } from "@/app/components/ui/GenericSelect";
 import { fetcher } from "@/lib/fetcher";
+import ClinicalBanner from "../../components/clinical/ClinicalBanner";
+import { FREQUENCIES, FREQUENCY_KEYS, ROUTES } from "@/lib/emar/schedule";
+import { isHighAlert } from "@/lib/emar/highAlert";
 import {
   PlusIcon,
   TrashIcon,
@@ -40,6 +43,29 @@ interface PrescriptionRow {
   genericOption: GenericOption | null;
   productOption: SearchableSelectOption | null;
   dosage: string;
+  // Inpatient (medication chart) fields
+  doseAmount: string;
+  route: string;
+  frequency: string;
+  durationDays: string;
+  prnIndication: string;
+  prnMaxPer24h: string;
+  prnMinIntervalHours: string;
+}
+
+interface CdsAlert {
+  key: string;
+  rule: "drug_allergy" | "class_allergy" | "cross_reactivity" | "allergy_not_assessed";
+  severity: "critical" | "warning";
+  genericId: number | null;
+  allergyId: number | null;
+  title: string;
+  message: string;
+}
+
+interface OverrideReason {
+  key: string;
+  label: string;
 }
 
 interface RowErrors {
@@ -51,6 +77,9 @@ interface PrescriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointmentId?: number;
+  /** Prescribing for an admitted patient: adds structured dose / route /
+   * frequency so the drug appears on the ward medication chart. */
+  admissionId?: number | null;
   prefilledPatient?: PrefilledPatient;
   onSuccess?: () => void;
 }
@@ -60,6 +89,13 @@ const newRow = (): PrescriptionRow => ({
   genericOption: null,
   productOption: null,
   dosage: "",
+  doseAmount: "",
+  route: "oral",
+  frequency: "",
+  durationDays: "",
+  prnIndication: "",
+  prnMaxPer24h: "",
+  prnMinIntervalHours: "",
 });
 
 const formatAge = (dob: string): string => {
@@ -138,13 +174,58 @@ export default function PrescriptionModal({
   isOpen,
   onClose,
   appointmentId,
+  admissionId,
   prefilledPatient,
   onSuccess,
 }: PrescriptionModalProps) {
+  const inpatient = admissionId != null;
   const [rows, setRows] = useState<PrescriptionRow[]>([newRow()]);
   const [rowErrors, setRowErrors] = useState<Record<string, RowErrors>>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Allergy safety check: alerts for the drugs currently picked, and the
+  // prescriber's reason for proceeding past each one.
+  const [alerts, setAlerts] = useState<CdsAlert[]>([]);
+  const [overrideReasons, setOverrideReasons] = useState<OverrideReason[]>([]);
+  const [overrides, setOverrides] = useState<Record<string, { reason: string; note: string }>>({});
+  const [reviewing, setReviewing] = useState(false);
+
+  const genericKey = useMemo(
+    () => rows.map((r) => r.genericOption?.id).filter((v): v is number => v != null).sort((a, b) => a - b).join(","),
+    [rows],
+  );
+
+  useEffect(() => {
+    if (!isOpen || !prefilledPatient) return;
+    const ids = genericKey ? genericKey.split(",").map(Number) : [];
+    if (ids.length === 0) {
+      setAlerts([]);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/cds/prescription-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patientId: prefilledPatient.id, genericIds: ids }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        setAlerts(d.alerts ?? []);
+        setOverrideReasons(d.overrideReasons ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [genericKey, isOpen, prefilledPatient]);
+
+  const alertsFor = (genericId: number | undefined) => alerts.filter((a) => genericId != null && a.genericId === genericId);
+  const generalAlerts = alerts.filter((a) => a.genericId == null);
+  const unresolved = alerts.filter((a) => {
+    const o = overrides[a.key];
+    return !o?.reason || (o.reason === "other" && !o.note.trim());
+  });
 
   const handleGenericChange = (rowId: string, generic: GenericOption | null) => {
     setRows((prev) =>
@@ -166,6 +247,9 @@ export default function PrescriptionModal({
       prev.map((r) => (r.rowId === rowId ? { ...r, productOption: opt } : r)),
     );
   };
+
+  const updateRow = (rowId: string, patch: Partial<PrescriptionRow>) =>
+    setRows((prev) => prev.map((r) => (r.rowId === rowId ? { ...r, ...patch } : r)));
 
   const handleDosageChange = (rowId: string, value: string) => {
     setRows((prev) =>
@@ -197,7 +281,15 @@ export default function PrescriptionModal({
         errs.generic = "Select an active ingredient";
         valid = false;
       }
-      if (!row.dosage.trim()) {
+      if (inpatient) {
+        if (!row.doseAmount.trim() || !row.frequency) {
+          errs.dosage = "Enter the dose and how often";
+          valid = false;
+        } else if (row.frequency === "PRN" && !row.prnIndication.trim()) {
+          errs.dosage = "As-needed drugs need an indication (e.g. for pain)";
+          valid = false;
+        }
+      } else if (!row.dosage.trim()) {
         errs.dosage = "Enter dosage instructions";
         valid = false;
       }
@@ -210,6 +302,11 @@ export default function PrescriptionModal({
   const handleSubmit = async () => {
     setSubmitError("");
     if (!validate()) return;
+    // Safety alerts must be reviewed (a reason given for each) first.
+    if (alerts.length > 0 && unresolved.length > 0) {
+      setReviewing(true);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/prescriptions", {
@@ -217,15 +314,43 @@ export default function PrescriptionModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           appointmentId: appointmentId ?? null,
+          admissionId: admissionId ?? null,
           patientId: prefilledPatient!.id,
           items: rows.map((r) => ({
             genericId: r.genericOption!.id,
             productId: r.productOption?.id ?? null,
-            dosage: r.dosage.trim(),
+            // Inpatients: the instruction text is composed from the
+            // structured fields unless the prescriber added their own.
+            dosage:
+              r.dosage.trim() ||
+              [
+                r.doseAmount.trim(),
+                ROUTES[r.route as keyof typeof ROUTES] ?? r.route,
+                FREQUENCIES[r.frequency as keyof typeof FREQUENCIES]?.label ?? r.frequency,
+                r.frequency === "PRN" && r.prnIndication.trim() ? `for ${r.prnIndication.trim()}` : "",
+                r.durationDays ? `for ${r.durationDays} days` : "",
+              ].filter(Boolean).join(" · "),
+            ...(inpatient && {
+              doseAmount: r.doseAmount.trim(),
+              route: r.route,
+              frequency: r.frequency,
+              durationDays: r.durationDays || null,
+              prnIndication: r.prnIndication.trim(),
+              prnMaxPer24h: r.prnMaxPer24h || null,
+              prnMinIntervalHours: r.prnMinIntervalHours || null,
+            }),
           })),
+          overrides: Object.entries(overrides).map(([key, o]) => ({ key, reason: o.reason, note: o.note })),
         }),
       });
       const data = await res.json();
+      if (res.status === 409 && data.requiresOverride) {
+        // The server found alerts we hadn't shown (e.g. an allergy added a
+        // moment ago) — show them for review.
+        setAlerts(data.alerts ?? []);
+        setReviewing(true);
+        return;
+      }
       if (!res.ok) {
         setSubmitError(data.error ?? "Failed to create prescription");
         return;
@@ -244,6 +369,9 @@ export default function PrescriptionModal({
     setRowErrors({});
     setSubmitError("");
     setIsSubmitting(false);
+    setAlerts([]);
+    setOverrides({});
+    setReviewing(false);
     onClose();
   };
 
@@ -298,6 +426,17 @@ export default function PrescriptionModal({
           </div>
         )}
 
+        {prefilledPatient && <ClinicalBanner patientId={prefilledPatient.id} />}
+
+        {generalAlerts.map((a) => (
+          <div key={a.key} className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <ExclamationTriangleIcon className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+            <span>
+              <span className="font-semibold">{a.title}.</span> {a.message}
+            </span>
+          </div>
+        ))}
+
         {/* Drug rows */}
         <div className="space-y-3">
           {rows.map((row, index) => {
@@ -337,6 +476,20 @@ export default function PrescriptionModal({
                     error={errs.generic}
                   />
 
+                  {alertsFor(row.genericOption?.id).map((a) => (
+                    <div
+                      key={a.key}
+                      className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
+                        a.severity === "critical" ? "border-red-300 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>
+                        <span className="font-semibold">{a.title}.</span> {a.message}
+                      </span>
+                    </div>
+                  ))}
+
                   {row.genericOption && (
                     <BrandPicker
                       genericId={row.genericOption.id}
@@ -346,10 +499,66 @@ export default function PrescriptionModal({
                     />
                   )}
 
+                  {inpatient && (
+                    <div className="space-y-2 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                        Ward medication chart
+                        {isHighAlert(row.genericOption?.name) && (
+                          <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white normal-case tracking-normal">
+                            High-alert medicine — second nurse check on giving
+                          </span>
+                        )}
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <label className="text-xs font-medium text-gray-600">
+                          Dose *
+                          <input value={row.doseAmount} onChange={(e) => updateRow(row.rowId, { doseAmount: e.target.value })} placeholder="e.g. 500 mg" disabled={isSubmitting} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm" />
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">
+                          Route *
+                          <select value={row.route} onChange={(e) => updateRow(row.rowId, { route: e.target.value })} disabled={isSubmitting} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm">
+                            {Object.entries(ROUTES).map(([k, label]) => (
+                              <option key={k} value={k}>{label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">
+                          How often *
+                          <select value={row.frequency} onChange={(e) => updateRow(row.rowId, { frequency: e.target.value })} disabled={isSubmitting} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm">
+                            <option value="">Select…</option>
+                            {FREQUENCY_KEYS.map((k) => (
+                              <option key={k} value={k}>{FREQUENCIES[k].label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-xs font-medium text-gray-600">
+                          For (days)
+                          <input value={row.durationDays} onChange={(e) => updateRow(row.rowId, { durationDays: e.target.value })} inputMode="numeric" placeholder="until stopped" disabled={isSubmitting} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm" />
+                        </label>
+                      </div>
+                      {row.frequency === "PRN" && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <label className="text-xs font-medium text-gray-600">
+                            Give for *
+                            <input value={row.prnIndication} onChange={(e) => updateRow(row.rowId, { prnIndication: e.target.value })} placeholder="e.g. pain, fever > 38°C" disabled={isSubmitting} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm" />
+                          </label>
+                          <label className="text-xs font-medium text-gray-600">
+                            Max doses in 24 h
+                            <input value={row.prnMaxPer24h} onChange={(e) => updateRow(row.rowId, { prnMaxPer24h: e.target.value })} inputMode="numeric" placeholder="e.g. 4" disabled={isSubmitting} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm" />
+                          </label>
+                          <label className="text-xs font-medium text-gray-600">
+                            At least … hours apart
+                            <input value={row.prnMinIntervalHours} onChange={(e) => updateRow(row.rowId, { prnMinIntervalHours: e.target.value })} inputMode="decimal" placeholder="e.g. 6" disabled={isSubmitting} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm" />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                      Dosage Instructions{" "}
-                      <span className="text-red-500">*</span>
+                      {inpatient ? "Additional instructions (optional)" : "Dosage Instructions"}{" "}
+                      {!inpatient && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="text"
@@ -384,6 +593,64 @@ export default function PrescriptionModal({
           <PlusIcon className="h-4 w-4" />
           Add Another Drug
         </button>
+
+        {reviewing && alerts.length > 0 && (
+          <div className="space-y-3 rounded-2xl border-2 border-red-300 bg-white p-4">
+            <div>
+              <p className="flex items-center gap-2 text-base font-bold text-red-800">
+                <ExclamationTriangleIcon className="h-5 w-5" />
+                Review {alerts.length} safety alert{alerts.length === 1 ? "" : "s"} before prescribing
+              </p>
+              <p className="text-sm text-gray-600">
+                Change or remove the drug, or give your reason for continuing. Your reason is saved with the prescription.
+              </p>
+            </div>
+            {alerts.map((a) => {
+              const o = overrides[a.key] ?? { reason: "", note: "" };
+              const reasons = overrideReasons.filter((r) =>
+                a.rule === "allergy_not_assessed"
+                  ? ["allergies_checked_none", "benefit_outweighs_risk", "other"].includes(r.key)
+                  : r.key !== "allergies_checked_none",
+              );
+              return (
+                <div
+                  key={a.key}
+                  className={`rounded-xl border p-3 ${a.severity === "critical" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}
+                >
+                  <p className={`text-sm font-semibold ${a.severity === "critical" ? "text-red-800" : "text-amber-800"}`}>
+                    {a.severity === "critical" ? "Stop: " : ""}
+                    {a.title}
+                  </p>
+                  <p className="text-sm text-gray-700">{a.message}</p>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <select
+                      value={o.reason}
+                      onChange={(e) => setOverrides((prev) => ({ ...prev, [a.key]: { ...o, reason: e.target.value } }))}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">Reason for continuing…</option>
+                      {reasons.map((r) => (
+                        <option key={r.key} value={r.key}>{r.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={o.note}
+                      onChange={(e) => setOverrides((prev) => ({ ...prev, [a.key]: { ...o, note: e.target.value } }))}
+                      placeholder={o.reason === "other" ? "Explain (required)" : "Note (optional)"}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {unresolved.length > 0 && (
+              <p className="text-xs text-red-700">
+                {unresolved.length} alert{unresolved.length === 1 ? " still needs" : "s still need"} a reason.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
@@ -423,6 +690,8 @@ export default function PrescriptionModal({
                   />
                   Submitting…
                 </>
+              ) : reviewing && alerts.length > 0 ? (
+                "Prescribe anyway"
               ) : rows.length === 1 ? (
                 "Submit Prescription"
               ) : (

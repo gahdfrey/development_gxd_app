@@ -3,7 +3,7 @@ import { paymentItems, payments } from "@/lib/db/schema";
 import { and, eq, gt, inArray, or } from "drizzle-orm";
 
 interface Item {
-  itemType: "request" | "prescription";
+  itemType: "request" | "prescription" | "charge";
   itemId: number;
 }
 
@@ -17,7 +17,7 @@ const PENDING_CONFLICT_WINDOW_MS = 30 * 60 * 1000;
 /**
  * Finds items that already have another payment attempt in flight — pending
  * (awaiting gateway confirmation or a bank-transfer confirmation, started
- * recently) or already succeeded. Checking only requests/prescriptions.
+ * recently) or already succeeded. Checking only the items' own
  * paymentStatus at initiation time isn't enough: two different payment
  * methods (e.g. a bank transfer and a wallet payment) can both be started
  * for the same item before either settles, and both can go on to succeed
@@ -31,6 +31,7 @@ export async function findInFlightPaymentConflicts(items: Item[]): Promise<Item[
 
   const requestIds = items.filter((i) => i.itemType === "request").map((i) => i.itemId);
   const prescriptionIds = items.filter((i) => i.itemType === "prescription").map((i) => i.itemId);
+  const chargeIds = items.filter((i) => i.itemType === "charge").map((i) => i.itemId);
   const recentCutoff = new Date(Date.now() - PENDING_CONFLICT_WINDOW_MS);
 
   const rows = await db
@@ -45,6 +46,7 @@ export async function findInFlightPaymentConflicts(items: Item[]): Promise<Item[
       or(
         requestIds.length > 0 ? and(eq(paymentItems.itemType, "request"), inArray(paymentItems.itemId, requestIds)) : undefined,
         prescriptionIds.length > 0 ? and(eq(paymentItems.itemType, "prescription"), inArray(paymentItems.itemId, prescriptionIds)) : undefined,
+        chargeIds.length > 0 ? and(eq(paymentItems.itemType, "charge"), inArray(paymentItems.itemId, chargeIds)) : undefined,
       ),
     ));
 

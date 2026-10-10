@@ -5,6 +5,7 @@ import { desc, eq, and, inArray } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { friendlyDate, friendlyTime, sendToPatient } from "@/lib/messaging/send";
 
 // Statuses that still occupy the doctor's calendar slot. Cancelled/no-show
 // appointments free up the slot for rebooking.
@@ -182,6 +183,25 @@ export async function POST(request: Request) {
       entityId: newAppointment[0].id,
       details: { patientId: parseInt(patientId), doctorId: parseInt(doctorId), appointmentDate, appointmentTime },
     });
+
+    // Booking confirmation SMS (only when the hospital has SMS switched on).
+    if (newAppointment[0].status === "scheduled") {
+      const doc = appointment[0]?.doctor;
+      await sendToPatient({
+        orgId,
+        patientId: newAppointment[0].patientId,
+        kind: "appointment_booked",
+        vars: {
+          date: friendlyDate(appointmentDate),
+          time: friendlyTime(appointmentTime),
+          doctor: doc?.firstname ? `Dr ${doc.firstname} ${doc.lastname ?? ""}`.trim() : "your doctor",
+        },
+        dedupeKey: `appt:${newAppointment[0].id}:appointment_booked`,
+        relatedType: "appointment",
+        relatedId: newAppointment[0].id,
+        sentBy: actorId,
+      });
+    }
 
     return NextResponse.json(appointment[0], { status: 201 });
   } catch (error) {

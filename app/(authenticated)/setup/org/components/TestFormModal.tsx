@@ -9,6 +9,7 @@ import SearchableSelect, {
 } from "@/app/components/ui/SearchableSelect";
 import type { Department } from "@/lib/db/schema";
 import type { TestRow } from "./types";
+import { TAX_CODES, TAX_CODE_KEYS, DEFAULT_TAX_CODE, type TaxCode } from "@/lib/billing/tax";
 
 interface TestFormModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function TestFormModal({
 
   const [testName, setTestName] = useState("");
   const [price, setPrice] = useState("");
+  const [taxCode, setTaxCode] = useState<TaxCode>(DEFAULT_TAX_CODE);
   const [selectedDept, setSelectedDept] =
     useState<SearchableSelectOption | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,12 +47,14 @@ export default function TestFormModal({
       if (editing) {
         setTestName(editing.name);
         setPrice(String(editing.price));
+        setTaxCode(editing.taxCode ?? DEFAULT_TAX_CODE);
         setSelectedDept(
           deptOptions.find((o) => o.id === editing.departmentId) ?? null,
         );
       } else {
         setTestName("");
         setPrice("");
+        setTaxCode(DEFAULT_TAX_CODE);
         setSelectedDept(null);
       }
       setErrorMessage("");
@@ -88,6 +92,7 @@ export default function TestFormModal({
           name: testName,
           price: parseInt(price),
           departmentId: selectedDept.id,
+          taxCode,
         }),
       });
 
@@ -170,6 +175,23 @@ export default function TestFormModal({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="e.g. 5000"
           />
+        </div>
+
+        <div>
+          <label htmlFor="test-tax" className="block text-sm font-medium text-gray-700 mb-1">
+            VAT treatment
+          </label>
+          <select
+            id="test-tax"
+            value={taxCode}
+            onChange={(e) => setTaxCode(e.target.value as TaxCode)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {TAX_CODE_KEYS.map((k) => (
+              <option key={k} value={k}>{TAX_CODES[k].label}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">Medical services are zero-rated under the Nigeria Tax Act 2025.</p>
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

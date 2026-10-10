@@ -2,7 +2,10 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { HMO } from "@/lib/db/schema";
+import CoveragePanel from "./CoveragePanel";
+import IdentifiersPanel from "./IdentifiersPanel";
+import PatientSmsPanel from "./PatientSmsPanel";
+import ClinicalRecordPanel from "../../components/clinical/ClinicalRecordPanel";
 import {
   UserIcon,
   XMarkIcon,
@@ -10,7 +13,6 @@ import {
   CalendarIcon,
   IdentificationIcon,
   HeartIcon,
-  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 
 interface Patient {
@@ -25,6 +27,7 @@ interface Patient {
   insuranceType: string;
   hmoId?: number | null;
   policyNumber?: string | null;
+  messagingOptOut?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,14 +46,6 @@ export default function ViewPatientModal({
     isLoading,
     error,
   } = useSWR<Patient>(patientId ? `/api/patients/${patientId}` : null, fetcher);
-
-  // Fetch HMO data if patient has HMO insurance
-  const { data: hmo } = useSWR<HMO>(
-    patient?.insuranceType === "hmo" && patient?.hmoId
-      ? `/api/hmo/${patient.hmoId}`
-      : null,
-    fetcher
-  );
 
   if (!patientId) return null;
 
@@ -197,35 +192,22 @@ export default function ViewPatientModal({
             </div>
           </div>
 
-          {/* Insurance Information Section */}
+          {/* Allergies, ongoing conditions, weight */}
           <div>
             <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">
-              Insurance Information
+              Allergies &amp; medical background
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InfoCard
-                label="Insurance Type"
-                value={patient.insuranceType.toUpperCase()}
-                icon={ShieldCheckIcon}
-              />
-              {patient.insuranceType === "hmo" && hmo && (
-                <>
-                  <InfoCard
-                    label="HMO Provider"
-                    value={hmo.name}
-                    icon={ShieldCheckIcon}
-                  />
-                  {patient.policyNumber && (
-                    <InfoCard
-                      label="Policy Number"
-                      value={patient.policyNumber}
-                      icon={IdentificationIcon}
-                    />
-                  )}
-                </>
-              )}
-            </div>
+            <ClinicalRecordPanel patientId={patient.id} />
           </div>
+
+          {/* SMS preference + messages */}
+          <PatientSmsPanel patientId={patient.id} optOut={patient.messagingOptOut ?? false} />
+
+          {/* Previous MRNs, NHIA number, etc. */}
+          <IdentifiersPanel patientId={patient.id} />
+
+          {/* Insurance / HMO coverage (enrollee record) */}
+          <CoveragePanel patientId={patient.id} insuranceType={patient.insuranceType} />
 
           {/* Metadata */}
           <div className="pt-4 border-t border-gray-200">

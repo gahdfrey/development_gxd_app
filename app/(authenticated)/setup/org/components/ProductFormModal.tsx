@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import GenericSelect, { type GenericOption } from "@/app/components/ui/GenericSelect";
+import { TAX_CODES, TAX_CODE_KEYS, DEFAULT_TAX_CODE, type TaxCode } from "@/lib/billing/tax";
 
 export type ProductCategory = "pharmacy" | "laboratory" | "radiology" | "general";
 
@@ -17,6 +18,7 @@ export interface ProductForm {
   genericId: number | null;
   manufacturer: string;
   nafdacRegNumber: string;
+  taxCode: TaxCode;
 }
 
 interface Product {
@@ -35,6 +37,7 @@ interface Product {
   genericForm?: string | null;
   manufacturer?: string | null;
   nafdacRegNumber?: string | null;
+  taxCode?: TaxCode;
 }
 
 interface Props {
@@ -63,6 +66,7 @@ const BLANK: ProductForm = {
   genericId: null,
   manufacturer: "",
   nafdacRegNumber: "",
+  taxCode: DEFAULT_TAX_CODE,
 };
 
 export default function ProductFormModal({ open, initial, onClose, onSave }: Props) {
@@ -87,6 +91,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               genericId: initial.genericId ?? null,
               manufacturer: initial.manufacturer ?? "",
               nafdacRegNumber: initial.nafdacRegNumber ?? "",
+              taxCode: initial.taxCode ?? DEFAULT_TAX_CODE,
             }
           : BLANK,
       );
@@ -255,6 +260,27 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
                 className="w-full pl-7 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+          </div>
+
+          {/* VAT */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              VAT treatment
+              <span className="ml-1 text-xs text-gray-400 font-normal">(price above is VAT-inclusive)</span>
+            </label>
+            <select
+              value={form.taxCode}
+              onChange={(e) => setForm({ ...form, taxCode: e.target.value as TaxCode })}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {TAX_CODE_KEYS.map((k) => (
+                <option key={k} value={k}>{TAX_CODES[k].label}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Drugs and medical supplies are zero-rated under the Nigeria Tax Act 2025. Use standard VAT only for
+              non-medical items.
+            </p>
           </div>
 
           {/* Stock */}

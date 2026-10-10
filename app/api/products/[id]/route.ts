@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isTaxCode } from "@/lib/billing/tax";
 import { db } from "@/lib/db";
 import { products, drugGenerics } from "@/lib/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
@@ -38,6 +39,7 @@ export async function GET(
         looseUnitsInStock: products.looseUnitsInStock,
         reorderLevel: products.reorderLevel,
         price: products.price,
+        taxCode: products.taxCode,
         totalUnits: sql<number>`(${products.casesInStock} * ${products.unitsPerCase}) + ${products.looseUnitsInStock}`,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
@@ -70,7 +72,8 @@ export async function PATCH(
     if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
     const body = await request.json();
-    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable, genericId, manufacturer, nafdacRegNumber } = body;
+    const { name, description, category, casesInStock, unitsPerCase, looseUnitsInStock, reorderLevel, price, isPrescribable, genericId, manufacturer, nafdacRegNumber, taxCode } = body;
+    if (taxCode !== undefined && !isTaxCode(taxCode)) return NextResponse.json({ error: "Invalid tax code" }, { status: 400 });
 
     if (unitsPerCase !== undefined && unitsPerCase < 1) {
       return NextResponse.json({ error: "Units per case must be at least 1" }, { status: 400 });
@@ -131,6 +134,7 @@ export async function PATCH(
         ...(unitsPerCase !== undefined && { unitsPerCase }),
         ...(reorderLevel !== undefined && { reorderLevel }),
         ...(price !== undefined && { price }),
+        ...(taxCode !== undefined && { taxCode }),
         ...(isPrescribable !== undefined && { isPrescribable }),
         ...(genericId !== undefined && { genericId: genericId ?? null }),
         ...(manufacturer !== undefined && { manufacturer: manufacturer?.trim() || null }),

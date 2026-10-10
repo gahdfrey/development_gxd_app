@@ -5,6 +5,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
+import { applyRegistrationInsurance, hmoBelongsToOrg } from "@/lib/billing/coverage";
 
 export async function GET(
   request: Request,
@@ -27,6 +28,18 @@ export async function GET(
       .limit(1);
 
     if (patient.length === 0) {
+      // A duplicate merged into another record: point the caller at it.
+      const [mergedRow] = await db
+        .select({ mergedIntoId: patients.mergedIntoId })
+        .from(patients)
+        .where(and(eq(patients.id, id), eq(patients.organisationId, orgId)))
+        .limit(1);
+      if (mergedRow?.mergedIntoId) {
+        return NextResponse.json(
+          { error: "This record was merged into another patient record", mergedIntoId: mergedRow.mergedIntoId },
+          { status: 410 },
+        );
+      }
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
@@ -84,6 +97,9 @@ export async function PUT(
       if (!policyNumber || policyNumber.trim() === "") {
         return NextResponse.json({ error: "Policy number is required for HMO insurance type" }, { status: 400 });
       }
+      if (!(await hmoBelongsToOrg(db, orgId, parseInt(hmoId)))) {
+        return NextResponse.json({ error: "Selected HMO was not found" }, { status: 400 });
+      }
     }
 
     if (nextOfKinEmail && nextOfKinEmail.trim() !== "") {
@@ -116,30 +132,45 @@ export async function PUT(
       }
     }
 
-    const updatedPatient = await db
-      .update(patients)
-      .set({
-        firstname,
-        lastname,
-        gender,
-        dob,
-        maidenName: maidenName || null,
-        nin: cleanNin,
-        countryCode,
-        phone,
-        insuranceType,
-        hmoId: hmoId ? parseInt(hmoId) : null,
-        policyNumber: policyNumber || null,
-        nextOfKinFirstname: nextOfKinFirstname || null,
-        nextOfKinLastname: nextOfKinLastname || null,
-        nextOfKinRelationship: nextOfKinRelationship || null,
-        nextOfKinAddress: nextOfKinAddress || null,
-        nextOfKinPhone: nextOfKinPhone || null,
-        nextOfKinEmail: nextOfKinEmail || null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(patients.id, id), eq(patients.organisationId, orgId)))
-      .returning();
+    // Patient fields and the HMO coverage (enrollee record) change together:
+    // switching HMO ends the old coverage and opens a new one.
+    const updatedPatient = await db.transaction(async (tx) => {
+      const rows = await tx
+        .update(patients)
+        .set({
+          firstname,
+          lastname,
+          gender,
+          dob,
+          maidenName: maidenName || null,
+          nin: cleanNin,
+          countryCode,
+          phone,
+          insuranceType,
+          hmoId: hmoId ? parseInt(hmoId) : null,
+          policyNumber: policyNumber || null,
+          nextOfKinFirstname: nextOfKinFirstname || null,
+          nextOfKinLastname: nextOfKinLastname || null,
+          nextOfKinRelationship: nextOfKinRelationship || null,
+          nextOfKinAddress: nextOfKinAddress || null,
+          nextOfKinPhone: nextOfKinPhone || null,
+          nextOfKinEmail: nextOfKinEmail || null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(patients.id, id), eq(patients.organisationId, orgId)))
+        .returning();
+      if (rows.length > 0) {
+        await applyRegistrationInsurance(tx, {
+          orgId,
+          patientId: id,
+          actorId,
+          insuranceType,
+          hmoId: insuranceType === "hmo" && hmoId ? parseInt(hmoId) : null,
+          policyNumber: insuranceType === "hmo" ? policyNumber?.trim() || null : null,
+        });
+      }
+      return rows;
+    });
 
     if (updatedPatient.length === 0) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });

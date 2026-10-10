@@ -12,6 +12,17 @@ import AdmitPatientModal from "./AdmitPatientModal";
 import TransferPatientModal from "./TransferPatientModal";
 import DischargePatientModal from "./DischargePatientModal";
 import AdmissionDetailsDrawer from "./AdmissionDetailsDrawer";
+import { BAND_STYLE } from "../../components/clinical/ObservationsPanel";
+import type { Band } from "@/lib/clinical/ews";
+
+interface WardObs {
+  admissionId: number;
+  score: number | null;
+  band: Band | null;
+  nextDueAt: string | null;
+  recordedAt: string | null;
+  overdue: boolean;
+}
 import { refreshAdmissions } from "./refresh";
 import type { AdmissionRecord } from "./types";
 
@@ -44,6 +55,12 @@ export default function AdmissionsList() {
 
   const query = statusFilter ? `/api/admissions?status=${statusFilter}` : "/api/admissions";
   const { data: admissions, error } = useSWR<AdmissionRecord[]>(query, fetcher);
+  // Latest early-warning score per current admission (refreshed every 2 min).
+  const { data: wardObs } = useSWR<WardObs[]>("/api/vitals/ward", fetcher, { refreshInterval: 120_000 });
+  const obsByAdmission = useMemo(() => new Map((wardObs ?? []).map((o) => [o.admissionId, o])), [wardObs]);
+  // Doses due now / overdue per current admission (medication chart).
+  const { data: wardMeds } = useSWR<{ admissionId: number; dueNow: number; overdue: number }[]>("/api/emar/ward", fetcher, { refreshInterval: 120_000 });
+  const medsByAdmission = useMemo(() => new Map((wardMeds ?? []).map((m) => [m.admissionId, m])), [wardMeds]);
 
   const columnHelper = createColumnHelper<AdmissionRecord>();
 
@@ -81,6 +98,42 @@ export default function AdmissionsList() {
         cell: (props) => {
           const d = props.row.original.doctor;
           return d ? `Dr. ${d.firstname} ${d.lastname}` : "—";
+        },
+      }),
+      columnHelper.display({
+        id: "obs",
+        header: "Obs / score",
+        cell: (props) => {
+          const row = props.row.original;
+          if (row.status !== "admitted") return <span className="text-gray-300">—</span>;
+          const o = obsByAdmission.get(row.id);
+          if (!o || o.score == null || !o.band) {
+            return <span className="text-xs font-semibold text-red-700">No obs yet</span>;
+          }
+          return (
+            <div className="whitespace-nowrap">
+              <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-bold ${BAND_STYLE[o.band]}`}>{o.score}</span>
+              <span className={`block text-[11px] ${o.overdue ? "font-bold text-red-700" : "text-gray-500"}`}>
+                {o.overdue ? "Obs overdue" : o.nextDueAt ? `Next ${new Date(o.nextDueAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}
+              </span>
+            </div>
+          );
+        },
+      }),
+      columnHelper.display({
+        id: "meds",
+        header: "Meds",
+        cell: (props) => {
+          const row = props.row.original;
+          if (row.status !== "admitted") return <span className="text-gray-300">—</span>;
+          const m = medsByAdmission.get(row.id);
+          if (!m || (m.dueNow === 0 && m.overdue === 0)) return <span className="text-xs text-gray-400">Nothing due</span>;
+          return (
+            <div className="space-y-0.5 whitespace-nowrap text-xs">
+              {m.overdue > 0 && <span className="block font-bold text-red-700">{m.overdue} overdue</span>}
+              {m.dueNow > 0 && <span className="block font-semibold text-blue-700">{m.dueNow} due now</span>}
+            </div>
+          );
         },
       }),
       columnHelper.accessor("severity", {
@@ -162,7 +215,7 @@ export default function AdmissionsList() {
         },
       }),
     ],
-    [],
+    [obsByAdmission, medsByAdmission],
   );
 
   if (error) {

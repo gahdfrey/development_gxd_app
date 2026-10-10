@@ -98,7 +98,8 @@ async function seedTestData() {
         process.exit(1);
     }
 
-    const allHmos = await db.select().from(hmos);
+    // HMOs are per organisation — only use this org's.
+    const allHmos = await db.select().from(hmos).where(eq(hmos.organisationId, ORG_ID));
     const hmoIds = allHmos.map(h => h.id);
 
     console.log('👨‍⚕️ Creating 3 doctors...');

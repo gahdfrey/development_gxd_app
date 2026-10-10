@@ -7,6 +7,9 @@ import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { getPgErrorCode } from "@/lib/db/pg-error";
+import { raiseAuthorizationsForOrders } from "@/lib/billing/authorizations";
+import { priceBillItems, itemKey, billingSummary } from "@/lib/billing/pricing";
+import { getItemAuthorizations, toAuthorizationSummary } from "@/lib/billing/authorizations";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +46,18 @@ export async function GET(request: NextRequest) {
           SELECT 1 FROM request_results
           WHERE request_results.request_id = ${requests.id}
         )`,
+        // Structured results: does the test have result fields, and have
+        // values been entered (lib/lab).
+        hasParameters: sql<boolean>`EXISTS (
+          SELECT 1 FROM lab_test_parameters p
+          WHERE p.test_id = ${requests.testId} AND p.deleted_at IS NULL
+        )`,
+        hasValues: sql<boolean>`EXISTS (
+          SELECT 1 FROM lab_result_values v WHERE v.request_id = ${requests.id}
+        )`,
+        abnormalCount: sql<number>`(
+          SELECT count(*)::int FROM lab_result_values v WHERE v.request_id = ${requests.id} AND v.flag <> 'normal'
+        )`,
       })
       .from(requests)
       .leftJoin(patients, eq(requests.patientId, patients.id))
@@ -51,6 +66,24 @@ export async function GET(request: NextRequest) {
       .leftJoin(users, eq(requests.requestedBy, users.id))
       .where(and(...conditions))
       .orderBy(desc(requests.createdAt));
+
+    // Finance desk view: attach who-pays-what (HMO tariff vs self-pay) to
+    // each unpaid row. Opt-in, since lab/radiology worklists don't need it.
+    if (searchParams.get("withBilling") === "1") {
+      const unpaid = allRequests.filter((r) => r.paymentStatus !== "paid");
+      const priced = await priceBillItems(orgId, unpaid.map((r) => ({ itemType: "request" as const, itemId: r.id })));
+      const auths = await getItemAuthorizations(db, orgId, [...priced.values()].filter((p) => p.basis === "covered"));
+      return NextResponse.json(
+        allRequests.map((r) => {
+          const billing = billingSummary(priced.get(itemKey("request", r.id)));
+          return {
+            ...r,
+            billing: billing && { ...billing, authorization: toAuthorizationSummary(auths.get(itemKey("request", r.id))) },
+          };
+        }),
+        { status: 200 },
+      );
+    }
 
     return NextResponse.json(allRequests, { status: 200 });
   } catch (error) {
@@ -102,6 +135,10 @@ export async function POST(request: NextRequest) {
       entityId: newRequest.id,
       details: { patientId: newRequest.patientId, departmentId: newRequest.departmentId, testId: newRequest.testId },
     });
+
+    // If the patient's HMO needs pre-authorization for this test, open the
+    // request on the finance desk's authorization worklist.
+    await raiseAuthorizationsForOrders(orgId, [{ itemType: "request", itemId: newRequest.id }], requestedBy);
 
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error: any) {

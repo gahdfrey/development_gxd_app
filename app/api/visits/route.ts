@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { visits, appointments, visitDiagnoses, icd11Codes } from "@/lib/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { visits, appointments, visitDiagnoses, icd11Codes, patientProblems } from "@/lib/db/schema";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
@@ -10,6 +10,8 @@ interface DiagnosisInput {
   icdTitle?: string | null;
   clinicalText?: string | null;
   diagnosisType?: string;
+  /** Also carry this diagnosis onto the patient's problem list. */
+  addToProblemList?: boolean;
 }
 
 const VALID_DIAGNOSIS_TYPES = ["primary", "secondary", "provisional", "differential"];
@@ -43,6 +45,7 @@ export async function POST(request: Request) {
         diagnosisType: VALID_DIAGNOSIS_TYPES.includes(d.diagnosisType || "")
           ? (d.diagnosisType as string)
           : "primary",
+        addToProblemList: d.addToProblemList === true,
       }))
       // Keep entries that have at least a code or free text.
       .filter((d) => d.icdCode || d.clinicalText);
@@ -94,6 +97,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // Diagnoses the doctor ticked "add to problem list" become ongoing
+    // conditions (skipping any already active on the list).
+    const toProblemList = cleanDiagnoses.filter((d) => d.addToProblemList && d.diagnosisType !== "differential");
+    let problemsAdded = 0;
+    if (toProblemList.length > 0) {
+      const existing = await db
+        .select({ icdCode: patientProblems.icdCode, clinicalText: patientProblems.clinicalText })
+        .from(patientProblems)
+        .where(and(eq(patientProblems.patientId, patientId), ne(patientProblems.status, "resolved"), isNull(patientProblems.deletedAt)));
+      const fresh = toProblemList.filter((d) =>
+        d.icdCode
+          ? !existing.some((e) => e.icdCode === d.icdCode)
+          : !existing.some((e) => !e.icdCode && e.clinicalText?.toLowerCase() === d.clinicalText?.toLowerCase()),
+      );
+      if (fresh.length > 0) {
+        await db.insert(patientProblems).values(
+          fresh.map((d) => ({
+            organisationId: orgId,
+            patientId,
+            icdCode: d.icdCode,
+            icdTitle: d.icdTitle,
+            clinicalText: d.icdCode ? null : d.clinicalText,
+            status: "active",
+            onsetDate: new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" }),
+            sourceVisitId: newVisit.id,
+            recordedBy: actorId,
+          })),
+        );
+        problemsAdded = fresh.length;
+      }
+    }
+
     await db.update(appointments).set({ status: "completed", updatedAt: new Date() })
       .where(eq(appointments.id, appointmentId));
 
@@ -109,6 +144,7 @@ export async function POST(request: Request) {
         doctorId,
         appointmentId,
         diagnosisCount: cleanDiagnoses.length,
+        problemsAdded,
         icdCodes: suppliedCodes,
       },
     });

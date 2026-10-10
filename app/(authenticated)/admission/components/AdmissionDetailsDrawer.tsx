@@ -6,6 +6,10 @@ import { fetcher } from "@/lib/fetcher";
 import Modal from "@/app/components/ui/Modal";
 import SeverityBadge from "@/app/components/ui/SeverityBadge";
 import type { AdmissionDetail } from "./types";
+import ObservationsPanel from "../../components/clinical/ObservationsPanel";
+import MedicationChartPanel from "../../components/clinical/MedicationChartPanel";
+import AdmissionBillPanel from "../../components/billing/AdmissionBillPanel";
+import ClinicalBanner from "../../components/clinical/ClinicalBanner";
 
 interface AdmissionDetailsDrawerProps {
   admissionId: number | null;
@@ -92,6 +96,31 @@ export default function AdmissionDetailsDrawer({ admissionId, isOpen, onClose }:
               </div>
             )}
           </div>
+
+          {admission.patient && (
+            <ClinicalBanner patientId={admission.patient.id} />
+          )}
+
+          {admission.patient && admission.status === "admitted" && (
+            <div>
+              <span className="block text-gray-500 text-sm mb-2">Observations &amp; early-warning score</span>
+              <ObservationsPanel patientId={admission.patient.id} admissionId={admission.id} />
+            </div>
+          )}
+
+          {admission.patient && (admission.status === "admitted" || admission.status === "discharged") && (
+            <div>
+              <span className="block text-gray-500 text-sm mb-2">Medication chart</span>
+              <MedicationChartPanel admissionId={admission.id} patientId={admission.patient.id} />
+            </div>
+          )}
+
+          {(admission.status === "admitted" || admission.status === "discharged") && (
+            <div>
+              <span className="block text-gray-500 text-sm mb-2">Bill</span>
+              <AdmissionBillPanel admissionId={admission.id} />
+            </div>
+          )}
 
           <div>
             <span className="block text-gray-500 text-sm mb-1">

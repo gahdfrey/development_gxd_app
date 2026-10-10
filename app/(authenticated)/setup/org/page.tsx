@@ -5,14 +5,22 @@ import DepartmentTab from "./components/DepartmentTab";
 import TestTab from "./components/TestTab";
 import ProductTab from "./components/ProductTab";
 import BillingPlansTab from "./components/BillingPlansTab";
+import DrugClassesTab from "./components/DrugClassesTab";
+import MessagingTab from "./components/MessagingTab";
+import ServiceItemsTab from "./components/ServiceItemsTab";
+import VaccinesTab from "./components/VaccinesTab";
 
-type ActiveTab = "department" | "test" | "product" | "billing";
+type ActiveTab = "department" | "test" | "product" | "services" | "vaccines" | "drug-classes" | "billing" | "messaging";
 
 const tabs: { key: ActiveTab; label: string }[] = [
   { key: "department", label: "Department" },
   { key: "test", label: "Test" },
   { key: "product", label: "Products" },
+  { key: "services", label: "Services" },
+  { key: "vaccines", label: "Vaccines" },
+  { key: "drug-classes", label: "Drug Families" },
   { key: "billing", label: "Billing Plans" },
+  { key: "messaging", label: "Messaging" },
 ];
 
 export default function OrgSetupPage() {
@@ -49,7 +57,11 @@ export default function OrgSetupPage() {
       {activeTab === "department" && <DepartmentTab />}
       {activeTab === "test" && <TestTab />}
       {activeTab === "product" && <ProductTab />}
+      {activeTab === "services" && <ServiceItemsTab />}
+      {activeTab === "vaccines" && <VaccinesTab />}
+      {activeTab === "drug-classes" && <DrugClassesTab />}
       {activeTab === "billing" && <BillingPlansTab />}
+      {activeTab === "messaging" && <MessagingTab />}
     </div>
   );
 }

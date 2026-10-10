@@ -4,10 +4,11 @@ import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { createColumnHelper } from "@tanstack/react-table";
-import { PencilSquareIcon, TrashIcon, PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, TrashIcon, PlusIcon, MagnifyingGlassIcon, ListBulletIcon } from "@heroicons/react/24/outline";
 import Table from "@/app/components/ui/Table";
 import Modal from "@/app/components/ui/Modal";
 import TestFormModal from "./TestFormModal";
+import TestParametersModal from "./TestParametersModal";
 import type { TestRow } from "./types";
 
 export default function TestTab() {
@@ -17,6 +18,7 @@ export default function TestTab() {
   );
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [fieldsTest, setFieldsTest] = useState<TestRow | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editing, setEditing] = useState<TestRow | null>(null);
   const [deleting, setDeleting] = useState<TestRow | null>(null);
@@ -113,6 +115,13 @@ export default function TestTab() {
         cell: (props) => (
           <div className="flex gap-2">
             <button
+              onClick={() => setFieldsTest(props.row.original)}
+              className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+              title="Result fields (values, normal ranges, critical limits)"
+            >
+              <ListBulletIcon className="w-5 h-5" />
+            </button>
+            <button
               onClick={() => openEdit(props.row.original)}
               className="p-1 text-yellow-600 hover:text-yellow-800 transition-colors"
               title="Edit"
@@ -187,6 +196,8 @@ export default function TestTab() {
       ) : (
         <Table data={filtered} columns={columns} />
       )}
+
+      <TestParametersModal test={fieldsTest} onClose={() => setFieldsTest(null)} />
 
       <TestFormModal
         isOpen={isFormModalOpen}

@@ -68,7 +68,9 @@ const insuranceTypes: Array<"private" | "hmo" | "corporate"> = [
   "private", "hmo", "corporate",
 ];
 
-// HMO IDs from the seeded hmos table: 1=Leadway, 2=Hygeia, 3=Reliance
+// Org 1's HMO IDs from the seeded hmos table: 1=Leadway, 2=Hygeia, 3=Reliance.
+// Billing reads patient_coverages, not patients.hmo_id — run
+// `npm run db:migrate-org-hmos-coverages` afterwards to backfill coverages.
 const hmoIds = [1, 2, 3];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

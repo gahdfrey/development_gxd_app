@@ -25,6 +25,9 @@ interface DuplicateMatch {
   dob?: string;
   phone?: string;
   countryCode?: string;
+  score?: number;
+  level?: "definite" | "likely" | "possible" | "unlikely";
+  reasons?: string[];
 }
 
 interface PatientFormData {
@@ -276,12 +279,33 @@ export default function CreatePatientModal({
                       key={m.id}
                       className="text-sm text-amber-900 bg-white/70 border border-amber-200 rounded-lg px-3 py-2"
                     >
-                      <span className="font-semibold">
-                        {m.firstname} {m.lastname}
-                      </span>{" "}
-                      — {m.mrn ?? "no MRN"}
-                      {m.dob ? ` · DOB ${m.dob}` : ""}
-                      {m.phone ? ` · ${m.countryCode ?? ""}${m.phone}` : ""}
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span>
+                          <a
+                            href={`/patients/${m.id}/history`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-blue-700 underline"
+                          >
+                            {m.firstname} {m.lastname}
+                          </a>{" "}
+                          — {m.mrn ?? "no MRN"}
+                          {m.dob ? ` · DOB ${m.dob}` : ""}
+                          {m.phone ? ` · ${m.countryCode ?? ""}${m.phone}` : ""}
+                        </span>
+                        {m.level && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                              m.level === "possible" ? "bg-amber-200 text-amber-900" : "bg-red-600 text-white"
+                            }`}
+                          >
+                            {m.level === "definite" ? "Same NIN" : m.level === "likely" ? "Likely same person" : "Possible match"}
+                          </span>
+                        )}
+                      </div>
+                      {m.reasons && m.reasons.length > 0 && (
+                        <p className="mt-0.5 text-xs text-amber-800">{m.reasons.join(" · ")}</p>
+                      )}
                     </li>
                   ))}
                 </ul>

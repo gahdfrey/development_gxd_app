@@ -65,6 +65,8 @@ export interface Ward {
   id: number;
   name: string;
   departmentId: number | null;
+  /** Bed charge per day (₦); null = not billed per day. */
+  dailyRate?: number | null;
   departmentName: string | null;
   createdAt: string;
 }

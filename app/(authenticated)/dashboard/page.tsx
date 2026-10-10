@@ -2,6 +2,9 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { useDateRange } from "@/lib/hooks/useDateRange";
+import { formatDateRangeLabel, isRangeActive } from "@/lib/dateRange";
+import DateRangeFilter from "../components/DateRangeFilter";
 import Link from "next/link";
 import {
   UsersIcon,
@@ -102,9 +105,14 @@ function StatTile({
 }
 
 export default function DashboardPage() {
-  const { data, isLoading, error } = useSWR<Analytics>(
-    "/api/analytics",
+  const { range, setRange, apiUrl } = useDateRange("all");
+  const filtered = isRangeActive(range);
+  const periodLabel = formatDateRangeLabel(range);
+  const { data, isLoading, isValidating, error } = useSWR<Analytics>(
+    apiUrl("/api/analytics"),
     fetcher,
+    // Keep the current figures on screen while a new range loads.
+    { keepPreviousData: true },
   );
 
   if (isLoading) {
@@ -140,15 +148,27 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
           <p className="text-sm text-gray-500 mt-1">
             Facility overview and reporting
+            {filtered && (
+              <>
+                {" · "}
+                <span className="font-medium text-gray-700">{periodLabel}</span>
+              </>
+            )}
           </p>
         </div>
-        <Link
+        <div className="flex flex-wrap items-center gap-2">
+          {isValidating && (
+            <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-blue-600" />
+          )}
+          <DateRangeFilter value={range} onChange={setRange} />
+          <Link
           href="/patients"
           className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
         >
           Manage patients
           <ArrowRightIcon className="h-4 w-4" />
-        </Link>
+          </Link>
+        </div>
       </div>
 
       {/* KPI tiles */}
@@ -213,7 +233,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
           title="Activity"
-          subtitle="Appointments & new patients · last 6 months"
+          subtitle={`Appointments & new patients · ${filtered ? periodLabel : "last 6 months"}`}
         >
           <AreaChart
             labels={labels}
@@ -233,7 +253,7 @@ export default function DashboardPage() {
         </ChartCard>
         <ChartCard
           title="Revenue"
-          subtitle="Collected from paid tests & prescriptions · last 6 months"
+          subtitle={`Collected from paid tests & prescriptions · ${filtered ? periodLabel : "last 6 months"}`}
         >
           <BarChart
             data={data.monthlyRevenue.map((m) => ({

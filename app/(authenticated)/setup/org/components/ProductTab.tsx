@@ -26,6 +26,7 @@ interface Product {
   genericForm: string | null;
   manufacturer: string | null;
   nafdacRegNumber: string | null;
+  taxCode?: "zero_rated" | "standard" | "exempt";
   createdAt: string;
 }
 

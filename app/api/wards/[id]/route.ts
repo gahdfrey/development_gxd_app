@@ -25,12 +25,17 @@ export async function PUT(
     if (!name || name.trim() === "") {
       return NextResponse.json({ error: "Ward name is required" }, { status: 400 });
     }
+    const dailyRate = body.dailyRate === undefined || body.dailyRate === null || body.dailyRate === "" ? null : Number(body.dailyRate);
+    if (dailyRate != null && (!Number.isInteger(dailyRate) || dailyRate < 0)) {
+      return NextResponse.json({ error: "Daily bed rate must be a whole Naira amount" }, { status: 400 });
+    }
 
     const [updated] = await db
       .update(wards)
       .set({
         name: name.trim(),
         departmentId: departmentId ? parseInt(departmentId) : null,
+        ...(body.dailyRate !== undefined && { dailyRate }),
         updatedAt: new Date(),
       })
       .where(and(eq(wards.id, id), eq(wards.organisationId, orgId), isNull(wards.deletedAt)))

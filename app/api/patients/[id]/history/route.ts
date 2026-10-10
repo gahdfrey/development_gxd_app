@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getValuesForRequests } from "@/lib/lab/results";
 import { db } from "@/lib/db";
 import {
   patients, hmos, appointments, visits, requests,
@@ -43,6 +44,7 @@ export async function GET(
     const patientRows = await db
       .select({
         id: patients.id,
+        mrn: patients.mrn,
         firstname: patients.firstname,
         lastname: patients.lastname,
         gender: patients.gender,
@@ -68,6 +70,18 @@ export async function GET(
       .limit(1);
 
     if (patientRows.length === 0) {
+      // A duplicate merged into another record: point the caller at it.
+      const [mergedRow] = await db
+        .select({ mergedIntoId: patients.mergedIntoId })
+        .from(patients)
+        .where(and(eq(patients.id, patientId), eq(patients.organisationId, orgId)))
+        .limit(1);
+      if (mergedRow?.mergedIntoId) {
+        return NextResponse.json(
+          { error: "This record was merged into another patient record", mergedIntoId: mergedRow.mergedIntoId },
+          { status: 410 },
+        );
+      }
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
@@ -191,6 +205,8 @@ export async function GET(
     }
 
     // Build a map: requestId -> results[]
+    // Structured (numeric/coded) lab results alongside any uploaded files.
+    const valuesByRequest = await getValuesForRequests(db, orgId, requestRows.map((r) => r.id));
     const resultsByRequest: Record<number, typeof resultRows> = {};
     for (const r of resultRows) {
       if (!resultsByRequest[r.requestId]) resultsByRequest[r.requestId] = [];
@@ -243,6 +259,7 @@ export async function GET(
       requests: (requestsByAppointment[appt.id] ?? []).map((req) => ({
         ...req,
         results: resultsByRequest[req.id] ?? [],
+        values: valuesByRequest.get(req.id) ?? [],
       })),
       prescriptions: (prescriptionsByAppointment[appt.id] ?? []),
     }));
@@ -263,6 +280,7 @@ export async function GET(
       unlinkedRequests: unlinkedRequests.map((req) => ({
         ...req,
         results: resultsByRequest[req.id] ?? [],
+        values: valuesByRequest.get(req.id) ?? [],
       })),
     });
   } catch (error) {

@@ -13,6 +13,8 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import DiagnosisPicker, { Diagnosis } from "./DiagnosisPicker";
+import ClinicalBanner from "../../components/clinical/ClinicalBanner";
+import ClinicalRecordPanel from "../../components/clinical/ClinicalRecordPanel";
 
 interface Patient {
   id: number;
@@ -63,6 +65,7 @@ export default function ConsultationModal({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDxGptModalOpen, setIsDxGptModalOpen] = useState(false);
+  const [showClinicalPanel, setShowClinicalPanel] = useState(false);
   const startTimeRef = useRef<Date | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -206,6 +209,21 @@ export default function ConsultationModal({
               </div>
             </div>
           </div>
+
+          {/* Allergies, ongoing conditions, weight */}
+          {showClinicalPanel ? (
+            <div className="rounded-2xl border border-gray-200 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-800">Allergies, conditions &amp; weight</p>
+                <button onClick={() => setShowClinicalPanel(false)} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+                  Done
+                </button>
+              </div>
+              <ClinicalRecordPanel patientId={patient.id} />
+            </div>
+          ) : (
+            <ClinicalBanner patientId={patient.id} onManage={() => setShowClinicalPanel(true)} />
+          )}
 
           {/* Diagnoses */}
           <DiagnosisPicker value={diagnoses} onChange={setDiagnoses} />

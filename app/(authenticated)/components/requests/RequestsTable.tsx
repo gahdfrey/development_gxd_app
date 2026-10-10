@@ -4,14 +4,21 @@ import { useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import Table from "@/app/components/ui/Table";
 import UploadResultModal from "./UploadResultModal";
+import EnterResultsModal from "./EnterResultsModal";
 import ViewResultModal from "./ViewResultModal";
 import { CheckCircleIcon, LockClosedIcon, EyeIcon } from "@heroicons/react/24/outline";
+import BillingCell from "../../finance/components/BillingCell";
+import type { BillingSummary } from "../../finance/components/billing";
 
 export interface RequestRow {
   id: number;
   status: string;
   paymentStatus: string;
   hasResult: boolean;
+  /** The test has structured result fields / values have been entered. */
+  hasParameters?: boolean;
+  hasValues?: boolean;
+  abnormalCount?: number;
   createdAt: string | Date;
   patientId: number | null;
   patientFirstname: string | null;
@@ -21,6 +28,8 @@ export interface RequestRow {
   testPrice: number | null;
   requestedByFirstname: string | null;
   requestedByLastname: string | null;
+  /** Present when fetched with ?withBilling=1 (finance desk), for unpaid rows. */
+  billing?: BillingSummary | null;
 }
 
 interface RequestsTableProps {
@@ -28,6 +37,8 @@ interface RequestsTableProps {
   /** Finance module: one-way mark as paid */
   showPaymentToggle?: boolean;
   onMarkPaid?: (id: number) => void;
+  /** Finance: open a settle dialog instead of the inline confirm prompt. */
+  onSettle?: (row: RequestRow) => void;
   updatingId?: number | null;
   /** Lab / Radiography modules: show Upload Result button for paid rows */
   showUploadResult?: boolean;
@@ -38,6 +49,7 @@ export default function RequestsTable({
   data,
   showPaymentToggle = false,
   onMarkPaid,
+  onSettle,
   updatingId,
   showUploadResult = false,
   onUploadSuccess,
@@ -45,6 +57,7 @@ export default function RequestsTable({
   const columnHelper = createColumnHelper<RequestRow>();
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [enterModalOpen, setEnterModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<RequestRow | null>(null);
   // Tracks which row is showing the inline "confirm payment" prompt
@@ -96,6 +109,9 @@ export default function RequestsTable({
         header: "Price (₦)",
         cell: (info) => {
           const price = info.getValue();
+          if (showPaymentToggle) {
+            return <BillingCell basePrice={price} billing={info.row.original.billing} />;
+          }
           return (
             <span className="font-medium text-gray-900">
               {price != null ? `₦${price.toLocaleString()}` : "—"}
@@ -175,7 +191,7 @@ export default function RequestsTable({
                 // Default: "Mark as Paid" button
                 return (
                   <button
-                    onClick={() => setConfirmingId(row.id)}
+                    onClick={() => (onSettle ? onSettle(row) : setConfirmingId(row.id))}
                     disabled={isUpdating}
                     className="px-3 py-1.5 text-xs font-medium text-yellow-800 bg-yellow-50 border border-yellow-300 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
@@ -196,37 +212,60 @@ export default function RequestsTable({
                 const row = props.row.original;
                 const isPaid = row.paymentStatus === "paid";
                 if (!isPaid) return null;
-                if (row.hasResult) {
-                  return (
-                    <button
-                      onClick={() => {
-                        setSelectedRow(row);
-                        setViewModalOpen(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 transition-colors"
-                    >
-                      <EyeIcon className="h-3.5 w-3.5" />
-                      View Result
-                    </button>
-                  );
-                }
+                const hasAnyResult = row.hasResult || row.hasValues;
                 return (
-                  <button
-                    onClick={() => {
-                      setSelectedRow(row);
-                      setUploadModalOpen(true);
-                    }}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-yellow-50 text-yellow-800 border border-yellow-400 hover:bg-yellow-100 transition-colors"
-                  >
-                    Upload Result
-                  </button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {row.hasParameters && (
+                      <button
+                        onClick={() => {
+                          setSelectedRow(row);
+                          setEnterModalOpen(true);
+                        }}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                          row.hasValues
+                            ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                            : "bg-yellow-50 text-yellow-800 border-yellow-400 hover:bg-yellow-100"
+                        }`}
+                      >
+                        {row.hasValues ? "Edit results" : "Enter results"}
+                      </button>
+                    )}
+                    {hasAnyResult && (
+                      <button
+                        onClick={() => {
+                          setSelectedRow(row);
+                          setViewModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 transition-colors"
+                      >
+                        <EyeIcon className="h-3.5 w-3.5" />
+                        View
+                        {row.abnormalCount ? <span className="ml-0.5 rounded-full bg-white/25 px-1.5 text-[10px]">{row.abnormalCount} abnormal</span> : null}
+                      </button>
+                    )}
+                    {!row.hasResult && (
+                      <button
+                        onClick={() => {
+                          setSelectedRow(row);
+                          setUploadModalOpen(true);
+                        }}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                          row.hasParameters
+                            ? "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                            : "bg-yellow-50 text-yellow-800 border-yellow-400 hover:bg-yellow-100"
+                        }`}
+                      >
+                        {row.hasParameters ? "Attach file" : "Upload Result"}
+                      </button>
+                    )}
+                  </div>
                 );
               },
             }),
           ]
         : []),
     ],
-    [showPaymentToggle, updatingId, onMarkPaid, confirmingId, showUploadResult],
+    [showPaymentToggle, updatingId, onMarkPaid, onSettle, confirmingId, showUploadResult],
   );
 
   if (data.length === 0) {
@@ -253,6 +292,16 @@ export default function RequestsTable({
           setSelectedRow(null);
           onUploadSuccess?.();
         }}
+      />
+
+      <EnterResultsModal
+        isOpen={enterModalOpen}
+        onClose={() => {
+          setEnterModalOpen(false);
+          setSelectedRow(null);
+        }}
+        row={selectedRow}
+        onSuccess={() => onUploadSuccess?.()}
       />
 
       <ViewResultModal

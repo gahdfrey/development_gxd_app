@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import useSWR from "swr";
+import Link from "next/link";
+import useSWR, { mutate as globalMutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
 import RequestsTable, {
   type RequestRow,
@@ -13,10 +14,28 @@ import {
   BeakerIcon,
   CurrencyDollarIcon,
   WalletIcon,
+  BuildingOfficeIcon,
+  TagIcon,
+  ShieldCheckIcon,
+  DocumentTextIcon,
+  HomeModernIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline";
+import BillingCell from "./components/BillingCell";
+import SettleBillModal, { type DeskPayment } from "./components/SettleBillModal";
+import ShiftsTab from "./components/ShiftsTab";
+import { MyShiftCard, CURRENT_SHIFT_KEY } from "./components/MyShift";
+import { DESK_CHANNELS } from "@/lib/billing/deskChannels";
+import HmoBillingTab from "./components/HmoBillingTab";
+import AuthorizationsTab from "./components/AuthorizationsTab";
+import ClaimsTab from "./components/ClaimsTab";
+import AdmissionBillsTab from "./components/AdmissionBillsTab";
+import VaccinationBillsTab, { VACCINATION_BILLS_KEY } from "./components/VaccinationBillsTab";
+import type { BillingSummary, SettleTarget } from "./components/billing";
 
 interface PrescriptionRow {
   id: number;
+  patientId: number;
   patientFirstname: string | null;
   patientLastname: string | null;
   patientDob: string | null;
@@ -27,6 +46,7 @@ interface PrescriptionRow {
   paymentStatus: string;
   status: string;
   createdAt: string;
+  billing?: BillingSummary | null;
 }
 
 function formatAge(dob: string): string {
@@ -46,6 +66,7 @@ interface PaymentRow {
   currency: string;
   status: string;
   method: string;
+  channel: string | null;
   purpose: string;
   gatewayProvider: string | null;
   createdAt: string;
@@ -58,7 +79,13 @@ const TABS = [
     label: "Drug Prescriptions",
     icon: CurrencyDollarIcon,
   },
+  { key: "inpatient", label: "Inpatient bills", icon: HomeModernIcon },
+  { key: "vaccinations", label: "Vaccinations", icon: ShieldCheckIcon },
   { key: "payments", label: "Payments", icon: WalletIcon },
+  { key: "shifts", label: "Shifts", icon: BanknotesIcon },
+  { key: "authorizations", label: "Authorizations", icon: ShieldCheckIcon },
+  { key: "claims", label: "Claims", icon: DocumentTextIcon },
+  { key: "hmo", label: "HMO Billing", icon: BuildingOfficeIcon },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -73,6 +100,7 @@ const METHOD_LABEL: Record<string, string> = {
   wallet: "Wallet",
   bank_transfer: "Bank Transfer",
   plan: "Plan Coverage",
+  desk: "Desk",
 };
 
 export default function FinancePage() {
@@ -83,7 +111,7 @@ export default function FinancePage() {
     data: requestsData,
     isLoading: reqLoading,
     mutate: mutatReqs,
-  } = useSWR<RequestRow[]>("/api/requests", fetcher);
+  } = useSWR<RequestRow[]>("/api/requests?withBilling=1", fetcher);
   const [updatingReqId, setUpdatingReqId] = useState<number | null>(null);
   const [patientSearch, setPatientSearch] = useState("");
   const [doctorSearch, setDoctorSearch] = useState("");
@@ -104,34 +132,13 @@ export default function FinancePage() {
     });
   }, [requestsData, patientSearch, doctorSearch]);
 
-  const handleMarkReqPaid = async (id: number) => {
-    setUpdatingReqId(id);
-    try {
-      const res = await fetch(`/api/requests/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentStatus: "paid" }),
-      });
-      if (res.ok) mutatReqs();
-      else {
-        const body = await res.json();
-        alert(body.error || "Failed to update payment status");
-      }
-    } catch {
-      alert("Failed to update payment status");
-    } finally {
-      setUpdatingReqId(null);
-    }
-  };
-
   // ── Prescriptions ─────────────────────────────────────────────────────────
   const {
     data: prescrData,
     isLoading: prescrLoading,
     mutate: mutatePrescrip,
-  } = useSWR<PrescriptionRow[]>("/api/prescriptions", fetcher);
+  } = useSWR<PrescriptionRow[]>("/api/prescriptions?withBilling=1", fetcher);
   const [updatingPrescrId, setUpdatingPrescrId] = useState<number | null>(null);
-  const [confirmPrescrId, setConfirmPrescrId] = useState<number | null>(null);
   const [prescrSearch, setPrescrSearch] = useState("");
 
   const filteredPrescriptions = useMemo(() => {
@@ -149,24 +156,43 @@ export default function FinancePage() {
     );
   }, [prescrData, prescrSearch]);
 
-  const handleMarkPrescrPaid = async (id: number) => {
-    setUpdatingPrescrId(id);
+  // ── Settling an item (both tabs) ────────────────────────────────────────
+  // Opens SettleBillModal, which shows the HMO/patient split and captures
+  // the HMO authorization code before the one-way "paid" flip.
+  const [settleTarget, setSettleTarget] = useState<SettleTarget | null>(null);
+  const [isSettling, setIsSettling] = useState(false);
+
+  const handleSettle = async (authorizationCode: string, payment: DeskPayment) => {
+    if (!settleTarget) return;
+    const { itemType, itemId } = settleTarget;
+    setIsSettling(true);
+    if (itemType === "request") setUpdatingReqId(itemId);
+    else setUpdatingPrescrId(itemId);
     try {
-      const res = await fetch(`/api/prescriptions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentStatus: "paid" }),
-      });
-      if (res.ok) mutatePrescrip();
-      else {
+      const res = await fetch(
+        `/api/${itemType === "request" ? "requests" : "prescriptions"}/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentStatus: "paid", authorizationCode, ...payment }),
+        },
+      );
+      if (res.ok) {
+        globalMutate(CURRENT_SHIFT_KEY);
+        mutatePayments();
+        if (itemType === "request") mutatReqs();
+        else mutatePrescrip();
+        setSettleTarget(null);
+      } else {
         const body = await res.json();
         alert(body.error || "Failed to update payment status");
       }
     } catch {
       alert("Failed to update payment status");
     } finally {
+      setIsSettling(false);
+      setUpdatingReqId(null);
       setUpdatingPrescrId(null);
-      setConfirmPrescrId(null);
     }
   };
 
@@ -212,21 +238,47 @@ export default function FinancePage() {
   const pendingPaymentsCount = (paymentsData ?? []).filter(
     (p) => p.status === "pending",
   ).length;
+  // Same SWR key as the Authorizations tab's default view, so it's shared.
+  const { data: pendingAuths } = useSWR<unknown[]>("/api/hmo-authorizations?status=pending", fetcher, {
+    refreshInterval: 60_000,
+  });
+  // Same key as the tab's default (unpaid) view, so it's one request.
+  const { data: vaccinationBills, mutate: mutateVaccinationBills } = useSWR<{ unpaidCourses: number }>(
+    `${VACCINATION_BILLS_KEY}?status=unpaid`,
+    fetcher,
+  );
   const counts: Record<TabKey, number> = {
     lab: unpaidLabCount,
     prescriptions: unpaidPrescrCount,
     payments: pendingPaymentsCount,
+    inpatient: 0,
+    vaccinations: vaccinationBills?.unpaidCourses ?? 0,
+    shifts: 0,
+    authorizations: pendingAuths?.length ?? 0,
+    claims: 0,
+    hmo: 0,
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Finance</h1>
-        <p className="text-gray-600 text-sm mt-1">
-          Manage payment status for lab requests and drug prescriptions
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Finance</h1>
+          <p className="text-gray-600 text-sm mt-1">
+            Manage payment status for lab requests and drug prescriptions
+          </p>
+        </div>
+        <Link
+          href="/finance/price-lists"
+          className="inline-flex items-center gap-2 self-start px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          <TagIcon className="h-4 w-4" />
+          HMO Price Lists
+        </Link>
       </div>
+
+      <MyShiftCard onChanged={() => mutatePayments()} />
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
@@ -297,7 +349,17 @@ export default function FinancePage() {
             <RequestsTable
               data={filteredRequests}
               showPaymentToggle
-              onMarkPaid={handleMarkReqPaid}
+              onSettle={(row) =>
+                setSettleTarget({
+                  itemType: "request",
+                  itemId: row.id,
+                  label: row.testName ?? "Lab test",
+                  patientId: row.patientId,
+                  patientName: `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.trim(),
+                  basePrice: row.testPrice,
+                  billing: row.billing ?? null,
+                })
+              }
               updatingId={updatingReqId}
             />
           )}
@@ -356,7 +418,6 @@ export default function FinancePage() {
                     {filteredPrescriptions.map((row) => {
                       const isPaid = row.paymentStatus === "paid";
                       const isUpdating = updatingPrescrId === row.id;
-                      const isConfirming = confirmPrescrId === row.id;
                       return (
                         <tr
                           key={row.id}
@@ -378,10 +439,8 @@ export default function FinancePage() {
                           {/* <td className="px-5 py-4 text-sm text-gray-600 max-w-[160px]">
                             <span className="line-clamp-2">{row.dosage}</span>
                           </td> */}
-                          <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                            {row.productPrice != null
-                              ? `₦${row.productPrice.toLocaleString()}`
-                              : "—"}
+                          <td className="px-5 py-4 text-sm whitespace-nowrap">
+                            <BillingCell basePrice={row.productPrice} billing={row.billing} />
                           </td>
                           <td className="px-5 py-4 whitespace-nowrap">
                             <span
@@ -401,29 +460,19 @@ export default function FinancePage() {
                                 Paid
                                 <LockClosedIcon className="h-3 w-3 text-green-400 ml-0.5" />
                               </span>
-                            ) : isConfirming ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-gray-600 whitespace-nowrap">
-                                  Confirm?
-                                </span>
-                                <button
-                                  onClick={() => handleMarkPrescrPaid(row.id)}
-                                  disabled={isUpdating}
-                                  className="px-2.5 py-1 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                                >
-                                  Yes
-                                </button>
-                                <button
-                                  onClick={() => setConfirmPrescrId(null)}
-                                  disabled={isUpdating}
-                                  className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                                >
-                                  No
-                                </button>
-                              </div>
                             ) : (
                               <button
-                                onClick={() => setConfirmPrescrId(row.id)}
+                                onClick={() =>
+                                  setSettleTarget({
+                                    itemType: "prescription",
+                                    itemId: row.id,
+                                    label: row.productName ?? "Medication",
+                                    patientId: row.patientId,
+                  patientName: `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.trim(),
+                                    basePrice: row.productPrice,
+                                    billing: row.billing ?? null,
+                                  })
+                                }
                                 disabled={isUpdating}
                                 className="px-3 py-1.5 text-xs font-medium text-yellow-800 bg-yellow-50 border border-yellow-300 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
@@ -496,6 +545,7 @@ export default function FinancePage() {
                           </td>
                           <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
                             {METHOD_LABEL[row.method] ?? row.method}
+                            {row.channel && ` · ${DESK_CHANNELS[row.channel as keyof typeof DESK_CHANNELS] ?? row.channel}`}
                           </td>
                           <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                             ₦{row.amount.toLocaleString()}
@@ -581,6 +631,33 @@ export default function FinancePage() {
           )}
         </div>
       )}
+
+      {/* ── HMO Billing Panel ── */}
+      {activeTab === "inpatient" && <AdmissionBillsTab />}
+      {activeTab === "vaccinations" && (
+        <VaccinationBillsTab
+          onChanged={() => {
+            mutateVaccinationBills();
+            mutatePayments();
+          }}
+        />
+      )}
+      {activeTab === "shifts" && <ShiftsTab />}
+      {activeTab === "authorizations" && <AuthorizationsTab />}
+      {activeTab === "claims" && <ClaimsTab />}
+      {activeTab === "hmo" && <HmoBillingTab />}
+
+      <SettleBillModal
+        key={settleTarget ? `${settleTarget.itemType}:${settleTarget.itemId}` : "none"}
+        target={settleTarget}
+        isSubmitting={isSettling}
+        onClose={() => setSettleTarget(null)}
+        onConfirm={handleSettle}
+        onEligibilityLogged={() => {
+          mutatReqs();
+          mutatePrescrip();
+        }}
+      />
     </div>
   );
 }

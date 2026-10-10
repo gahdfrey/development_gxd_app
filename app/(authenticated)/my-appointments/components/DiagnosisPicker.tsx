@@ -13,6 +13,8 @@ export interface Diagnosis {
   icdTitle: string | null;
   clinicalText: string | null;
   diagnosisType: string;
+  /** Carry onto the patient's problem list (ongoing condition). */
+  addToProblemList?: boolean;
 }
 
 interface Icd11Result {
@@ -170,6 +172,8 @@ export default function DiagnosisPicker({ value, onChange }: DiagnosisPickerProp
   const removeAt = (idx: number) => onChange(value.filter((_, i) => i !== idx));
   const setTypeAt = (idx: number, type: string) =>
     onChange(value.map((d, i) => (i === idx ? { ...d, diagnosisType: type } : d)));
+  const setProblemListAt = (idx: number, add: boolean) =>
+    onChange(value.map((d, i) => (i === idx ? { ...d, addToProblemList: add } : d)));
 
   // Options for keyboard navigation: results + the free-text row.
   const optionCount = results.length + (trimmed.length >= 2 ? 1 : 0);
@@ -235,6 +239,20 @@ export default function DiagnosisPicker({ value, onChange }: DiagnosisPickerProp
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
                 {d.icdTitle || d.clinicalText}
               </span>
+              {d.diagnosisType !== "differential" && (
+                <label
+                  className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-gray-500"
+                  title="Add to the patient's list of ongoing conditions"
+                >
+                  <input
+                    type="checkbox"
+                    checked={d.addToProblemList === true}
+                    onChange={(e) => setProblemListAt(idx, e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                  />
+                  Ongoing
+                </label>
+              )}
               <select
                 value={d.diagnosisType}
                 onChange={(e) => setTypeAt(idx, e.target.value)}

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { db } from './index';
 import { roles, hmos } from './schema';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 const ORG_ID = 1; // Dleventh Clinic
 
@@ -82,13 +83,20 @@ async function seed() {
         { name: 'Reliance HMO',    description: 'Reliance HMO - affordable health insurance' },
     ];
 
+    // HMOs are per organisation; seed the defaults into ORG_ID only. (The
+    // unique index is on lower(name) for non-deleted rows, which ON CONFLICT
+    // can't target, so check first.)
     for (const hmo of defaultHmos) {
-        await db.insert(hmos)
-            .values(hmo)
-            .onConflictDoUpdate({
-                target: hmos.name,
-                set: { description: hmo.description },
-            });
+        const [existing] = await db.select({ id: hmos.id }).from(hmos).where(and(
+            eq(hmos.organisationId, ORG_ID),
+            sql`lower(${hmos.name}) = lower(${hmo.name})`,
+            isNull(hmos.deletedAt),
+        ));
+        if (existing) {
+            await db.update(hmos).set({ description: hmo.description }).where(eq(hmos.id, existing.id));
+        } else {
+            await db.insert(hmos).values({ ...hmo, organisationId: ORG_ID });
+        }
     }
 
     console.log('HMOs seeded successfully.');

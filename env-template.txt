@@ -32,3 +32,12 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # 3. Update DATABASE_URL with your PostgreSQL credentials
 # 4. For production, update NEXTAUTH_URL to your domain
 # 5. Fill in SMTP_* above to enable the landing-page contact form
+
+# Patient SMS (lib/messaging). Leave SMS_GATEWAY unset for test mode — nothing
+# is sent. Each hospital also switches SMS on in Setup → Messaging.
+# SMS_GATEWAY=termii
+# TERMII_API_KEY=
+# TERMII_BASE_URL=https://api.ng.termii.com
+# TERMII_CHANNEL=generic        # "dnd" reaches DND numbers (needs Termii approval)
+# TERMII_SENDER_ID=             # fallback sender ID if a hospital hasn't set its own
+# CRON_SECRET=                  # also used by /api/cron/messages/process (run every 15 min)

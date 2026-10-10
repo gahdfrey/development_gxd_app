@@ -104,6 +104,9 @@ export default function WardsBedsTab() {
                   <div>
                     <span className="font-medium text-gray-800">{w.name}</span>
                     {w.departmentName && <span className="block text-xs text-gray-500">{w.departmentName}</span>}
+                    <span className="block text-xs text-gray-500">
+                      {w.dailyRate != null ? `₦${w.dailyRate.toLocaleString()} / day` : "No daily bed charge"}
+                    </span>
                   </div>
                   <div className="flex gap-1">
                     <button
