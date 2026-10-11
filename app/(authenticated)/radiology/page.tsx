@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import RequestsTable, { type RequestRow } from "../components/requests/RequestsTable";
+import ResultStatusTabs, { isResultSent, type ResultTab } from "../components/requests/ResultStatusTabs";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import CriticalFollowUpPanel from "../components/lab/CriticalFollowUpPanel";
 import RaiseOrderModal from "../inventory/components/RaiseOrderModal";
@@ -22,6 +23,8 @@ export default function RadiologyPage() {
 
   const [patientSearch, setPatientSearch] = useState("");
   const [doctorSearch, setDoctorSearch] = useState("");
+  // Requests still waiting on a result come first — that's the work queue.
+  const [resultTab, setResultTab] = useState<ResultTab>("pending");
   const [orderModalOpen, setOrderModalOpen] = useState(false);
 
   const radiologyDeptId = useMemo(
@@ -42,6 +45,11 @@ export default function RadiologyPage() {
       );
     });
   }, [data, patientSearch, doctorSearch]);
+
+  const shown = useMemo(
+    () => filtered.filter((row) => isResultSent(row) === (resultTab === "sent")),
+    [filtered, resultTab],
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -89,13 +97,15 @@ export default function RadiologyPage() {
         </div>
       </div>
 
+      <ResultStatusTabs rows={filtered} value={resultTab} onChange={setResultTab} />
+
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : (
         <RequestsTable
-          data={filtered}
+          data={shown}
           showUploadResult
           onUploadSuccess={() => mutate()}
         />

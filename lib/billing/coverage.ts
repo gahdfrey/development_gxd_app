@@ -224,54 +224,56 @@ export async function getActiveCoverages(
   const result = new Map<number, ActiveCoverage>();
   if (patientIds.length === 0) return result;
 
-  const rows = await executor
-    .select({
-      coverageId: patientCoverages.id,
-      patientId: patientCoverages.patientId,
-      hmoId: patientCoverages.hmoId,
-      hmoName: hmos.name,
-      membershipNumber: patientCoverages.membershipNumber,
-      planName: patientCoverages.planName,
-      validFrom: patientCoverages.validFrom,
-      validTo: patientCoverages.validTo,
-    })
-    .from(patientCoverages)
-    .innerJoin(hmos, and(eq(patientCoverages.hmoId, hmos.id), isNull(hmos.deletedAt)))
-    .where(and(
-      eq(patientCoverages.organisationId, orgId),
-      inArray(patientCoverages.patientId, patientIds),
-      eq(patientCoverages.status, "active"),
-      isNull(patientCoverages.deletedAt),
-    ))
-    .orderBy(desc(patientCoverages.updatedAt));
+  // One round trip: the coverages with their latest eligibility checks, and
+  // the org's recheck window alongside.
+  const latest = (col: "checked_at" | "result") =>
+    sql`(SELECT ec.${sql.raw(col)} FROM ${eligibilityChecks} ec WHERE ec.coverage_id = ${patientCoverages.id} ORDER BY ec.checked_at DESC LIMIT 1)`;
+  const [rows, [org]] = await Promise.all([
+    executor
+      .select({
+        coverageId: patientCoverages.id,
+        patientId: patientCoverages.patientId,
+        hmoId: patientCoverages.hmoId,
+        hmoName: hmos.name,
+        membershipNumber: patientCoverages.membershipNumber,
+        planName: patientCoverages.planName,
+        validFrom: patientCoverages.validFrom,
+        validTo: patientCoverages.validTo,
+        lastCheckedAt: sql<string | null>`${latest("checked_at")}`,
+        lastResult: sql<string | null>`${latest("result")}`,
+        lastEligibleAt: sql<string | null>`(SELECT max(ec.checked_at) FROM ${eligibilityChecks} ec WHERE ec.coverage_id = ${patientCoverages.id} AND ec.result = 'eligible')`,
+      })
+      .from(patientCoverages)
+      .innerJoin(hmos, and(eq(patientCoverages.hmoId, hmos.id), isNull(hmos.deletedAt)))
+      .where(and(
+        eq(patientCoverages.organisationId, orgId),
+        inArray(patientCoverages.patientId, patientIds),
+        eq(patientCoverages.status, "active"),
+        isNull(patientCoverages.deletedAt),
+      ))
+      .orderBy(desc(patientCoverages.updatedAt)),
+    executor
+      .select({ days: organisations.eligibilityRecheckDays })
+      .from(organisations)
+      .where(eq(organisations.id, orgId))
+      .limit(1),
+  ]);
 
   const inWindow = rows.filter(
     (r) => (!r.validFrom || r.validFrom <= onDate) && (!r.validTo || r.validTo >= onDate),
   );
   if (inWindow.length === 0) return result;
-
-  const [org] = await executor
-    .select({ days: organisations.eligibilityRecheckDays })
-    .from(organisations)
-    .where(eq(organisations.id, orgId))
-    .limit(1);
   const recheckMs = (org?.days ?? 30) * 24 * 60 * 60 * 1000;
-
-  const checks = await executor
-    .select({ coverageId: eligibilityChecks.coverageId, checkedAt: eligibilityChecks.checkedAt, result: eligibilityChecks.result })
-    .from(eligibilityChecks)
-    .where(inArray(eligibilityChecks.coverageId, inWindow.map((r) => r.coverageId)))
-    .orderBy(desc(eligibilityChecks.checkedAt));
-  const latestCheck = new Map<number, { checkedAt: Date; result: string }>();
+  const latestCheckMap = new Map<number, { checkedAt: Date; result: string }>();
   const latestEligible = new Map<number, Date>();
-  for (const c of checks) {
-    if (!latestCheck.has(c.coverageId)) latestCheck.set(c.coverageId, { checkedAt: c.checkedAt, result: c.result });
-    if (c.result === "eligible" && !latestEligible.has(c.coverageId)) latestEligible.set(c.coverageId, c.checkedAt);
+  for (const r of inWindow) {
+    if (r.lastCheckedAt && r.lastResult) latestCheckMap.set(r.coverageId, { checkedAt: new Date(r.lastCheckedAt), result: r.lastResult });
+    if (r.lastEligibleAt) latestEligible.set(r.coverageId, new Date(r.lastEligibleAt));
   }
 
   for (const r of inWindow) {
     if (result.has(r.patientId)) continue; // one active coverage per patient; newest wins if data is inconsistent
-    const last = latestCheck.get(r.coverageId) ?? null;
+    const last = latestCheckMap.get(r.coverageId) ?? null;
     const eligibleAt = latestEligible.get(r.coverageId);
     result.set(r.patientId, {
       coverageId: r.coverageId,

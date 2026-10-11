@@ -10,10 +10,12 @@ import {
   hmoAuthorizations,
   hmoAuthorizationItems,
   patientCharges,
+  vaccinationDoses,
+  vaccinationCourses,
 } from "@/lib/db/schema";
 import { getActiveCoverages, todayInLagos } from "@/lib/billing/coverage";
 import { vatInclusiveAmount } from "@/lib/billing/tax";
-import { and, eq, inArray, isNull, lte, gte, or, desc, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, gte, or, desc, ne, sql } from "drizzle-orm";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Executor = typeof db | Tx;
@@ -135,8 +137,12 @@ export async function priceBillItems(
             unitPrice: patientCharges.unitPrice,
             quantity: patientCharges.quantity,
             taxCode: patientCharges.taxCode,
+            vaccineId: vaccinationCourses.vaccineId,
           })
           .from(patientCharges)
+          // Vaccine doses are tariffed per vaccine (price list item type "vaccine").
+          .leftJoin(vaccinationDoses, eq(vaccinationDoses.chargeId, patientCharges.id))
+          .leftJoin(vaccinationCourses, eq(vaccinationDoses.courseId, vaccinationCourses.id))
           .where(and(inArray(patientCharges.id, chargeIds), eq(patientCharges.organisationId, orgId), isNull(patientCharges.deletedAt)))
       : Promise.resolve([]),
   ]);
@@ -148,9 +154,8 @@ export async function priceBillItems(
   const chRows: Row[] = chargeRows.map((c) => ({
     id: c.id,
     patientId: c.patientId,
-    // Vaccines aren't on HMO tariffs (yet), so they always bill self-pay.
     catalogType: c.sourceType === "bed_day" ? "ward_bed" : c.sourceType === "vaccine" ? "vaccine" : "service",
-    catalogId: c.sourceType === "bed_day" ? c.wardId : c.sourceType === "vaccine" ? null : c.serviceItemId,
+    catalogId: c.sourceType === "bed_day" ? c.wardId : c.sourceType === "vaccine" ? c.vaccineId : c.serviceItemId,
     name: c.name,
     basePrice: c.unitPrice * c.quantity,
     taxCode: c.taxCode,
@@ -164,79 +169,78 @@ export async function priceBillItems(
   const patientIds = [...new Set([...reqRows, ...rxRows, ...chRows].map((r) => r.patientId))];
   const coverageByPatient = await getActiveCoverages(executor, orgId, patientIds, today);
 
-  // The active price list per HMO: active, not deleted, and in effect today.
-  // If several overlap, the one that started most recently wins.
+  // Then, in parallel (one round trip):
+  //  - the active price list per HMO (active, not deleted, in effect today;
+  //    if several overlap, the one that started most recently wins) with the
+  //    tariff lines for these items — a list with no matching line still
+  //    comes back (item columns null) so "not listed" can be told apart;
+  //  - pre-authorization decisions: an HMO that declined won't pay, so those
+  //    items bill self-pay until re-authorized. Only the newest non-cancelled
+  //    authorization per item counts (a later approval overrides a denial).
+  //    Queried here directly (not via lib/billing/authorizations, which
+  //    depends on this module).
   const hmoIds = [...new Set([...coverageByPatient.values()].map((c) => c.hmoId))];
+  const ids = (rows: Row[], type: string) =>
+    [...new Set(rows.filter((r) => r.catalogType === type).map((r) => r.catalogId).filter((v): v is number => v != null))];
+  const catalogConditions = [
+    ["lab_test", ids(reqRows, "lab_test")],
+    ["product", ids(rxRows, "product")],
+    ["service", ids(chRows, "service")],
+    ["ward_bed", ids(chRows, "ward_bed")],
+    ["vaccine", ids(chRows, "vaccine")],
+  ]
+    .filter(([, list]) => (list as number[]).length > 0)
+    .map(([type, list]) => and(eq(priceListItems.itemType, type as string), inArray(priceListItems.itemId, list as number[])));
+
+  const authConds = [];
+  if (requestIds.length > 0) authConds.push(and(eq(hmoAuthorizationItems.itemType, "request"), inArray(hmoAuthorizationItems.itemId, requestIds)));
+  if (prescriptionIds.length > 0) authConds.push(and(eq(hmoAuthorizationItems.itemType, "prescription"), inArray(hmoAuthorizationItems.itemId, prescriptionIds)));
+  if (chargeIds.length > 0) authConds.push(and(eq(hmoAuthorizationItems.itemType, "charge"), inArray(hmoAuthorizationItems.itemId, chargeIds)));
+
+  const [listRows, authRows] = await Promise.all([
+    hmoIds.length > 0
+      ? executor
+          .select({ listId: priceLists.id, hmoId: priceLists.hmoId, tariff: priceListItems })
+          .from(priceLists)
+          .leftJoin(
+            priceListItems,
+            and(eq(priceListItems.priceListId, priceLists.id), catalogConditions.length > 0 ? or(...catalogConditions) : sql`false`),
+          )
+          .where(and(
+            eq(priceLists.organisationId, orgId),
+            inArray(priceLists.hmoId, hmoIds),
+            eq(priceLists.isActive, true),
+            isNull(priceLists.deletedAt),
+            lte(priceLists.effectiveFrom, today),
+            or(isNull(priceLists.effectiveTo), gte(priceLists.effectiveTo, today)),
+          ))
+          .orderBy(desc(priceLists.effectiveFrom), desc(priceLists.id))
+      : Promise.resolve([]),
+    coverageByPatient.size > 0 && authConds.length > 0
+      ? executor
+          .select({ itemType: hmoAuthorizationItems.itemType, itemId: hmoAuthorizationItems.itemId, status: hmoAuthorizations.status })
+          .from(hmoAuthorizationItems)
+          .innerJoin(hmoAuthorizations, eq(hmoAuthorizationItems.authorizationId, hmoAuthorizations.id))
+          .where(and(eq(hmoAuthorizations.organisationId, orgId), ne(hmoAuthorizations.status, "cancelled"), or(...authConds)))
+          .orderBy(desc(hmoAuthorizations.requestedAt), desc(hmoAuthorizations.id))
+      : Promise.resolve([]),
+  ]);
+
   const listByHmo = new Map<number, number>();
-  if (hmoIds.length > 0) {
-    const lists = await executor
-      .select({ id: priceLists.id, hmoId: priceLists.hmoId })
-      .from(priceLists)
-      .where(and(
-        eq(priceLists.organisationId, orgId),
-        inArray(priceLists.hmoId, hmoIds),
-        eq(priceLists.isActive, true),
-        isNull(priceLists.deletedAt),
-        lte(priceLists.effectiveFrom, today),
-        or(isNull(priceLists.effectiveTo), gte(priceLists.effectiveTo, today)),
-      ))
-      .orderBy(desc(priceLists.effectiveFrom), desc(priceLists.id));
-    for (const l of lists) if (!listByHmo.has(l.hmoId)) listByHmo.set(l.hmoId, l.id);
-  }
-
-  const listIds = [...new Set(listByHmo.values())];
   const tariffByKey = new Map<string, typeof priceListItems.$inferSelect>();
-  if (listIds.length > 0) {
-    const testIds = [...new Set(reqRows.map((r) => r.catalogId).filter((v): v is number => v != null))];
-    const productIds = [...new Set(rxRows.map((r) => r.catalogId).filter((v): v is number => v != null))];
-    const serviceIds = [...new Set(chRows.filter((r) => r.catalogType === "service").map((r) => r.catalogId).filter((v): v is number => v != null))];
-    const wardIds = [...new Set(chRows.filter((r) => r.catalogType === "ward_bed").map((r) => r.catalogId).filter((v): v is number => v != null))];
-    const catalogConditions = [];
-    if (serviceIds.length > 0) {
-      catalogConditions.push(and(eq(priceListItems.itemType, "service"), inArray(priceListItems.itemId, serviceIds)));
-    }
-    if (wardIds.length > 0) {
-      catalogConditions.push(and(eq(priceListItems.itemType, "ward_bed"), inArray(priceListItems.itemId, wardIds)));
-    }
-    if (testIds.length > 0) {
-      catalogConditions.push(and(eq(priceListItems.itemType, "lab_test"), inArray(priceListItems.itemId, testIds)));
-    }
-    if (productIds.length > 0) {
-      catalogConditions.push(and(eq(priceListItems.itemType, "product"), inArray(priceListItems.itemId, productIds)));
-    }
-    if (catalogConditions.length > 0) {
-      const tariffRows = await executor
-        .select()
-        .from(priceListItems)
-        .where(and(inArray(priceListItems.priceListId, listIds), or(...catalogConditions)));
-      for (const t of tariffRows) tariffByKey.set(`${t.priceListId}:${t.itemType}:${t.itemId}`, t);
-    }
+  for (const l of listRows) {
+    if (!listByHmo.has(l.hmoId)) listByHmo.set(l.hmoId, l.listId);
+    if (listByHmo.get(l.hmoId) !== l.listId || !l.tariff) continue;
+    tariffByKey.set(`${l.listId}:${l.tariff.itemType}:${l.tariff.itemId}`, l.tariff);
   }
 
-  // An HMO that declined pre-authorization won't pay, so those items bill
-  // self-pay until they're re-authorized. Only the newest non-cancelled
-  // authorization per item counts (a later approval overrides a denial).
-  // Queried here directly (not via lib/billing/authorizations, which depends
-  // on this module).
   const declined = new Set<string>();
-  if (coverageByPatient.size > 0) {
-    const itemConds = [];
-    if (requestIds.length > 0) itemConds.push(and(eq(hmoAuthorizationItems.itemType, "request"), inArray(hmoAuthorizationItems.itemId, requestIds)));
-    if (prescriptionIds.length > 0) itemConds.push(and(eq(hmoAuthorizationItems.itemType, "prescription"), inArray(hmoAuthorizationItems.itemId, prescriptionIds)));
-    if (chargeIds.length > 0) itemConds.push(and(eq(hmoAuthorizationItems.itemType, "charge"), inArray(hmoAuthorizationItems.itemId, chargeIds)));
-    const authRows = await executor
-      .select({ itemType: hmoAuthorizationItems.itemType, itemId: hmoAuthorizationItems.itemId, status: hmoAuthorizations.status })
-      .from(hmoAuthorizationItems)
-      .innerJoin(hmoAuthorizations, eq(hmoAuthorizationItems.authorizationId, hmoAuthorizations.id))
-      .where(and(eq(hmoAuthorizations.organisationId, orgId), ne(hmoAuthorizations.status, "cancelled"), or(...itemConds)))
-      .orderBy(desc(hmoAuthorizations.requestedAt), desc(hmoAuthorizations.id));
-    const seen = new Set<string>();
-    for (const a of authRows) {
-      const k = `${a.itemType}:${a.itemId}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      if (a.status === "denied") declined.add(k);
-    }
+  const seen = new Set<string>();
+  for (const a of authRows) {
+    const k = `${a.itemType}:${a.itemId}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (a.status === "denied") declined.add(k);
   }
 
   const price = (

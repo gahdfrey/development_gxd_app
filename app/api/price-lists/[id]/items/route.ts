@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { priceLists, priceListItems, labTests, products, serviceItems, wards } from "@/lib/db/schema";
+import { priceLists, priceListItems, labTests, products, serviceItems, wards, vaccines } from "@/lib/db/schema";
 import { and, eq, isNull, inArray, sql } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
-type CatalogType = "lab_test" | "product" | "service" | "ward_bed";
-const CATALOG_TYPES: CatalogType[] = ["lab_test", "product", "service", "ward_bed"];
+type CatalogType = "lab_test" | "product" | "service" | "ward_bed" | "vaccine";
+const CATALOG_TYPES: CatalogType[] = ["lab_test", "product", "service", "ward_bed", "vaccine"];
 
 interface LineInput {
   itemType: CatalogType;
@@ -61,7 +61,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const productIds = [...new Set(upsert.filter((l) => l.itemType === "product").map((l) => l.itemId))];
     const serviceIds = [...new Set(upsert.filter((l) => l.itemType === "service").map((l) => l.itemId))];
     const wardIds = [...new Set(upsert.filter((l) => l.itemType === "ward_bed").map((l) => l.itemId))];
-    const [tests, prods, svcs, wardRows] = await Promise.all([
+    const vaccineIds = [...new Set(upsert.filter((l) => l.itemType === "vaccine").map((l) => l.itemId))];
+    const [tests, prods, svcs, wardRows, vaccineRows] = await Promise.all([
       testIds.length > 0
         ? db.select({ id: labTests.id }).from(labTests)
             .where(and(inArray(labTests.id, testIds), eq(labTests.organisationId, orgId), isNull(labTests.deletedAt)))
@@ -78,10 +79,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ? db.select({ id: wards.id }).from(wards)
             .where(and(inArray(wards.id, wardIds), eq(wards.organisationId, orgId), isNull(wards.deletedAt)))
         : Promise.resolve([]),
+      vaccineIds.length > 0
+        ? db.select({ id: vaccines.id }).from(vaccines)
+            .where(and(inArray(vaccines.id, vaccineIds), eq(vaccines.organisationId, orgId), isNull(vaccines.deletedAt)))
+        : Promise.resolve([]),
     ]);
     if (
       tests.length !== testIds.length || prods.length !== productIds.length ||
-      svcs.length !== serviceIds.length || wardRows.length !== wardIds.length
+      svcs.length !== serviceIds.length || wardRows.length !== wardIds.length ||
+      vaccineRows.length !== vaccineIds.length
     ) {
       return NextResponse.json({ error: "One or more services were not found" }, { status: 404 });
     }

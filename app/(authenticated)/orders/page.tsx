@@ -3,22 +3,24 @@
 /**
  * /orders — Department view
  *
- * Layout:
- *   Desktop → full table
- *   Mobile  → stacked cards
- *
  * Actions:
- *   pending  → Accept, Edit, View
- *   other    → View only (Edit + Accept hidden)
+ *   pending  → Edit, View
+ *   other    → View only
  *
- * Department scoping:
- *   Dept users see only their dept; modal pre-selects dept (locked).
- *   Superadmin / no-dept users see all orders; modal has full dept picker.
+ * Department scoping is role-based (lib/supplyOrders.ts): roles with Supply
+ * Orders view see every department and can filter by one; everyone else sees
+ * only their own department (enforced by the API). Orders can also be
+ * filtered by the date they were raised.
  */
 
 import { useState, useMemo } from "react";
 import useSWR from "swr";
+import { createColumnHelper } from "@tanstack/react-table";
 import { fetcher } from "@/lib/fetcher";
+import Table from "@/app/components/ui/Table";
+import { useDateRange } from "@/lib/hooks/useDateRange";
+import { canViewAllDepartmentOrders } from "@/lib/supplyOrders";
+import OrdersFilterBar from "../inventory/components/OrdersFilterBar";
 import RaiseOrderModal from "../inventory/components/RaiseOrderModal";
 import EditOrderModal from "../inventory/components/EditOrderModal";
 import {
@@ -58,41 +60,34 @@ interface CurrentUser {
   userrole: string | null;
   departmentId: number | null;
   departmentName: string | null;
+  permissions: Record<string, unknown> | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  pending:   { label: "Pending",   className: "bg-yellow-100 text-yellow-800" },
-  accepted:  { label: "Accepted",  className: "bg-blue-100 text-blue-800" },
+  pending: { label: "Pending", className: "bg-yellow-100 text-yellow-800" },
+  accepted: { label: "Accepted", className: "bg-blue-100 text-blue-800" },
   delivered: { label: "Delivered", className: "bg-green-100 text-green-800" },
   cancelled: { label: "Cancelled", className: "bg-red-100 text-red-700" },
 };
 
 const TABS = ["all", "pending", "accepted", "delivered", "cancelled"] as const;
 const TAB_LABELS: Record<string, string> = {
-  all: "All", pending: "Pending", accepted: "Accepted", delivered: "Delivered", cancelled: "Cancelled",
+  all: "All",
+  pending: "Pending",
+  accepted: "Accepted",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
 };
-type Tab = typeof TABS[number];
+type Tab = (typeof TABS)[number];
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
-}
-
-/**
- * Returns true for users who should see ALL departments' orders:
- *   - Superadmins
- *   - Inventory managers (role contains "inventory")
- *   - Any user with no department assigned
- * Everyone else (pharmacy, lab, radiology staff) sees only their own dept.
- */
-function canSeeAllDepts(user: CurrentUser | undefined): boolean {
-  if (!user) return false;
-  const role = (user.userrole ?? "").toLowerCase();
-  if (role.includes("super") || role.includes("inventory")) return true;
-  return !user.departmentId; // no dept set → no restriction
 }
 
 // ── View Modal ────────────────────────────────────────────────────────────────
@@ -112,20 +107,25 @@ function ViewOrderModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
-
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                <h2 className="text-lg font-semibold text-gray-900">Order #{order.id}</h2>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge.className}`}>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Order #{order.id}
+                </h2>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge.className}`}
+                >
                   {badge.label}
                 </span>
               </div>
               <p className="text-sm text-gray-500">
                 {order.departmentName && (
-                  <span className="font-medium text-gray-700">{order.departmentName}</span>
+                  <span className="font-medium text-gray-700">
+                    {order.departmentName}
+                  </span>
                 )}
                 {order.departmentName && " · "}
                 Raised {formatDate(order.createdAt)}
@@ -136,8 +136,18 @@ function ViewOrderModal({
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -147,22 +157,32 @@ function ViewOrderModal({
         <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Raised By</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">
+                Raised By
+              </p>
               <p className="text-gray-900 font-medium">
                 {order.requestedByFirstname} {order.requestedByLastname}
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Department</p>
-              <p className="text-gray-900 font-medium">{order.departmentName ?? "—"}</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">
+                Department
+              </p>
+              <p className="text-gray-900 font-medium">
+                {order.departmentName ?? "—"}
+              </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Date Raised</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">
+                Date Raised
+              </p>
               <p className="text-gray-900">{formatDate(order.createdAt)}</p>
             </div>
             {order.supplyStatus === "delivered" && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">Delivered On</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">
+                  Delivered On
+                </p>
                 <p className="text-gray-900">{formatDate(order.updatedAt)}</p>
               </div>
             )}
@@ -170,7 +190,9 @@ function ViewOrderModal({
 
           {order.notes && (
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Notes</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                Notes
+              </p>
               <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
                 {order.notes}
               </p>
@@ -179,7 +201,9 @@ function ViewOrderModal({
 
           {order.supplyStatus === "cancelled" && order.cancellationReason && (
             <div>
-              <p className="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">Cancellation Reason</p>
+              <p className="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">
+                Cancellation Reason
+              </p>
               <p className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2 border border-red-100">
                 {order.cancellationReason}
               </p>
@@ -197,15 +221,26 @@ function ViewOrderModal({
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Product</th>
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Qty Requested</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                        Product
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                        Qty Requested
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {order.items.map((item, i) => (
-                      <tr key={item.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{item.itemName ?? "—"}</td>
-                        <td className="px-4 py-3 text-right text-gray-700 tabular-nums">{item.quantityRequested} units</td>
+                      <tr
+                        key={item.id}
+                        className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
+                      >
+                        <td className="px-4 py-3 text-gray-800 font-medium">
+                          {item.itemName ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-700 tabular-nums">
+                          {item.quantityRequested} units
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -230,90 +265,17 @@ function ViewOrderModal({
   );
 }
 
-// ── Order Card (mobile) ───────────────────────────────────────────────────────
-
-function OrderCard({
-  order,
-  isAdmin,
-  onEdit,
-  onView,
-}: {
-  order: SupplyOrder;
-  isAdmin: boolean;
-  onEdit: (order: SupplyOrder) => void;
-  onView: (order: SupplyOrder) => void;
-}) {
-  const badge = STATUS_BADGE[order.supplyStatus] ?? {
-    label: order.supplyStatus,
-    className: "bg-gray-100 text-gray-600",
-  };
-  const isPending = order.supplyStatus === "pending";
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-gray-900">Order #{order.id}</p>
-          {isAdmin && (
-            <p className="text-xs text-gray-500 mt-0.5 truncate">{order.departmentName ?? "—"}</p>
-          )}
-          <p className="text-xs text-gray-400 mt-0.5">
-            {order.requestedByFirstname} {order.requestedByLastname} · {formatDate(order.createdAt)}
-          </p>
-        </div>
-        <span className={`inline-flex shrink-0 items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge.className}`}>
-          {badge.label}
-        </span>
-      </div>
-
-      {/* Product chips */}
-      <div className="flex flex-wrap gap-1.5">
-        {order.items.length === 0 ? (
-          <span className="text-xs text-gray-400">No items</span>
-        ) : (
-          order.items.map((item) => (
-            <span
-              key={item.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-xs text-gray-700 font-medium"
-            >
-              {item.itemName ?? "Unknown"}
-              <span className="text-gray-400">×{item.quantityRequested}</span>
-            </span>
-          ))
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100">
-        {isPending && (
-          <button
-            onClick={() => onEdit(order)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <PencilSquareIcon className="h-3.5 w-3.5" />
-            Edit
-          </button>
-        )}
-        <button
-          onClick={() => onView(order)}
-          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors ml-auto"
-        >
-          <EyeIcon className="h-3.5 w-3.5" />
-          View
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
+
+const columnHelper = createColumnHelper<SupplyOrder>();
 
 export default function OrdersPage() {
   const [tab, setTab] = useState<Tab>("all");
   const [raiseOpen, setRaiseOpen] = useState(false);
   const [viewOrder, setViewOrder] = useState<SupplyOrder | null>(null);
   const [editOrder, setEditOrder] = useState<SupplyOrder | null>(null);
+  const [departmentId, setDepartmentId] = useState<number | "">("");
+  const { range, setRange, apiUrl } = useDateRange("all");
 
   const { data: currentUser } = useSWR<CurrentUser>("/api/wai", fetcher, {
     shouldRetryOnError: false,
@@ -322,42 +284,112 @@ export default function OrdersPage() {
   });
 
   const userDeptId = currentUser?.departmentId ?? null;
-  const userDeptName = currentUser?.departmentName ?? null;
-  // isAdmin: inventory managers and superadmins see all depts; dept staff see only theirs
-  const isAdmin = canSeeAllDepts(currentUser);
+  // Supply team (Supply Orders view) sees every department; others only theirs.
+  const seesAll = canViewAllDepartmentOrders(currentUser?.permissions);
+  const userDeptName = seesAll ? null : currentUser?.departmentName ?? null;
 
-  // Dept staff always get their departmentId injected; admins/managers get no filter → all depts
-  const apiUrl = useMemo(() => {
+  // One request for the current department/date filters; the status tabs and
+  // their counts are worked out from it.
+  const url = useMemo(() => {
     const p = new URLSearchParams();
-    if (!isAdmin && userDeptId) p.set("departmentId", String(userDeptId));
-    if (tab !== "all") p.set("supplyStatus", tab);
-    return `/api/inventory/orders?${p.toString()}`;
-  }, [isAdmin, userDeptId, tab]);
-
-  const { data: orders, isLoading, mutate } = useSWR<SupplyOrder[]>(apiUrl, fetcher);
-
-  // Unfiltered-by-tab URL for tab counts (still dept-scoped when appropriate)
-  const allUrl = useMemo(() => {
-    const p = new URLSearchParams();
-    if (!isAdmin && userDeptId) p.set("departmentId", String(userDeptId));
-    return `/api/inventory/orders?${p.toString()}`;
-  }, [isAdmin, userDeptId]);
-
-  const { data: allOrders, mutate: mutateAll } = useSWR<SupplyOrder[]>(allUrl, fetcher);
+    if (seesAll && departmentId) p.set("departmentId", String(departmentId));
+    const qs = p.toString();
+    return apiUrl(`/api/inventory/orders${qs ? `?${qs}` : ""}`);
+  }, [seesAll, departmentId, apiUrl]);
+  const { data: allOrders, isLoading, mutate } = useSWR<SupplyOrder[]>(currentUser ? url : null, fetcher);
 
   const counts = useMemo(() => {
     const all = allOrders ?? [];
     return {
-      all:       all.length,
-      pending:   all.filter((o) => o.supplyStatus === "pending").length,
-      accepted:  all.filter((o) => o.supplyStatus === "accepted").length,
+      all: all.length,
+      pending: all.filter((o) => o.supplyStatus === "pending").length,
+      accepted: all.filter((o) => o.supplyStatus === "accepted").length,
       delivered: all.filter((o) => o.supplyStatus === "delivered").length,
       cancelled: all.filter((o) => o.supplyStatus === "cancelled").length,
     };
   }, [allOrders]);
 
-  const pageTitle = userDeptName ? `${userDeptName} Orders` : "Orders";
-  const revalidate = () => { mutate(); mutateAll(); };
+  const displayOrders = useMemo(
+    () => (tab === "all" ? allOrders ?? [] : (allOrders ?? []).filter((o) => o.supplyStatus === tab)),
+    [allOrders, tab],
+  );
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("id", {
+        header: "Order #",
+        cell: (info) => <span className="font-bold text-gray-900">#{info.getValue()}</span>,
+      }),
+      ...(seesAll
+        ? [
+            columnHelper.accessor((o) => o.departmentName ?? "", {
+              id: "department",
+              header: "Department",
+              cell: (info) => info.getValue() || "—",
+            }),
+          ]
+        : []),
+      columnHelper.accessor((o) => o.items.map((i) => i.itemName ?? "").join(", "), {
+        id: "products",
+        header: "Products",
+        enableSorting: false,
+        cell: (info) => {
+          const items = info.row.original.items;
+          if (items.length === 0) return <span className="text-xs text-gray-400">No items</span>;
+          return (
+            <div className="flex max-w-xs flex-wrap gap-1.5 normal-case">
+              {items.map((item) => (
+                <span key={item.id} className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                  {item.itemName ?? "Unknown"}
+                  <span className="text-gray-400">×{item.quantityRequested}</span>
+                </span>
+              ))}
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("supplyStatus", {
+        header: "Status",
+        cell: (info) => {
+          const badge = STATUS_BADGE[info.getValue()] ?? { label: info.getValue(), className: "bg-gray-100 text-gray-600" };
+          return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>;
+        },
+      }),
+      columnHelper.accessor("createdAt", {
+        header: "Date Raised",
+        sortingFn: "datetime",
+        cell: (info) => <span className="text-gray-600">{formatDate(info.getValue())}</span>,
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const order = row.original;
+          return (
+            <div className="flex items-center justify-end gap-2">
+              {order.supplyStatus === "pending" && (
+                <button
+                  onClick={() => setEditOrder(order)}
+                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <PencilSquareIcon className="h-3.5 w-3.5" />
+                  Edit
+                </button>
+              )}
+              <button
+                onClick={() => setViewOrder(order)}
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700"
+              >
+                <EyeIcon className="h-3.5 w-3.5" />
+                View
+              </button>
+            </div>
+          );
+        },
+      }),
+    ],
+    [seesAll],
+  );
 
   if (!currentUser) {
     return (
@@ -367,11 +399,10 @@ export default function OrdersPage() {
     );
   }
 
-  const displayOrders = orders ?? [];
+  const pageTitle = userDeptName ? `${userDeptName} Orders` : "Orders";
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
@@ -379,7 +410,9 @@ export default function OrdersPage() {
           <p className="text-gray-500 text-sm mt-1">
             {userDeptName
               ? `Supply orders for the ${userDeptName} department`
-              : "Supply orders across all departments"}
+              : seesAll
+                ? "Supply orders across all departments"
+                : "Your account isn't assigned to a department, so there are no orders to show"}
           </p>
         </div>
         <button
@@ -391,6 +424,14 @@ export default function OrdersPage() {
           <span className="sm:hidden">New</span>
         </button>
       </div>
+
+      <OrdersFilterBar
+        range={range}
+        onRangeChange={setRange}
+        showDepartment={seesAll}
+        departmentId={departmentId}
+        onDepartmentChange={setDepartmentId}
+      />
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
@@ -407,9 +448,11 @@ export default function OrdersPage() {
             >
               {TAB_LABELS[t]}
               {counts[t] > 0 && (
-                <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold ${
-                  tab === t ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
-                }`}>
+                <span
+                  className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold ${
+                    tab === t ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                  }`}
+                >
                   {counts[t]}
                 </span>
               )}
@@ -424,123 +467,15 @@ export default function OrdersPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : displayOrders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
           <p className="text-sm font-medium text-gray-600">No orders found</p>
-          <p className="text-xs text-gray-400 mt-1 max-w-xs">
-            {tab !== "all"
-              ? `No ${(TAB_LABELS[tab] ?? tab).toLowerCase()} orders`
-              : "No orders have been raised yet"}
+          <p className="text-xs text-gray-400 mt-1">
+            {tab !== "all" ? `No ${(TAB_LABELS[tab] ?? tab).toLowerCase()} orders` : "No orders match these filters"}
             {userDeptName && ` for ${userDeptName}`}
           </p>
         </div>
       ) : (
-        <>
-          {/* ── Desktop table (sm+) ── */}
-          <div className="hidden sm:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Order #</th>
-                    {isAdmin && (
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Department</th>
-                    )}
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Products</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Status</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Date Raised</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {displayOrders.map((order) => {
-                    const badge = STATUS_BADGE[order.supplyStatus] ?? {
-                      label: order.supplyStatus,
-                      className: "bg-gray-100 text-gray-600",
-                    };
-                    const isPending = order.supplyStatus === "pending";
-
-                    return (
-                      <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-5 py-4 text-sm font-bold text-gray-900 whitespace-nowrap">
-                          #{order.id}
-                        </td>
-                        {isAdmin && (
-                          <td className="px-5 py-4 text-sm text-gray-700 whitespace-nowrap">
-                            {order.departmentName ?? "—"}
-                          </td>
-                        )}
-                        <td className="px-5 py-4">
-                          <div className="flex flex-wrap gap-1.5 max-w-xs">
-                            {order.items.length === 0 ? (
-                              <span className="text-xs text-gray-400">No items</span>
-                            ) : (
-                              order.items.map((item) => (
-                                <span
-                                  key={item.id}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-xs text-gray-700 font-medium whitespace-nowrap"
-                                >
-                                  {item.itemName ?? "Unknown"}
-                                  <span className="text-gray-400">×{item.quantityRequested}</span>
-                                </span>
-                              ))
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge.className}`}>
-                            {badge.label}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
-                          {formatDate(order.createdAt)}
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {isPending && (
-                              <button
-                                onClick={() => setEditOrder(order)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-                              >
-                                <PencilSquareIcon className="h-3.5 w-3.5" />
-                                Edit
-                              </button>
-                            )}
-                            <button
-                              onClick={() => setViewOrder(order)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors whitespace-nowrap"
-                            >
-                              <EyeIcon className="h-3.5 w-3.5" />
-                              View
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* ── Mobile cards (< sm) ── */}
-          <div className="sm:hidden space-y-3">
-            {displayOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                isAdmin={isAdmin}
-                onEdit={setEditOrder}
-                onView={setViewOrder}
-              />
-            ))}
-          </div>
-        </>
+        <Table data={displayOrders} columns={columns} />
       )}
 
       {/* Raise Order Modal */}
@@ -548,20 +483,21 @@ export default function OrdersPage() {
         open={raiseOpen}
         departmentId={userDeptId ?? undefined}
         onClose={() => setRaiseOpen(false)}
-        onSuccess={revalidate}
+        onSuccess={() => mutate()}
       />
 
       {/* Edit Order Modal */}
       <EditOrderModal
         order={editOrder}
         onClose={() => setEditOrder(null)}
-        onSuccess={() => { revalidate(); setEditOrder(null); }}
+        onSuccess={() => {
+          mutate();
+          setEditOrder(null);
+        }}
       />
 
       {/* View Order Modal */}
-      {viewOrder && (
-        <ViewOrderModal order={viewOrder} onClose={() => setViewOrder(null)} />
-      )}
+      {viewOrder && <ViewOrderModal order={viewOrder} onClose={() => setViewOrder(null)} />}
     </div>
   );
 }

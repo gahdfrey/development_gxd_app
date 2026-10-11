@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { priceLists, priceListItems, hmos, labTests, products, departments, serviceItems, wards } from "@/lib/db/schema";
+import { priceLists, priceListItems, hmos, labTests, products, departments, serviceItems, wards, vaccines } from "@/lib/db/schema";
 import { SERVICE_CATEGORIES } from "@/lib/billing/serviceItems";
 import { and, eq, isNull, asc } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
@@ -34,7 +34,7 @@ async function loadList(orgId: number, idParam: string) {
 }
 
 // GET /api/price-lists/[id] — the list header plus the full billable catalog
-// (every lab test, prescribable product, service and ward bed rate) with this list's tariff line for
+// (every lab test, prescribable product, service, ward bed rate and vaccine) with this list's tariff line for
 // each, so the editor can show unlisted services alongside listed ones.
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
@@ -46,7 +46,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     const list = await loadList(orgId, id);
     if (!list) return NextResponse.json({ error: "Price list not found" }, { status: 404 });
 
-    const [tests, prods, services, wardRows, lines] = await Promise.all([
+    const [tests, prods, services, wardRows, vaccineRows, lines] = await Promise.all([
       db.select({ id: labTests.id, name: labTests.name, basePrice: labTests.price, group: departments.name })
         .from(labTests)
         .leftJoin(departments, eq(labTests.departmentId, departments.id))
@@ -65,11 +65,16 @@ export async function GET(_request: NextRequest, { params }: Params) {
         .from(wards)
         .where(and(eq(wards.organisationId, orgId), isNull(wards.deletedAt)))
         .orderBy(asc(wards.name)),
+      // Vaccines are tariffed per dose.
+      db.select({ id: vaccines.id, name: vaccines.name, basePrice: vaccines.price })
+        .from(vaccines)
+        .where(and(eq(vaccines.organisationId, orgId), isNull(vaccines.deletedAt)))
+        .orderBy(asc(vaccines.name)),
       db.select().from(priceListItems).where(eq(priceListItems.priceListId, list.id)),
     ]);
 
     const lineByKey = new Map(lines.map((l) => [`${l.itemType}:${l.itemId}`, l]));
-    const toRow = (itemType: "lab_test" | "product" | "service" | "ward_bed") => (c: { id: number; name: string; basePrice: number; group: string | null }) => {
+    const toRow = (itemType: "lab_test" | "product" | "service" | "ward_bed" | "vaccine") => (c: { id: number; name: string; basePrice: number; group: string | null }) => {
       const line = lineByKey.get(`${itemType}:${c.id}`);
       return {
         itemType,
@@ -88,7 +93,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json(
       { ...list, items: [...tests.map(toRow("lab_test")), ...prods.map(toRow("product")),
           ...services.map((s) => toRow("service")({ ...s, group: SERVICE_CATEGORIES[s.category as keyof typeof SERVICE_CATEGORIES] ?? s.category })),
-          ...wardRows.map((w) => toRow("ward_bed")({ ...w, basePrice: w.basePrice ?? 0, name: `${w.name} — bed per day`, group: "Bed charge per day" }))] },
+          ...wardRows.map((w) => toRow("ward_bed")({ ...w, basePrice: w.basePrice ?? 0, name: `${w.name} — bed per day`, group: "Bed charge per day" })),
+          ...vaccineRows.map((v) => toRow("vaccine")({ ...v, name: `${v.name} — per dose`, group: "Vaccine" }))] },
       { status: 200 },
     );
   } catch (error) {

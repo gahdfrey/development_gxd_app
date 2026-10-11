@@ -131,9 +131,19 @@ export default function VaccinationRecord({ courses, onAction, onMissed, onColle
                       {dose.amount != null && dose.status !== "cancelled" && (
                         <span className="text-xs font-semibold text-gray-700">{naira(dose.amount)}</span>
                       )}
+                      {dose.hmoAmount > 0 && dose.status !== "cancelled" && (
+                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-200">
+                          {dose.hmoName ?? "HMO"} covers {naira(dose.hmoAmount)}
+                        </span>
+                      )}
+                      {billingOnly && dose.status !== "cancelled" && (dose.pricingBasis === "excluded" || dose.pricingBasis === "not_listed" || dose.pricingBasis === "auth_declined") && (
+                        <span className="text-[11px] font-medium text-amber-700">
+                          {dose.pricingBasis === "excluded" ? "Excluded from HMO tariff" : dose.pricingBasis === "not_listed" ? "Not on HMO tariff" : "HMO declined auth"} — self-pay
+                        </span>
+                      )}
                       {onCollect && dose.chargeId != null && dose.paymentStatus === "not_paid" && dose.status !== "cancelled" && (
                         <button onClick={() => onCollect(dose, course)} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
-                          Collect payment
+                          Mark as paid
                         </button>
                       )}
                       {onAction && open && (

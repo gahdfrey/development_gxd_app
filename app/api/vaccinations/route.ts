@@ -5,7 +5,7 @@ import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, or, sql, type SQL }
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { todayInLagos } from "@/lib/billing/coverage";
-import { buildSchedule, describePeriod, getPatientVaccinations, validateBooking } from "@/lib/vaccination";
+import { createCourse, describePeriod, getPatientVaccinations, priceCourses, validateBooking } from "@/lib/vaccination";
 
 const VIEWS = ["today", "upcoming", "overdue", "given", "all"] as const;
 type View = (typeof VIEWS)[number];
@@ -74,7 +74,6 @@ export async function GET(request: NextRequest) {
     // …summarised over all their doses, one row per course.
     const d = vaccinationDoses;
     const open = sql`${d.status} IN ('scheduled', 'missed')`;
-    const billed = sql`${patientCharges.id} IS NOT NULL AND ${d.status} <> 'cancelled'`;
     const nextDue = sql<string | null>`min(${d.scheduledDate}) filter (where ${open})`;
     const lastGiven = sql`max(${d.givenAt})`;
     const rows = await db
@@ -98,8 +97,6 @@ export async function GET(request: NextRequest) {
         missed: sql<number>`count(*) filter (where ${d.status} = 'missed')`.mapWith(Number),
         nextDue,
         lastGivenAt: sql<string | null>`${lastGiven}`,
-        total: sql<number>`coalesce(sum(${patientCharges.unitPrice} * ${patientCharges.quantity}) filter (where ${billed}), 0)`.mapWith(Number),
-        unpaid: sql<number>`coalesce(sum(${patientCharges.unitPrice} * ${patientCharges.quantity}) filter (where ${billed} and ${patientCharges.paymentStatus} = 'not_paid'), 0)`.mapWith(Number),
       })
       .from(vaccinationCourses)
       .innerJoin(vaccines, eq(vaccinationCourses.vaccineId, vaccines.id))
@@ -128,8 +125,13 @@ export async function GET(request: NextRequest) {
       .innerJoin(patients, eq(d.patientId, patients.id))
       .where(and(eq(d.organisationId, orgId), eq(d.status, "scheduled"), isNull(patients.deletedAt)));
 
+    // Patient's share, priced like checkout (HMO co-pay when covered).
+    const billing = await priceCourses(orgId, rows.map((r) => r.courseId));
     return NextResponse.json({
-      courses: rows.map((r) => ({ ...r, period: describePeriod(r.doseCount, r.intervalValue, r.intervalUnit) })),
+      courses: rows.map((r) => {
+        const b = billing.get(r.courseId);
+        return { ...r, total: b?.total ?? 0, unpaid: b?.outstanding ?? 0, period: describePeriod(r.doseCount, r.intervalValue, r.intervalUnit) };
+      }),
       counts,
     });
   } catch (error) {
@@ -166,49 +168,9 @@ export async function POST(request: NextRequest) {
       .limit(1);
     if (!vaccine) return NextResponse.json({ error: "That vaccine isn't available — check Setup → Vaccines" }, { status: 404 });
 
-    const dates = buildSchedule(b.startDate, b.doseCount, b.intervalValue, b.intervalUnit);
-
-    const courseId = await db.transaction(async (tx) => {
-      const [course] = await tx
-        .insert(vaccinationCourses)
-        .values({
-          organisationId: orgId,
-          patientId: b.patientId,
-          vaccineId: vaccine.id,
-          startDate: b.startDate,
-          doseCount: b.doseCount,
-          intervalValue: b.intervalValue,
-          intervalUnit: b.intervalUnit,
-          notes: b.notes,
-          createdBy: userId,
-        })
-        .returning({ id: vaccinationCourses.id });
-
-      for (const [i, date] of dates.entries()) {
-        const [charge] = await tx
-          .insert(patientCharges)
-          .values({
-            organisationId: orgId,
-            patientId: b.patientId,
-            sourceType: "vaccine",
-            chargeDate: date,
-            description: b.doseCount > 1 ? `${vaccine.name} — dose ${i + 1} of ${b.doseCount}` : vaccine.name,
-            unitPrice: vaccine.price,
-            taxCode: vaccine.taxCode,
-            createdBy: userId,
-          })
-          .returning({ id: patientCharges.id });
-        await tx.insert(vaccinationDoses).values({
-          organisationId: orgId,
-          courseId: course.id,
-          patientId: b.patientId,
-          doseNumber: i + 1,
-          scheduledDate: date,
-          chargeId: charge.id,
-        });
-      }
-      return course.id;
-    });
+    const { courseId, dates } = await db.transaction((tx) =>
+      createCourse(tx, { orgId, userId, patientId: b.patientId, vaccine, startDate: b.startDate, doseCount: b.doseCount, intervalValue: b.intervalValue, intervalUnit: b.intervalUnit, notes: b.notes }),
+    );
 
     void logAudit({
       organisationId: orgId,

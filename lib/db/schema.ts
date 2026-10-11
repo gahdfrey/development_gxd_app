@@ -935,7 +935,7 @@ export const priceListItems = pgTable("price_list_items", {
   id: serial("id").primaryKey(),
   organisationId: integer("organisation_id").notNull().references(() => organisations.id),
   priceListId: integer("price_list_id").notNull().references(() => priceLists.id),
-  itemType: text("item_type").notNull(), // "lab_test" | "product" | "service" | "ward_bed"
+  itemType: text("item_type").notNull(), // "lab_test" | "product" | "service" | "ward_bed" | "vaccine"
   itemId: integer("item_id").notNull(),
   price: integer("price").notNull(),
   coverage: text("coverage").notNull().default("covered"), // "covered" | "excluded"
@@ -1755,6 +1755,8 @@ export const vaccinationDoses = pgTable("vaccination_doses", {
   courseIdx: index("vaccination_doses_course_idx").on(t.courseId),
   patientIdx: index("vaccination_doses_patient_idx").on(t.patientId),
   orgDateIdx: index("vaccination_doses_org_date_idx").on(t.organisationId, t.scheduledDate),
+  // Pricing finds a vaccine charge's dose (and so its vaccine) by charge.
+  chargeIdx: index("vaccination_doses_charge_idx").on(t.chargeId),
 }));
 
 export type VaccinationDose = typeof vaccinationDoses.$inferSelect;

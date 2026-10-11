@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import useSWR from "swr";
-import { EyeIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import useSWR, { mutate as globalMutate } from "swr";
+import { CheckCircleIcon, EyeIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { fetcher } from "@/lib/fetcher";
+import { useToast } from "@/app/contexts/ToastContext";
+import { useCan } from "../../components/vaccination/shared";
+import SettleBillModal, { type DeskPayment } from "./SettleBillModal";
+import { CURRENT_SHIFT_KEY } from "./MyShift";
+import type { SettleTarget } from "./billing";
 import CourseDetailModal, { type CourseSummary } from "../../components/vaccination/CourseDetailModal";
 import { naira } from "./billing";
 
@@ -15,10 +20,13 @@ interface BillRow extends CourseSummary {
   startDate: string;
   billedDoses: number;
   paidDoses: number;
+  unpaidDoses: number;
   total: number;
   paid: number;
   waived: number;
   outstanding: number;
+  hmoAmount: number;
+  hmoName: string | null;
 }
 
 export const VACCINATION_BILLS_KEY = "/api/vaccinations/bills";
@@ -33,6 +41,12 @@ export default function VaccinationBillsTab({ onChanged }: { onChanged?: () => v
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [viewing, setViewing] = useState<CourseSummary | null>(null);
+  // "Mark as paid" settles every unpaid dose of the course in one desk payment.
+  const [settling, setSettling] = useState<{ courseId: number; target: SettleTarget } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { showToast } = useToast();
+  const can = useCan();
+  const canCollect = can("finance", "edit") || can("finance", "add");
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -43,6 +57,57 @@ export default function VaccinationBillsTab({ onChanged }: { onChanged?: () => v
   const { data, isLoading, mutate } = useSWR<{ courses: BillRow[] }>(key, fetcher);
   const rows = data?.courses ?? [];
   const outstanding = rows.reduce((s, r) => s + r.outstanding, 0);
+
+  const markPaid = (r: BillRow) =>
+    setSettling({
+      courseId: r.courseId,
+      target: {
+        itemType: "charge",
+        itemId: r.courseId,
+        label: `${r.vaccineName} — ${r.unpaidDoses} unpaid dose${r.unpaidDoses !== 1 ? "s" : ""}${r.hmoAmount > 0 ? ` (${r.hmoName ?? "HMO"} pays its share)` : ""}`,
+        patientId: r.patientId,
+        patientName: `${r.patientFirstname} ${r.patientLastname}`,
+        basePrice: r.outstanding,
+        billing: null,
+      },
+    });
+
+  const confirmPaid = async (code: string, payment: DeskPayment) => {
+    if (!settling) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/vaccinations/courses/${settling.courseId}/collect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ authorizationCode: code, ...payment }),
+      });
+      const body = await res.json();
+      if (!res.ok) return showToast(body.error || "Failed to record payment", "error");
+      // Show it as paid straight away (drops off the Unpaid list), then re-fetch.
+      const courseId = settling.courseId;
+      mutate(
+        (current) =>
+          current && {
+            ...current,
+            courses:
+              filter === "unpaid"
+                ? current.courses.filter((r) => r.courseId !== courseId)
+                : current.courses.map((r) =>
+                    r.courseId === courseId
+                      ? { ...r, paid: r.paid + r.outstanding, outstanding: 0, paidDoses: r.paidDoses + r.unpaidDoses, unpaidDoses: 0 }
+                      : r,
+                  ),
+          },
+        { revalidate: true },
+      );
+      globalMutate(CURRENT_SHIFT_KEY);
+      setSettling(null);
+      showToast("Payment recorded", "success");
+      onChanged?.();
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -91,7 +156,7 @@ export default function VaccinationBillsTab({ onChanged }: { onChanged?: () => v
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {["Patient", "Vaccine", "Doses paid", "Total", "Paid", "Outstanding", ""].map((h) => (
+                {["Patient", "Vaccine", "Doses paid", "Patient total", "HMO covers", "Paid", "Outstanding", ""].map((h) => (
                   <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -110,6 +175,16 @@ export default function VaccinationBillsTab({ onChanged }: { onChanged?: () => v
                     {r.paidDoses} of {r.billedDoses}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-900">{naira(r.total)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {r.hmoAmount > 0 ? (
+                      <>
+                        <span className="text-teal-700">{naira(r.hmoAmount)}</span>
+                        <span className="block text-xs text-gray-500">{r.hmoName}</span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-400">Self-pay</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-emerald-700">
                     {naira(r.paid)}
                     {r.waived > 0 && <span className="block text-xs text-gray-500">{naira(r.waived)} waived</span>}
@@ -117,7 +192,15 @@ export default function VaccinationBillsTab({ onChanged }: { onChanged?: () => v
                   <td className={`px-4 py-3 whitespace-nowrap font-semibold ${r.outstanding > 0 ? "text-amber-700" : "text-gray-400"}`}>
                     {naira(r.outstanding)}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    {canCollect && r.unpaidDoses > 0 && (
+                      <button
+                        onClick={() => markPaid(r)}
+                        className="mr-2 inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+                      >
+                        <CheckCircleIcon className="h-4 w-4" /> Mark as paid
+                      </button>
+                    )}
                     <button
                       onClick={() => setViewing(r)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-blue-300 hover:text-blue-700"
@@ -132,6 +215,13 @@ export default function VaccinationBillsTab({ onChanged }: { onChanged?: () => v
         </div>
       )}
 
+      <SettleBillModal
+        key={settling ? `settle:${settling.courseId}` : "settle:none"}
+        target={settling?.target ?? null}
+        isSubmitting={submitting}
+        onClose={() => setSettling(null)}
+        onConfirm={confirmPaid}
+      />
       <CourseDetailModal
         context="finance"
         summary={viewing}

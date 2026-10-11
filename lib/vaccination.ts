@@ -1,9 +1,10 @@
 import { addDays, addMonths, addWeeks, addYears, format, isValid, parseISO } from "date-fns";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { patientCharges, users, vaccinationCourses, vaccinationDoses, vaccines } from "@/lib/db/schema";
+import { patientCharges, users, vaccinationCourses, vaccinationDoses, vaccines, type Vaccine } from "@/lib/db/schema";
 import { isTaxCode, DEFAULT_TAX_CODE } from "@/lib/billing/tax";
 import { todayInLagos } from "@/lib/billing/coverage";
+import { priceBillItems, itemKey, type PricingBasis } from "@/lib/billing/pricing";
 
 export const INTERVAL_UNITS = {
   day: { label: "Day(s)" },
@@ -84,6 +85,68 @@ export function buildSchedule(startDate: string, doseCount: number, intervalValu
   return Array.from({ length: doseCount }, (_, i) => format(step(start, i * intervalValue), "yyyy-MM-dd"));
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Books a patient on a vaccine: the course, one dose per due date, and a bill
+ * line (patient_charges, source "vaccine") per dose at the vaccine's current
+ * price. Run inside a transaction.
+ */
+export async function createCourse(
+  tx: Tx,
+  c: {
+    orgId: number;
+    userId: number | null;
+    patientId: number;
+    vaccine: Pick<Vaccine, "id" | "name" | "price" | "taxCode">;
+    startDate: string;
+    doseCount: number;
+    intervalValue: number;
+    intervalUnit: IntervalUnit;
+    notes: string | null;
+  },
+): Promise<{ courseId: number; dates: string[] }> {
+  const dates = buildSchedule(c.startDate, c.doseCount, c.intervalValue, c.intervalUnit);
+  const [course] = await tx
+    .insert(vaccinationCourses)
+    .values({
+      organisationId: c.orgId,
+      patientId: c.patientId,
+      vaccineId: c.vaccine.id,
+      startDate: c.startDate,
+      doseCount: c.doseCount,
+      intervalValue: c.intervalValue,
+      intervalUnit: c.intervalUnit,
+      notes: c.notes,
+      createdBy: c.userId,
+    })
+    .returning({ id: vaccinationCourses.id });
+  for (const [i, date] of dates.entries()) {
+    const [charge] = await tx
+      .insert(patientCharges)
+      .values({
+        organisationId: c.orgId,
+        patientId: c.patientId,
+        sourceType: "vaccine",
+        chargeDate: date,
+        description: c.doseCount > 1 ? `${c.vaccine.name} — dose ${i + 1} of ${c.doseCount}` : c.vaccine.name,
+        unitPrice: c.vaccine.price,
+        taxCode: c.vaccine.taxCode,
+        createdBy: c.userId,
+      })
+      .returning({ id: patientCharges.id });
+    await tx.insert(vaccinationDoses).values({
+      organisationId: c.orgId,
+      courseId: course.id,
+      patientId: c.patientId,
+      doseNumber: i + 1,
+      scheduledDate: date,
+      chargeId: charge.id,
+    });
+  }
+  return { courseId: course.id, dates };
+}
+
 /** "overdue" is a scheduled dose whose date has passed. */
 export function displayStatus(status: string, scheduledDate: string, today = todayInLagos()): string {
   return status === "scheduled" && scheduledDate < today ? "overdue" : status;
@@ -101,7 +164,12 @@ export interface DoseView {
   site: string | null;
   notes: string | null;
   chargeId: number | null;
+  /** What the patient pays for the dose (the co-pay when their HMO covers it). */
   amount: number | null;
+  /** The HMO's share, when the dose is on their HMO's tariff and covered. */
+  hmoAmount: number;
+  hmoName: string | null;
+  pricingBasis: PricingBasis | null;
   paymentStatus: string | null;
 }
 
@@ -175,6 +243,7 @@ export async function getPatientVaccinations(orgId: number, patientId: number): 
         .where(and(inArray(patientCharges.id, chargeIds), isNull(patientCharges.deletedAt)))
     : [];
   const chargeById = new Map(charges.map((c) => [c.id, c]));
+  const priced = await priceBillItems(orgId, charges.map((c) => ({ itemType: "charge" as const, itemId: c.id })));
 
   const today = todayInLagos();
   const dosesByCourse = new Map<number, DoseView[]>();
@@ -193,7 +262,10 @@ export async function getPatientVaccinations(orgId: number, patientId: number): 
       site: d.site,
       notes: d.notes,
       chargeId: charge ? d.chargeId : null,
-      amount: charge ? charge.unitPrice * charge.quantity : null,
+      amount: charge ? (priced.get(itemKey("charge", charge.id))?.patientAmount ?? charge.unitPrice * charge.quantity) : null,
+      hmoAmount: charge ? (priced.get(itemKey("charge", charge.id))?.hmoAmount ?? 0) : 0,
+      hmoName: charge && priced.get(itemKey("charge", charge.id))?.basis === "covered" ? (priced.get(itemKey("charge", charge.id))?.hmoName ?? null) : null,
+      pricingBasis: charge ? (priced.get(itemKey("charge", charge.id))?.basis ?? null) : null,
       paymentStatus: charge?.paymentStatus ?? null,
     });
     dosesByCourse.set(d.courseId, list);
@@ -204,4 +276,45 @@ export async function getPatientVaccinations(orgId: number, patientId: number): 
     period: describePeriod(c.doseCount, c.intervalValue, c.intervalUnit),
     doses: dosesByCourse.get(c.id) ?? [],
   }));
+}
+
+export interface CourseBilling {
+  /** Patient's share across the course's billed doses (co-pays for HMO-covered doses). */
+  total: number;
+  /** Patient's share still unpaid. */
+  outstanding: number;
+  /** Patient's share written off. */
+  waived: number;
+  /** What the HMO pays across the course. */
+  hmoAmount: number;
+  hmoName: string | null;
+}
+
+/**
+ * Per-course money for the worklist and Finance → Vaccinations, priced the
+ * same way as checkout (HMO tariff + co-pay when covered, else self-pay).
+ * Cancelled doses and voided charges are left out.
+ */
+export async function priceCourses(orgId: number, courseIds: number[]): Promise<Map<number, CourseBilling>> {
+  const result = new Map<number, CourseBilling>();
+  if (courseIds.length === 0) return result;
+  const rows = await db
+    .select({ courseId: vaccinationDoses.courseId, chargeId: patientCharges.id, paymentStatus: patientCharges.paymentStatus })
+    .from(vaccinationDoses)
+    .innerJoin(patientCharges, and(eq(vaccinationDoses.chargeId, patientCharges.id), isNull(patientCharges.deletedAt)))
+    .where(and(eq(vaccinationDoses.organisationId, orgId), inArray(vaccinationDoses.courseId, courseIds), sql`${vaccinationDoses.status} <> 'cancelled'`));
+  const priced = await priceBillItems(orgId, rows.map((r) => ({ itemType: "charge" as const, itemId: r.chargeId })));
+  for (const r of rows) {
+    const p = priced.get(itemKey("charge", r.chargeId));
+    const b = result.get(r.courseId) ?? { total: 0, outstanding: 0, waived: 0, hmoAmount: 0, hmoName: null };
+    b.total += p?.patientAmount ?? 0;
+    if (r.paymentStatus === "not_paid") b.outstanding += p?.patientAmount ?? 0;
+    if (r.paymentStatus === "waived") b.waived += p?.patientAmount ?? 0;
+    if (p?.basis === "covered") {
+      b.hmoAmount += p.hmoAmount;
+      b.hmoName = p.hmoName;
+    }
+    result.set(r.courseId, b);
+  }
+  return result;
 }

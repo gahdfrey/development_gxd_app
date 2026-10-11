@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { priceBillItems, itemKey } from "@/lib/billing/pricing";
 import { settleHmoItems } from "@/lib/billing/settle";
-import { prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
+import { getOpenShift, prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
 
 /**
  * PATCH /api/charges/[id] — finance actions on a bed-day / service charge:
@@ -30,8 +30,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (body.paymentStatus === "paid") {
       if (charge.paymentStatus !== "not_paid") return NextResponse.json({ error: "Already settled" }, { status: 409 });
-      const priced = await priceBillItems(orgId, [{ itemType: "charge", itemId: id }]);
-      const prep = await prepareDeskPayment(orgId, userId, body, priced.get(itemKey("charge", id))?.patientAmount ?? 0);
+      const [priced, shift] = await Promise.all([priceBillItems(orgId, [{ itemType: "charge", itemId: id }]), getOpenShift(db, orgId, userId)]);
+      const prep = await prepareDeskPayment(orgId, userId, body, priced.get(itemKey("charge", id))?.patientAmount ?? 0, shift);
       if ("error" in prep) return NextResponse.json({ error: prep.error, code: prep.code }, { status: prep.status });
       const settled = await db.transaction(async (tx) => {
         const [row] = await tx

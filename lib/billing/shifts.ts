@@ -41,22 +41,26 @@ export interface DeskPaymentInput {
 
 /**
  * Validates the desk-payment part of a "mark paid" request body and finds the
- * cashier's open shift. Only needed when the patient actually pays something
- * (an item fully billed to the HMO moves no money at the desk).
+ * cashier's open shift. Every desk settlement needs an open shift — even one
+ * where the patient pays nothing (an item fully billed to the HMO) — so each
+ * "mark paid" is tied to the cashier and shift that recorded it. How the
+ * patient paid (channel) is only asked for when money changes hands.
  */
 export async function prepareDeskPayment(
   orgId: number,
   userId: number,
   body: { channel?: unknown; posReference?: unknown },
   amount: number,
+  /** The open shift if already looked up (e.g. in parallel with pricing); omitted = look it up. */
+  openShift?: Awaited<ReturnType<typeof getOpenShift>>,
 ): Promise<{ desk: (DeskPaymentInput & { shiftId: number }) | null } | { error: string; status: number; code?: string }> {
+  const shift = openShift !== undefined ? openShift : await getOpenShift(db, orgId, userId);
+  if (!shift) {
+    return { error: "Open your cashier shift before recording payments", status: 409, code: "NO_OPEN_SHIFT" };
+  }
   if (amount <= 0) return { desk: null };
   if (!isDeskChannel(body.channel)) {
     return { error: "Choose how the patient paid: cash, POS or bank transfer", status: 400 };
-  }
-  const shift = await getOpenShift(db, orgId, userId);
-  if (!shift) {
-    return { error: "Open your cashier shift before taking payments", status: 409, code: "NO_OPEN_SHIFT" };
   }
   const posReference = typeof body.posReference === "string" && body.posReference.trim() ? body.posReference.trim().slice(0, 64) : null;
   return { desk: { channel: body.channel, posReference, shiftId: shift.id } };
