@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { supplyOrders, supplyOrderItems, products, departments, users } from "@/lib/db/schema";
-import { eq, and, inArray, ilike, sql } from "drizzle-orm";
+import { eq, and, inArray, ilike, sql, type SQL } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getOrgId } from "@/lib/org";
+import { hasAnyPermission, requirePermission } from "@/lib/authz";
+import { parseDateRangeParams } from "@/lib/dateRange";
+import { dateRangeCondition } from "@/lib/dateRangeQuery";
+import { ALL_DEPARTMENTS_PERMISSION } from "@/lib/supplyOrders";
 
 // Departments named after one of these categories may only order products in
 // that category, plus "general" (uncategorized/shared supplies). Departments
@@ -12,18 +16,33 @@ const RESTRICTED_CATEGORIES = ["pharmacy", "laboratory", "radiology"];
 
 export async function GET(request: NextRequest) {
   try {
-    const orgId = await getOrgId();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authz = await requirePermission([["orders", "view"], ["supply-orders", "view"]]);
+    if (authz.error) return authz.error;
+    const { ctx } = authz;
+    const orgId = ctx.orgId;
 
     const { searchParams } = new URL(request.url);
     const departmentId    = searchParams.get("departmentId");
     const departmentName  = searchParams.get("department");
     const departmentStatus = searchParams.get("departmentStatus");
     const supplyStatus    = searchParams.get("supplyStatus");
+    // Optional ?startDate=&endDate= (YYYY-MM-DD, inclusive) on the date raised.
+    const { range, error: rangeError } = parseDateRangeParams(searchParams);
+    if (rangeError) return NextResponse.json({ error: rangeError }, { status: 400 });
 
-    const conditions: any[] = [eq(supplyOrders.organisationId, orgId)];
-    if (departmentId)     conditions.push(eq(supplyOrders.departmentId, parseInt(departmentId)));
-    if (departmentName)   conditions.push(ilike(departments.name, departmentName));
+    const conditions: (SQL | undefined)[] = [eq(supplyOrders.organisationId, orgId), dateRangeCondition(supplyOrders.createdAt, range)];
+
+    // Role-based scope (lib/supplyOrders.ts): the supply team sees every
+    // department and may filter by one; everyone else is pinned to their own
+    // department whatever they ask for.
+    if (hasAnyPermission(ctx, [ALL_DEPARTMENTS_PERMISSION])) {
+      if (departmentId)   conditions.push(eq(supplyOrders.departmentId, parseInt(departmentId)));
+      if (departmentName) conditions.push(ilike(departments.name, departmentName));
+    } else {
+      const [me] = await db.select({ departmentId: users.departmentId }).from(users).where(eq(users.id, ctx.userId)).limit(1);
+      if (!me?.departmentId) return NextResponse.json([], { status: 200 });
+      conditions.push(eq(supplyOrders.departmentId, me.departmentId));
+    }
     if (departmentStatus) conditions.push(eq(supplyOrders.departmentStatus, departmentStatus));
     if (supplyStatus)     conditions.push(eq(supplyOrders.supplyStatus, supplyStatus));
 

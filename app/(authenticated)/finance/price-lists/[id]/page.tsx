@@ -11,7 +11,7 @@ import { useToast } from "@/app/contexts/ToastContext";
 import { ArrowLeftIcon, MagnifyingGlassIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { naira, PAYER_TYPE_LABEL } from "../../components/billing";
 
-type CatalogType = "lab_test" | "product" | "service" | "ward_bed";
+type CatalogType = "lab_test" | "product" | "service" | "ward_bed" | "vaccine";
 
 interface CatalogLine {
   itemType: CatalogType;
@@ -53,6 +53,7 @@ const CATALOG_LABEL: Record<CatalogType, string> = {
   product: "Product",
   service: "Service",
   ward_bed: "Bed charge per day",
+  vaccine: "Vaccine (per dose)",
 };
 
 const lineKey = (l: { itemType: CatalogType; itemId: number }) => `${l.itemType}:${l.itemId}`;
@@ -304,6 +305,7 @@ export default function PriceListEditorPage({ params }: { params: Promise<{ id: 
           <option value="product">Drugs & products</option>
           <option value="service">Services</option>
           <option value="ward_bed">Bed charges (per day)</option>
+          <option value="vaccine">Vaccines (per dose)</option>
         </select>
         <label className="inline-flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={onlyListed} onChange={(e) => setOnlyListed(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600" />

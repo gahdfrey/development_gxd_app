@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { priceBillItems, itemKey } from "@/lib/billing/pricing";
 import { settleHmoItems } from "@/lib/billing/settle";
-import { prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
+import { getOpenShift, prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
 
 export async function PATCH(
   req: NextRequest,
@@ -61,8 +61,11 @@ export async function PATCH(
 
       // HMO patients: the desk collects only the co-pay and the HMO's share
       // is recorded as a receivable, atomically with the status flip.
-      const priced = await priceBillItems(orgId, [{ itemType: "prescription", itemId: id }]);
-      const prep = await prepareDeskPayment(orgId, actorId, body, priced.get(itemKey("prescription", id))?.patientAmount ?? 0);
+      const [priced, shift] = await Promise.all([
+        priceBillItems(orgId, [{ itemType: "prescription", itemId: id }]),
+        getOpenShift(db, orgId, actorId),
+      ]);
+      const prep = await prepareDeskPayment(orgId, actorId, body, priced.get(itemKey("prescription", id))?.patientAmount ?? 0, shift);
       if ("error" in prep) return NextResponse.json({ error: prep.error, code: prep.code }, { status: prep.status });
       const updated = await db.transaction(async (tx) => {
         const [row] = await tx

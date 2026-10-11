@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { priceLists, priceListItems, hmos, labTests, products, serviceItems, wards } from "@/lib/db/schema";
+import { priceLists, priceListItems, hmos, labTests, products, serviceItems, wards, vaccines } from "@/lib/db/schema";
 import { and, eq, isNull, isNotNull, desc, sql } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         .returning();
 
       if (body.seed === "base_prices") {
-        const [tests, prods, svcs, wardRows] = await Promise.all([
+        const [tests, prods, svcs, wardRows, vaccineRows] = await Promise.all([
           tx.select({ id: labTests.id, price: labTests.price }).from(labTests)
             .where(and(eq(labTests.organisationId, orgId), isNull(labTests.deletedAt))),
           tx.select({ id: products.id, price: products.price }).from(products)
@@ -91,12 +91,15 @@ export async function POST(request: NextRequest) {
             .where(and(eq(serviceItems.organisationId, orgId), isNull(serviceItems.deletedAt))),
           tx.select({ id: wards.id, price: wards.dailyRate }).from(wards)
             .where(and(eq(wards.organisationId, orgId), isNull(wards.deletedAt), isNotNull(wards.dailyRate))),
+          tx.select({ id: vaccines.id, price: vaccines.price }).from(vaccines)
+            .where(and(eq(vaccines.organisationId, orgId), isNull(vaccines.deletedAt))),
         ]);
         const lines = [
           ...tests.map((t) => ({ itemType: "lab_test", itemId: t.id, price: t.price })),
           ...prods.map((p) => ({ itemType: "product", itemId: p.id, price: p.price })),
           ...svcs.map((s) => ({ itemType: "service", itemId: s.id, price: s.price })),
           ...wardRows.map((w) => ({ itemType: "ward_bed", itemId: w.id, price: w.price ?? 0 })),
+          ...vaccineRows.map((v) => ({ itemType: "vaccine", itemId: v.id, price: v.price })),
         ];
         if (lines.length > 0) {
           await tx.insert(priceListItems).values(

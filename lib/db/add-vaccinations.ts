@@ -94,6 +94,7 @@ async function migrate() {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS vaccination_doses_course_idx ON vaccination_doses (course_id)`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS vaccination_doses_patient_idx ON vaccination_doses (patient_id)`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS vaccination_doses_org_date_idx ON vaccination_doses (organisation_id, scheduled_date)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS vaccination_doses_charge_idx ON vaccination_doses (charge_id)`);
 
   console.log("Backfilling the vaccination permission onto roles...");
   const allRoles = await db

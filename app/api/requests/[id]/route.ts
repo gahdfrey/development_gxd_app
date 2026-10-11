@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { priceBillItems, itemKey } from "@/lib/billing/pricing";
 import { settleHmoItems } from "@/lib/billing/settle";
-import { prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
+import { getOpenShift, prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
 
 export async function PATCH(
   request: NextRequest,
@@ -37,11 +37,12 @@ export async function PATCH(
 
     const orgFilter = and(eq(requests.id, id), eq(requests.organisationId, orgId));
 
-    const [existing] = await db
-      .select({ paymentStatus: requests.paymentStatus })
-      .from(requests)
-      .where(orgFilter)
-      .limit(1);
+    // The request, its price and the cashier's open shift, in parallel.
+    const [[existing], priced, shift] = await Promise.all([
+      db.select({ paymentStatus: requests.paymentStatus }).from(requests).where(orgFilter).limit(1),
+      priceBillItems(orgId, [{ itemType: "request", itemId: id }]),
+      getOpenShift(db, orgId, actorId),
+    ]);
 
     if (!existing) {
       return NextResponse.json({ error: "Request not found" }, { status: 404 });
@@ -57,8 +58,7 @@ export async function PATCH(
     // For HMO patients the desk only collects the co-pay; the HMO's share is
     // recorded as a receivable in the same transaction as the status flip.
     // Money the patient hands over is recorded against the cashier's open shift.
-    const priced = await priceBillItems(orgId, [{ itemType: "request", itemId: id }]);
-    const prep = await prepareDeskPayment(orgId, actorId, body, priced.get(itemKey("request", id))?.patientAmount ?? 0);
+    const prep = await prepareDeskPayment(orgId, actorId, body, priced.get(itemKey("request", id))?.patientAmount ?? 0, shift);
     if ("error" in prep) return NextResponse.json({ error: prep.error, code: prep.code }, { status: prep.status });
     const updated = await db.transaction(async (tx) => {
       const [row] = await tx

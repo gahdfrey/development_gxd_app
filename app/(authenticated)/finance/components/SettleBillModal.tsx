@@ -49,7 +49,9 @@ export default function SettleBillModal({ target, isSubmitting, onClose, onConfi
   const authorization = billing?.authorization ?? null;
   const authExpired = authorization?.status === "approved" && !!authorization.validUntil && authorization.validUntil < todayInLagos();
   const takesMoney = collect > 0;
-  const deskBlocked = takesMoney && (!shift || !channel);
+  // Every settlement is recorded against the cashier's open shift; the
+  // payment method is only needed when money changes hands.
+  const deskBlocked = !shift || (takesMoney && !channel);
 
   return (
     <Modal isOpen={target !== null} onClose={onClose} title="Confirm payment">
@@ -199,15 +201,14 @@ export default function SettleBillModal({ target, isSubmitting, onClose, onConfi
             </div>
           ) : null}
 
-          {takesMoney && (
-            shiftLoading ? null : !shift ? (
+          {shiftLoading ? null : !shift ? (
               <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                 <p className="text-sm text-amber-800">
-                  You don&apos;t have an open cashier shift. Open one to take this payment.
+                  You don&apos;t have an open cashier shift. Open one to record this payment.
                 </p>
                 <OpenShiftForm compact onOpened={() => mutateShift()} />
               </div>
-            ) : (
+            ) : takesMoney && (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">How did the patient pay?</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -238,7 +239,7 @@ export default function SettleBillModal({ target, isSubmitting, onClose, onConfi
                 )}
               </div>
             )
-          )}
+          }
 
           <div className="flex justify-end gap-3">
             <button

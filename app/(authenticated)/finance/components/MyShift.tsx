@@ -33,6 +33,12 @@ const toAmount = (v: string) => {
   return v.trim() !== "" && Number.isInteger(n) && n >= 0 ? n : null;
 };
 
+/** Formats a Naira amount as it's typed — "150000" → "150,000". Digits only. */
+const withCommas = (v: string) => {
+  const digits = v.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  return digits === "" ? "" : Number(digits).toLocaleString("en-NG");
+};
+
 const inputCls = "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 /** Opening float + "Open shift". Used on the card and inside the settle modal. */
@@ -61,7 +67,7 @@ export function OpenShiftForm({ onOpened, compact = false }: { onOpened: () => v
     <div className={compact ? "space-y-2" : "space-y-3"}>
       <label className="block text-sm font-medium text-gray-700">
         Opening float <span className="font-normal text-gray-400">(cash in the drawer now, ₦)</span>
-        <input value={float} onChange={(e) => setFloat(e.target.value)} inputMode="numeric" className={`mt-1 ${inputCls}`} />
+        <input value={float} onChange={(e) => setFloat(withCommas(e.target.value))} inputMode="numeric" placeholder="e.g. 20,000" className={`mt-1 ${inputCls}`} />
       </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button
@@ -248,7 +254,7 @@ export function CloseShiftModal({
                   <td className="px-3 py-2">
                     <input
                       value={counted[r.key]}
-                      onChange={(e) => setCounted({ ...counted, [r.key]: e.target.value })}
+                      onChange={(e) => setCounted({ ...counted, [r.key]: withCommas(e.target.value) })}
                       inputMode="numeric"
                       aria-label={`Counted ${r.label}`}
                       className="w-28 rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

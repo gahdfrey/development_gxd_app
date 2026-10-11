@@ -178,10 +178,13 @@ export default function FinancePage() {
         },
       );
       if (res.ok) {
+        // Show the row as paid straight away, then re-fetch in the background.
+        const markPaid = <T extends { id: number; paymentStatus: string }>(rows: T[] | undefined) =>
+          rows?.map((r) => (r.id === itemId ? { ...r, paymentStatus: "paid" } : r));
+        if (itemType === "request") mutatReqs(markPaid, { revalidate: true });
+        else mutatePrescrip(markPaid, { revalidate: true });
         globalMutate(CURRENT_SHIFT_KEY);
         mutatePayments();
-        if (itemType === "request") mutatReqs();
-        else mutatePrescrip();
         setSettleTarget(null);
       } else {
         const body = await res.json();

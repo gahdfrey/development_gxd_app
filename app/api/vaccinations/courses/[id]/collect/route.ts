@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { priceBillItems } from "@/lib/billing/pricing";
 import { settleHmoItems } from "@/lib/billing/settle";
-import { prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
+import { getOpenShift, prepareDeskPayment, recordDeskPayment } from "@/lib/billing/shifts";
 import { findInFlightPaymentConflicts } from "@/lib/payments/guard";
 
 class SettleConflict extends Error {}
@@ -24,33 +24,33 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const courseId = parseInt((await params).id);
     const body = await request.json();
 
-    const [course] = await db
-      .select({ id: vaccinationCourses.id, patientId: vaccinationCourses.patientId })
-      .from(vaccinationCourses)
-      .where(and(eq(vaccinationCourses.id, courseId), eq(vaccinationCourses.organisationId, orgId)))
-      .limit(1);
-    if (!course) return NextResponse.json({ error: "Vaccination not found" }, { status: 404 });
-
-    const unpaid = await db
-      .select({ chargeId: patientCharges.id })
-      .from(vaccinationDoses)
-      .innerJoin(patientCharges, eq(vaccinationDoses.chargeId, patientCharges.id))
-      .where(and(
-        eq(vaccinationDoses.courseId, courseId),
-        ne(vaccinationDoses.status, "cancelled"),
-        eq(patientCharges.paymentStatus, "not_paid"),
-        isNull(patientCharges.deletedAt),
-      ));
+    // The course's unpaid doses (org-scoped through the course) and the
+    // cashier's open shift, in parallel.
+    const [unpaid, shift] = await Promise.all([
+      db
+        .select({ chargeId: patientCharges.id })
+        .from(vaccinationCourses)
+        .innerJoin(vaccinationDoses, eq(vaccinationDoses.courseId, vaccinationCourses.id))
+        .innerJoin(patientCharges, eq(vaccinationDoses.chargeId, patientCharges.id))
+        .where(and(
+          eq(vaccinationCourses.id, courseId),
+          eq(vaccinationCourses.organisationId, orgId),
+          ne(vaccinationDoses.status, "cancelled"),
+          eq(patientCharges.paymentStatus, "not_paid"),
+          isNull(patientCharges.deletedAt),
+        )),
+      getOpenShift(db, orgId, userId),
+    ]);
     const chargeIds = unpaid.map((u) => u.chargeId);
     if (chargeIds.length === 0) return NextResponse.json({ error: "Nothing left to pay on this vaccination" }, { status: 409 });
 
     const refs = chargeIds.map((id) => ({ itemType: "charge" as const, itemId: id }));
-    if ((await findInFlightPaymentConflicts(refs)).length > 0) {
+    const [conflicts, priced] = await Promise.all([findInFlightPaymentConflicts(refs), priceBillItems(orgId, refs)]);
+    if (conflicts.length > 0) {
       return NextResponse.json({ error: "The patient has a payment in progress for one of these doses — try again once it settles" }, { status: 409 });
     }
-    const priced = await priceBillItems(orgId, refs);
     const amount = [...priced.values()].reduce((s, p) => s + p.patientAmount, 0);
-    const prep = await prepareDeskPayment(orgId, userId, body, amount);
+    const prep = await prepareDeskPayment(orgId, userId, body, amount, shift);
     if ("error" in prep) return NextResponse.json({ error: prep.error, code: prep.code }, { status: prep.status });
 
     const settled = await db.transaction(async (tx) => {

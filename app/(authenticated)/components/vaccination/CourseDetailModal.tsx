@@ -105,10 +105,31 @@ export default function CourseDetailModal({
           });
       const body = await res.json();
       if (!res.ok) return showToast(body.error || "Failed to record payment", "error");
+      // Show the dose(s) as paid straight away, then re-fetch.
+      const paidCharge = settleAll ? null : settleTarget.itemId;
+      mutate(
+        (current) =>
+          current && {
+            ...current,
+            courses: current.courses.map((c) =>
+              c.id !== summary?.courseId
+                ? c
+                : {
+                    ...c,
+                    doses: c.doses.map((d) =>
+                      d.paymentStatus === "not_paid" && d.status !== "cancelled" && (paidCharge == null || d.chargeId === paidCharge)
+                        ? { ...d, paymentStatus: "paid" }
+                        : d,
+                    ),
+                  },
+            ),
+          },
+        { revalidate: true },
+      );
+      onChanged();
       globalMutate(CURRENT_SHIFT_KEY);
       setSettleTarget(null);
       showToast("Payment recorded", "success");
-      refresh();
     } finally {
       setSettling(false);
     }
@@ -152,7 +173,7 @@ export default function CourseDetailModal({
                 </p>
                 {canCollect && unpaid.length > 1 && (
                   <button onClick={collectAll} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
-                    Collect all
+                    Mark all as paid
                   </button>
                 )}
               </div>

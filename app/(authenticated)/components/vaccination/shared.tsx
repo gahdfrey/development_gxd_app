@@ -15,7 +15,11 @@ export interface Dose {
   site: string | null;
   notes: string | null;
   chargeId: number | null;
+  /** Patient's share (the co-pay when their HMO covers the dose). */
   amount: number | null;
+  hmoAmount: number;
+  hmoName: string | null;
+  pricingBasis: string | null;
   paymentStatus: string | null; // not_paid | paid | waived
 }
 

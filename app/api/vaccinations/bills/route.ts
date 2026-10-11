@@ -3,12 +3,13 @@ import { db } from "@/lib/db";
 import { patientCharges, patients, vaccinationCourses, vaccinationDoses, vaccines } from "@/lib/db/schema";
 import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
-import { describePeriod } from "@/lib/vaccination";
+import { describePeriod, priceCourses } from "@/lib/vaccination";
 
 /**
  * GET /api/vaccinations/bills?status=unpaid|paid|all&search= — Finance →
  * Vaccinations: one row per vaccination course with what it costs, what's
- * been paid and what's outstanding (cancelled doses excluded).
+ * been paid and what's outstanding (cancelled doses excluded). Amounts are the
+ * patient's share; HMO-covered doses show what the HMO pays separately.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -45,9 +46,7 @@ export async function GET(request: NextRequest) {
         vaccineName: vaccines.name,
         billedDoses: sql<number>`count(*) filter (where ${billed})`.mapWith(Number),
         paidDoses: sql<number>`count(*) filter (where ${billed} and ${c.paymentStatus} = 'paid')`.mapWith(Number),
-        waived: sql<number>`coalesce(sum(${amount}) filter (where ${billed} and ${c.paymentStatus} = 'waived'), 0)`.mapWith(Number),
-        total: total.mapWith(Number),
-        outstanding: outstanding.mapWith(Number),
+        unpaidDoses: sql<number>`count(*) filter (where ${billed} and ${c.paymentStatus} = 'not_paid')`.mapWith(Number),
       })
       .from(vaccinationCourses)
       .innerJoin(vaccines, eq(vaccinationCourses.vaccineId, vaccines.id))
@@ -84,8 +83,13 @@ export async function GET(request: NextRequest) {
       .innerJoin(patients, eq(d.patientId, patients.id))
       .where(and(eq(d.organisationId, orgId), sql`${d.status} <> 'cancelled'`, eq(c.paymentStatus, "not_paid"), isNull(patients.deletedAt)));
 
+    // Money is priced like checkout (HMO tariff + co-pay when covered).
+    const billing = await priceCourses(orgId, rows.map((r) => r.courseId));
     return NextResponse.json({
-      courses: rows.map((r) => ({ ...r, paid: r.total - r.outstanding - r.waived, period: describePeriod(r.doseCount, r.intervalValue, r.intervalUnit) })),
+      courses: rows.map((r) => {
+        const b = billing.get(r.courseId) ?? { total: 0, outstanding: 0, waived: 0, hmoAmount: 0, hmoName: null };
+        return { ...r, ...b, paid: b.total - b.outstanding - b.waived, period: describePeriod(r.doseCount, r.intervalValue, r.intervalUnit) };
+      }),
       unpaidCourses,
     });
   } catch (error) {
