@@ -1,4 +1,6 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- result images are uploaded files served from
+   blob storage with unknown sizes, which next/image can't optimise. */
 
 import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -502,7 +504,6 @@ function RequestCard({
   const values = request.values ?? [];
   const hasResults = request.results.length > 0 || values.length > 0;
   const abnormal = values.filter((v) => v.flag !== "normal").length;
-  const critical = values.some((v) => v.flag.startsWith("critical"));
   const unviewedCount = request.results.filter((r) => r.viewedAt == null).length;
 
   return (

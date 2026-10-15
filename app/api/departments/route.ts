@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(newDepartment, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating department:", error);
     if (getPgErrorCode(error) === "23505") return NextResponse.json({ error: "A department with this name already exists" }, { status: 409 });
     return NextResponse.json({ error: "Failed to create department" }, { status: 500 });

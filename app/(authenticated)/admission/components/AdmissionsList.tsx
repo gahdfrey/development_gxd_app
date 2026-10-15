@@ -46,6 +46,8 @@ const TYPE_BADGE: Record<string, string> = {
   "transfer-in": "bg-purple-100 text-purple-700",
 };
 
+const columnHelper = createColumnHelper<AdmissionRecord>();
+
 export default function AdmissionsList() {
   const [statusFilter, setStatusFilter] = useState("admitted");
   const [isAdmitModalOpen, setIsAdmitModalOpen] = useState(false);
@@ -62,7 +64,6 @@ export default function AdmissionsList() {
   const { data: wardMeds } = useSWR<{ admissionId: number; dueNow: number; overdue: number }[]>("/api/emar/ward", fetcher, { refreshInterval: 120_000 });
   const medsByAdmission = useMemo(() => new Map((wardMeds ?? []).map((m) => [m.admissionId, m])), [wardMeds]);
 
-  const columnHelper = createColumnHelper<AdmissionRecord>();
 
   const columns = useMemo(
     () => [

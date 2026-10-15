@@ -40,7 +40,7 @@ async function migratePermissions() {
     for (const role of allRoles) {
       console.log(`\nMigrating role: ${role.name} (ID: ${role.id})`);
 
-      const oldPermissions = role.permissions as any;
+      const oldPermissions = role.permissions as Record<string, unknown> | null;
       const newPermissions = { ...DEFAULT_PERMISSIONS };
 
       // Convert old array-based permissions to new object format

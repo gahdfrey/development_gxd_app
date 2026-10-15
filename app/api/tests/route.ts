@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isTaxCode, DEFAULT_TAX_CODE } from "@/lib/billing/tax";
+import { parseRefDiscount } from "@/lib/referrals";
 import { db } from "@/lib/db";
 import { labTests, departments } from "@/lib/db/schema";
 import { eq, asc, and, isNull } from "drizzle-orm";
@@ -22,6 +23,8 @@ export async function GET() {
         taxCode: labTests.taxCode,
         departmentId: labTests.departmentId,
         departmentName: departments.name,
+        refDiscountType: labTests.refDiscountType,
+        refDiscountValue: labTests.refDiscountValue,
         createdAt: labTests.createdAt,
         updatedAt: labTests.updatedAt,
       })
@@ -46,6 +49,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, price, departmentId, taxCode } = body;
     if (taxCode !== undefined && !isTaxCode(taxCode)) return NextResponse.json({ error: "Invalid tax code" }, { status: 400 });
+    const refDiscount = parseRefDiscount(body.refDiscountType, body.refDiscountValue);
+    if (refDiscount.error) return NextResponse.json({ error: refDiscount.error }, { status: 400 });
 
     if (!name?.trim()) return NextResponse.json({ error: "Test name is required" }, { status: 400 });
     if (!departmentId || isNaN(parseInt(departmentId))) return NextResponse.json({ error: "A valid department is required" }, { status: 400 });
@@ -55,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const [newTest] = await db
       .insert(labTests)
-      .values({ organisationId: orgId, name: name.trim(), price: parsedPrice, departmentId: parseInt(departmentId), taxCode: taxCode ?? DEFAULT_TAX_CODE })
+      .values({ organisationId: orgId, name: name.trim(), price: parsedPrice, departmentId: parseInt(departmentId), taxCode: taxCode ?? DEFAULT_TAX_CODE, ...refDiscount.data })
       .returning();
 
     void logAudit({
@@ -65,11 +70,11 @@ export async function POST(request: NextRequest) {
       action: "create",
       entityType: "lab_test",
       entityId: newTest.id,
-      details: { name: newTest.name, price: newTest.price, departmentId: newTest.departmentId },
+      details: { name: newTest.name, price: newTest.price, departmentId: newTest.departmentId, refDiscountType: newTest.refDiscountType, refDiscountValue: newTest.refDiscountValue },
     });
 
     return NextResponse.json(newTest, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating test:", error);
     if (getPgErrorCode(error) === "23503") return NextResponse.json({ error: "Selected department does not exist" }, { status: 400 });
     return NextResponse.json({ error: "Failed to create test" }, { status: 500 });

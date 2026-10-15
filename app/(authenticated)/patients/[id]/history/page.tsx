@@ -1,4 +1,6 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- result images are uploaded files served from
+   blob storage with unknown sizes, which next/image can't optimise. */
 
 import { use, useMemo, useState } from "react";
 import Link from "next/link";

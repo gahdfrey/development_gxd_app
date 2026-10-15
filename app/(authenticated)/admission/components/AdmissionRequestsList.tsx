@@ -38,6 +38,8 @@ function waitingFor(since: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+const columnHelper = createColumnHelper<AdmissionRecord>();
+
 /**
  * The queue of admissions doctors have requested but that have no bed yet.
  * Most urgent first, then longest waiting.
@@ -62,7 +64,6 @@ export default function AdmissionRequestsList() {
     });
   }, [requests]);
 
-  const columnHelper = createColumnHelper<AdmissionRecord>();
 
   const columns = useMemo(
     () => [

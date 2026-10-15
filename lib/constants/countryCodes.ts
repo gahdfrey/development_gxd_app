@@ -96,7 +96,7 @@ export const COUNTRY_CODES: CountryCode[] = getCountries()
         flag: getFlagEmoji(isoCode),
         countryCode: isoCode,
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   })

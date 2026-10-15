@@ -134,9 +134,7 @@ export async function GET(
 
     // 4. All results for those requests
     const requestIds = requestRows.map((r) => r.id);
-    let resultRows: any[] = [];
-    if (requestIds.length > 0) {
-      const allResults = await db
+    const resultRows = requestIds.length === 0 ? [] : await db
         .select({
           id: requestResults.id,
           requestId: requestResults.requestId,
@@ -152,8 +150,6 @@ export async function GET(
         .from(requestResults)
         .leftJoin(users, eq(requestResults.uploadedBy, users.id))
         .where(inArray(requestResults.requestId, requestIds));
-      resultRows = allResults;
-    }
 
     // 5. Prescriptions for this patient
     const dispensedProduct = alias(products, "dispensed_product");

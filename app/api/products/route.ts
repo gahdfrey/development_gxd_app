@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isTaxCode, DEFAULT_TAX_CODE } from "@/lib/billing/tax";
 import { db } from "@/lib/db";
 import { products, drugGenerics } from "@/lib/db/schema";
-import { asc, ilike, eq, and, sql, isNull, gt } from "drizzle-orm";
+import { asc, ilike, eq, and, sql, isNull, gt, type SQL } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const genericId = searchParams.get("genericId");
     const inStock = searchParams.get("inStock");
 
-    const conditions: any[] = [eq(products.organisationId, orgId), isNull(products.deletedAt)];
+    const conditions: (SQL | undefined)[] = [eq(products.organisationId, orgId), isNull(products.deletedAt)];
     if (search) conditions.push(ilike(products.name, `%${search}%`));
     if (category && category !== "all") conditions.push(eq(products.category, category));
     if (prescribable === "true") conditions.push(eq(products.isPrescribable, true));

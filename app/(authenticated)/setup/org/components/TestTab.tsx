@@ -10,6 +10,9 @@ import Modal from "@/app/components/ui/Modal";
 import TestFormModal from "./TestFormModal";
 import TestParametersModal from "./TestParametersModal";
 import type { TestRow } from "./types";
+import { formatRefDiscount } from "@/lib/referrals";
+
+const columnHelper = createColumnHelper<TestRow>();
 
 export default function TestTab() {
   const { data: tests, error, mutate } = useSWR<TestRow[]>(
@@ -71,7 +74,6 @@ export default function TestTab() {
     }
   };
 
-  const columnHelper = createColumnHelper<TestRow>();
 
   const columns = useMemo(
     () => [
@@ -98,6 +100,14 @@ export default function TestTab() {
         cell: (info) => (
           <span className="font-medium text-gray-900">
             ₦{info.getValue().toLocaleString()}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("refDiscountValue", {
+        header: "Ref Discount",
+        cell: (info) => (
+          <span className="text-gray-700">
+            {formatRefDiscount(info.row.original.refDiscountType, info.getValue())}
           </span>
         ),
       }),

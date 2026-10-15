@@ -6,10 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
-import { userSchema, UserFormData, LICENSE_COUNCILS } from './schema';
+import { userSchema, UserFormData, NewUserPayload, LICENSE_COUNCILS } from './schema';
 
 interface CreateUserFormProps {
-    onSubmit: (data: any) => Promise<void>;
+    onSubmit: (data: NewUserPayload) => Promise<void>;
     onCancel: () => void;
 }
 
@@ -48,12 +48,12 @@ export default function CreateUserForm({ onSubmit, onCancel }: CreateUserFormPro
         }
 
         try {
-            const formattedData = {
+            const formattedData: NewUserPayload = {
                 ...data,
                 roleId: data.roleId ? parseInt(data.roleId) : null,
             };
             await onSubmit(formattedData);
-        } catch (err: any) {
+        } catch (err) {
             console.error(err);
         }
     };

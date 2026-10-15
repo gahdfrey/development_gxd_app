@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt(session.user.id);
     const { searchParams } = new URL(req.url);
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? parseInt(limitParam) : undefined;

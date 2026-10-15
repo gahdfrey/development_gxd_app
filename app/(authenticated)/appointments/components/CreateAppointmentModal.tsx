@@ -13,7 +13,6 @@ import {
   ClockIcon,
   DocumentTextIcon,
   UserIcon,
-  CheckCircleIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
@@ -407,7 +406,7 @@ export default function CreateAppointmentModal({
                 ) : (
                   <>
                     <p className="text-blue-700 font-medium mb-2">
-                      {selectedDoctor.label}'s existing appointments on{" "}
+                      {selectedDoctor.label}&apos;s existing appointments on{" "}
                       {appointmentDate}:
                     </p>
                     <ul className="space-y-1 text-blue-800">

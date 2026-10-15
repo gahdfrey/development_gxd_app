@@ -13,7 +13,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const patientId = (session.user as any).patientId;
+    const patientId = session.user.patientId;
     if (!patientId || typeof patientId !== "number") {
       return NextResponse.json({ error: "No patient profile linked to this account" }, { status: 403 });
     }

@@ -10,6 +10,8 @@ import Modal from "@/app/components/ui/Modal";
 import DepartmentFormModal from "./DepartmentFormModal";
 import type { Department } from "@/lib/db/schema";
 
+const columnHelper = createColumnHelper<Department>();
+
 export default function DepartmentTab() {
   const { data: departments, error, mutate } = useSWR<Department[]>(
     "/api/departments",
@@ -65,7 +67,6 @@ export default function DepartmentTab() {
     }
   };
 
-  const columnHelper = createColumnHelper<Department>();
 
   const columns = useMemo(
     () => [

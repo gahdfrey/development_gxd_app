@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { PlusIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -17,11 +17,9 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function WardsBedsTab() {
   const { data: wards, error: wardsError, mutate: mutateWards } = useSWR<Ward[]>("/api/wards", fetcher);
-  const [selectedWardId, setSelectedWardId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!selectedWardId && wards && wards.length > 0) setSelectedWardId(wards[0].id);
-  }, [wards, selectedWardId]);
+  const [pickedWardId, setPickedWardId] = useState<number | null>(null);
+  // Until a ward is picked (or after the picked one is deleted), show the first.
+  const selectedWardId = pickedWardId ?? wards?.[0]?.id ?? null;
 
   const { data: beds, mutate: mutateBeds } = useSWR<Bed[]>(
     selectedWardId ? `/api/beds?wardId=${selectedWardId}` : null,
@@ -40,7 +38,7 @@ export default function WardsBedsTab() {
     if (!deletingWard) return;
     const res = await fetch(`/api/wards/${deletingWard.id}`, { method: "DELETE" });
     if (res.ok) {
-      if (selectedWardId === deletingWard.id) setSelectedWardId(null);
+      if (selectedWardId === deletingWard.id) setPickedWardId(null);
       mutateWards();
       setDeletingWard(null);
     } else {
@@ -96,7 +94,7 @@ export default function WardsBedsTab() {
             {wards.map((w) => (
               <li key={w.id}>
                 <div
-                  onClick={() => setSelectedWardId(w.id)}
+                  onClick={() => setPickedWardId(w.id)}
                   className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
                     selectedWardId === w.id ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50 border border-transparent"
                   }`}

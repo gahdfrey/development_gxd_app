@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { roles } from "@/lib/db/schema";
-import { desc, eq, ilike, and, isNull } from "drizzle-orm";
+import { desc, eq, ilike, and, isNull, type SQL } from "drizzle-orm";
 import { requirePermission, requireAuth } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
-    const conditions: any[] = [eq(roles.organisationId, orgId), isNull(roles.deletedAt)];
+    const conditions: (SQL | undefined)[] = [eq(roles.organisationId, orgId), isNull(roles.deletedAt)];
     if (search?.trim()) conditions.push(ilike(roles.name, `%${search.trim()}%`));
 
     const allRoles = await db.select().from(roles).where(and(...conditions)).orderBy(desc(roles.createdAt));

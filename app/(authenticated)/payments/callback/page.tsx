@@ -15,14 +15,12 @@ type Status = "checking" | "success" | "failed";
 export default function PaymentCallbackPage() {
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");
-  const [status, setStatus] = useState<Status>("checking");
+  // No reference in the URL means there's nothing to verify.
+  const [status, setStatus] = useState<Status>(reference ? "checking" : "failed");
   const [amount, setAmount] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!reference) {
-      setStatus("failed");
-      return;
-    }
+    if (!reference) return;
     fetch(`/api/payments/verify?reference=${encodeURIComponent(reference)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -64,7 +62,7 @@ export default function PaymentCallbackPage() {
             </span>
             <h1 className="text-lg font-bold text-gray-900">Payment not confirmed</h1>
             <p className="text-sm text-gray-500">
-              We couldn't confirm this payment. If you were charged, it will
+              We couldn&apos;t confirm this payment. If you were charged, it will
               be reconciled automatically — please check back shortly.
             </p>
           </>

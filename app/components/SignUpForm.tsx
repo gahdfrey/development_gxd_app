@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
@@ -125,7 +125,7 @@ export default function CustomSignUpForm() {
       | "confirmPassword"
     >
   ) => {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    return () => {
       clearErrors(field); // Clear error on change
     };
   };
@@ -136,7 +136,7 @@ export default function CustomSignUpForm() {
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
           Get Started
         </h1>
-        <p className="text-gray-500">Set up your organisation's account</p>
+        <p className="text-gray-500">Set up your organisation&apos;s account</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

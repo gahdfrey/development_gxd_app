@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryItems } from "@/lib/db/schema";
-import { asc, ilike, eq, and, isNull } from "drizzle-orm";
+import { asc, ilike, eq, and, isNull, type SQL } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
-    const conditions: any[] = [eq(inventoryItems.organisationId, orgId), isNull(inventoryItems.deletedAt)];
+    const conditions: (SQL | undefined)[] = [eq(inventoryItems.organisationId, orgId), isNull(inventoryItems.deletedAt)];
     if (search) conditions.push(ilike(inventoryItems.name, `%${search}%`));
 
     const rows = await db.select().from(inventoryItems)

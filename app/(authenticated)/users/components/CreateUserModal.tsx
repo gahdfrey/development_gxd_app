@@ -2,12 +2,12 @@
 
 import Modal from '@/app/components/ui/Modal';
 import CreateUserForm from './CreateUserForm';
-import { UserFormData } from './schema';
+import { NewUserPayload } from './schema';
 
 interface CreateUserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: UserFormData) => Promise<void>;
+  onSubmit: (data: NewUserPayload) => Promise<void>;
 }
 
 export default function CreateUserModal({ isOpen, onClose, onSubmit }: CreateUserModalProps) {

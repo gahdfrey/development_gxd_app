@@ -25,6 +25,8 @@ const EMPTY_FORM = {
   claimSubmissionDays: "",
 };
 
+const columnHelper = createColumnHelper<HMO>();
+
 export default function HMOSetupPage() {
   const { data: hmos, error, mutate } = useSWR<HMO[]>("/api/hmo", fetcher);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,7 +90,7 @@ export default function HMOSetupPage() {
 
       mutate();
       handleCloseModal();
-    } catch (error) {
+    } catch {
       setErrorMessage("Failed to save HMO");
     } finally {
       setIsSubmitting(false);
@@ -111,12 +113,11 @@ export default function HMOSetupPage() {
         const data = await response.json();
         alert(data.error || "Failed to delete HMO");
       }
-    } catch (error) {
+    } catch {
       alert("Failed to delete HMO");
     }
   };
 
-  const columnHelper = createColumnHelper<HMO>();
 
   const columns = useMemo(
     () => [

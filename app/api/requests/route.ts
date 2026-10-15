@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requests, patients, departments, labTests, users, requestResults } from "@/lib/db/schema";
-import { eq, desc, ilike, and, sql } from "drizzle-orm";
+import { requests, patients, departments, labTests, users } from "@/lib/db/schema";
+import { eq, desc, ilike, and, sql, type SQL } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const departmentFilter = searchParams.get("department");
 
-    const conditions: any[] = [eq(requests.organisationId, orgId)];
+    const conditions: (SQL | undefined)[] = [eq(requests.organisationId, orgId)];
     if (departmentFilter) conditions.push(ilike(departments.name, `%${departmentFilter}%`));
 
     const allRequests = await db
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     await raiseAuthorizationsForOrders(orgId, [{ itemType: "request", itemId: newRequest.id }], requestedBy);
 
     return NextResponse.json(newRequest, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating request:", error);
     if (getPgErrorCode(error) === "23503") return NextResponse.json({ error: "Invalid patient, department, or test reference" }, { status: 400 });
     return NextResponse.json({ error: "Failed to create request" }, { status: 500 });

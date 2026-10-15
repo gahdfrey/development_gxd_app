@@ -44,7 +44,7 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!(session?.user as any)?.isPlatformAdmin) {
+    if (!session?.user?.isPlatformAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

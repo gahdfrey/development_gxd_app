@@ -1,7 +1,6 @@
 
 import { db } from './lib/db';
-import { users, roles } from './lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { roles } from './lib/db/schema';
 
 async function verify() {
     console.log('Verifying roles...');
@@ -25,7 +24,7 @@ async function verify() {
             // Don't fail the script if server is not running, just warn
             console.warn('Make sure the dev server is running to test API.');
         }
-    } catch (e) {
+    } catch {
         console.warn('Could not connect to API. Is the server running?');
     }
 

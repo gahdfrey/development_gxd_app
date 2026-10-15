@@ -37,6 +37,27 @@ interface ViewPatientModalProps {
   onClose: () => void;
 }
 
+
+function InfoCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="h-4 w-4 text-blue-600" />
+        <p className="text-xs font-semibold text-gray-500 uppercase">{label}</p>
+      </div>
+      <p className="text-base font-semibold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
 export default function ViewPatientModal({
   patientId,
   onClose,
@@ -82,24 +103,6 @@ export default function ViewPatientModal({
       </div>
     );
   }
-
-  const InfoCard = ({
-    label,
-    value,
-    icon: Icon,
-  }: {
-    label: string;
-    value: string;
-    icon: any;
-  }) => (
-    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className="h-4 w-4 text-blue-600" />
-        <p className="text-xs font-semibold text-gray-500 uppercase">{label}</p>
-      </div>
-      <p className="text-base font-semibold text-gray-900">{value}</p>
-    </div>
-  );
 
   return (
     <div

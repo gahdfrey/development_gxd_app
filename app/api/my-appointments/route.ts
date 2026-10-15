@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { appointments, patients, hmos, prescriptions } from "@/lib/db/schema";
-import { desc, asc, eq, or, ilike, and, gte, lte, sql } from "drizzle-orm";
+import { appointments, patients, hmos } from "@/lib/db/schema";
+import { desc, asc, eq, or, ilike, and, gte, lte, sql, type SQL } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getOrgId } from "@/lib/org";
 
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    const conditions: any[] = [
+    const conditions: (SQL | undefined)[] = [
       eq(appointments.doctorId, doctorId),
       eq(appointments.organisationId, orgId),
     ];
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       conditions.push(or(ilike(patients.firstname, searchTerm), ilike(patients.lastname, searchTerm)));
     }
 
-    let queryBuilder = db
+    const queryBuilder = db
       .select({
         id: appointments.id,
         appointmentDate: appointments.appointmentDate,
@@ -75,7 +75,8 @@ export async function GET(request: Request) {
       .from(appointments)
       .leftJoin(patients, eq(appointments.patientId, patients.id))
       .leftJoin(hmos, eq(patients.hmoId, hmos.id))
-      .where(and(...conditions)) as any;
+      .where(and(...conditions))
+      .$dynamic();
 
     const doctorAppointments =
       orderBy === "asc"

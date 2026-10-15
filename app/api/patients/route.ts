@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { patients, users, roles, patientConsents, wallets, admissions, wards, beds } from "@/lib/db/schema";
-import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql } from "drizzle-orm";
+import { patients, users, roles, patientConsents, wallets, admissions, wards, beds, referrers, labTests, requests, patientReferrals } from "@/lib/db/schema";
+import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql, type SQL } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { applyRegistrationInsurance, hmoBelongsToOrg } from "@/lib/billing/coverage";
 import { findMatches } from "@/lib/mpi/candidates";
 import bcrypt from "bcryptjs";
+import { raiseAuthorizationsForOrders } from "@/lib/billing/authorizations";
+import { referralDiscount } from "@/lib/referrals";
 
 export async function GET(request: Request) {
   try {
@@ -20,7 +22,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    const conditions: any[] = [
+    const conditions: (SQL | undefined)[] = [
       eq(patients.organisationId, orgId),
       isNull(patients.deletedAt),
     ];
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
       ));
     }
 
-    let query = db.select({
+    const query = db.select({
       id: patients.id,
       mrn: patients.mrn,
       nin: patients.nin,
@@ -57,7 +59,7 @@ export async function GET(request: Request) {
       insuranceType: patients.insuranceType,
       createdAt: patients.createdAt,
       updatedAt: patients.updatedAt,
-    }).from(patients).where(and(...conditions)) as any;
+    }).from(patients).where(and(...conditions)).$dynamic();
 
     const allPatients =
       orderBy === "asc"
@@ -119,7 +121,7 @@ export async function POST(request: Request) {
       countryCode, phone, insuranceType, hmoId, policyNumber,
       nextOfKinFirstname, nextOfKinLastname, nextOfKinRelationship,
       nextOfKinAddress, nextOfKinPhone, nextOfKinEmail,
-      consentGiven, nin, allowDuplicate,
+      consentGiven, nin, allowDuplicate, referral,
     } = body;
 
     if (!firstname || !lastname || !gender || !dob || !countryCode || !phone || !insuranceType || !email?.trim()) {
@@ -175,6 +177,41 @@ export async function POST(request: Request) {
         { error: "NIN must be exactly 11 digits" },
         { status: 400 },
       );
+    }
+
+    // Referred patient: the referrer and the tests they were sent in for
+    // must belong to this organisation. Checked before anything is written.
+    let referrer: { id: number } | null = null;
+    let referredTests: { id: number; name: string; price: number; departmentId: number; refDiscountType: string | null; refDiscountValue: number | null }[] = [];
+    if (referral) {
+      const referrerId = parseInt(referral.referrerId);
+      const testIds: number[] = Array.isArray(referral.testIds)
+        ? [...new Set<number>(referral.testIds.map((t: unknown) => parseInt(String(t))).filter((t: number) => !isNaN(t)))]
+        : [];
+      if (isNaN(referrerId)) return NextResponse.json({ error: "Select who referred the patient" }, { status: 400 });
+      if (testIds.length === 0) return NextResponse.json({ error: "Select at least one test for the referred patient" }, { status: 400 });
+
+      [referrer] = await db
+        .select({ id: referrers.id })
+        .from(referrers)
+        .where(and(eq(referrers.id, referrerId), eq(referrers.organisationId, orgId), isNull(referrers.deletedAt)))
+        .limit(1);
+      if (!referrer) return NextResponse.json({ error: "Selected referrer was not found" }, { status: 400 });
+
+      referredTests = await db
+        .select({
+          id: labTests.id,
+          name: labTests.name,
+          price: labTests.price,
+          departmentId: labTests.departmentId,
+          refDiscountType: labTests.refDiscountType,
+          refDiscountValue: labTests.refDiscountValue,
+        })
+        .from(labTests)
+        .where(and(inArray(labTests.id, testIds), eq(labTests.organisationId, orgId), isNull(labTests.deletedAt)));
+      if (referredTests.length !== testIds.length) {
+        return NextResponse.json({ error: "One or more selected tests were not found" }, { status: 400 });
+      }
     }
 
     const activePatientInOrg = and(
@@ -257,6 +294,7 @@ export async function POST(request: Request) {
         nextOfKinAddress: nextOfKinAddress || null,
         nextOfKinPhone: nextOfKinPhone || null,
         nextOfKinEmail: nextOfKinEmail || null,
+        referrerId: referrer?.id ?? null,
       })
       .returning();
 
@@ -285,6 +323,55 @@ export async function POST(request: Request) {
       await db.insert(wallets).values({ organisationId: orgId, patientId: newPatient.id });
     } catch (walletErr) {
       console.warn("Could not create patient wallet:", walletErr);
+    }
+
+    // Referred tests: raise each as a normal lab/imaging request (so it is
+    // billed and worked like any other) and record what the referrer earns
+    // on it, snapshotting price and discount as they are today.
+    if (referrer && referredTests.length > 0) {
+      const referrerId = referrer.id;
+      const requestIds = await db.transaction(async (tx) => {
+        const created = await tx
+          .insert(requests)
+          .values(referredTests.map((t) => ({
+            organisationId: orgId,
+            patientId: newPatient.id,
+            departmentId: t.departmentId,
+            testId: t.id,
+            requestedBy: actorId,
+            status: "pending",
+            paymentStatus: "not_paid",
+          })))
+          .returning({ id: requests.id, testId: requests.testId });
+        const requestByTest = new Map(created.map((r) => [r.testId, r.id]));
+        await tx.insert(patientReferrals).values(referredTests.map((t) => ({
+          organisationId: orgId,
+          patientId: newPatient.id,
+          referrerId,
+          testId: t.id,
+          departmentId: t.departmentId,
+          requestId: requestByTest.get(t.id) ?? null,
+          testName: t.name,
+          amount: t.price,
+          discountType: t.refDiscountType,
+          discountValue: t.refDiscountValue,
+          discountAmount: referralDiscount(t.price, t.refDiscountType, t.refDiscountValue),
+          createdBy: actorId,
+        })));
+        return created.map((r) => r.id);
+      });
+
+      void logAudit({
+        organisationId: orgId,
+        userId: actorId,
+        userEmail: actorEmail,
+        action: "referral.create",
+        entityType: "patient",
+        entityId: newPatient.id,
+        details: { referrerId, testIds: referredTests.map((t) => t.id), requestIds },
+      });
+
+      await raiseAuthorizationsForOrders(orgId, requestIds.map((id) => ({ itemType: "request" as const, itemId: id })), actorId);
     }
 
     if (allowDuplicate === true) {

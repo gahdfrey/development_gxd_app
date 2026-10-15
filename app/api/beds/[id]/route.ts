@@ -65,7 +65,7 @@ export async function PUT(
     });
 
     return NextResponse.json(updated, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating bed:", error);
     if (getPgErrorCode(error) === "23505") return NextResponse.json({ error: "A bed with this number already exists in this ward" }, { status: 409 });
     return NextResponse.json({ error: "Failed to update bed" }, { status: 500 });

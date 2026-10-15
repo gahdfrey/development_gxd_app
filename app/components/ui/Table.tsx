@@ -14,6 +14,9 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 interface TableProps<T> {
   data: T[];
+  // Columns hold different value types (string, number, Date…); TanStack's
+  // ColumnDef is invariant in its value type, so a mixed list needs `any` here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<T, any>[];
   searchable?: boolean;
   searchPlaceholder?: string;
@@ -38,6 +41,9 @@ export default function Table<T>({
     return () => clearTimeout(timer);
   }, [searchQuery, searchable, onSearchChange]);
 
+  // TanStack Table's instance can't be memoised by the React Compiler; it
+  // skips this component, which is expected.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
@@ -49,9 +55,10 @@ export default function Table<T>({
     initialState: { pagination: { pageSize: 7 } },
   });
 
+  // Back to the first page whenever the rows change (e.g. a new filter).
   useEffect(() => {
     table.setPageIndex(0);
-  }, [data]);
+  }, [data, table]);
 
   return (
     <div className="flex flex-col gap-4">

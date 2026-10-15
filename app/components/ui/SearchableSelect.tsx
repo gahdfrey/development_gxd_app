@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 
 export interface SearchableSelectOption {
@@ -37,6 +37,7 @@ export default function SearchableSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const listboxId = useId();
 
   // Filter options based on query
   const filteredOptions =
@@ -45,6 +46,12 @@ export default function SearchableSelect({
       : options.filter((o) =>
           o.label.toLowerCase().includes(query.toLowerCase()),
         );
+
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setQuery("");
+    setHighlightedIndex(-1);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -58,7 +65,7 @@ export default function SearchableSelect({
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [close]);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -73,12 +80,6 @@ export default function SearchableSelect({
     setIsOpen(true);
     setHighlightedIndex(-1);
   };
-
-  const close = useCallback(() => {
-    setIsOpen(false);
-    setQuery("");
-    setHighlightedIndex(-1);
-  }, []);
 
   const handleSelect = (option: SearchableSelectOption) => {
     onChange(option);
@@ -167,6 +168,7 @@ export default function SearchableSelect({
             type="text"
             role="combobox"
             aria-expanded={isOpen}
+            aria-controls={listboxId}
             aria-autocomplete="list"
             autoComplete="off"
             disabled={disabled}
@@ -198,6 +200,7 @@ export default function SearchableSelect({
         {isOpen && (
           <ul
             ref={listRef}
+            id={listboxId}
             role="listbox"
             className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white py-1 text-sm shadow-lg ring-1 ring-black/10 focus:outline-none"
           >

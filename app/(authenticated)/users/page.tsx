@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { User } from "@/lib/db/schema";
-import { UserFormData } from "./components/schema";
+import { UserFormData, NewUserPayload } from "./components/schema";
 import Table from "@/app/components/ui/Table";
 import CreateUserModal from "./components/CreateUserModal";
 import EditUserModal from "./components/EditUserModal";
@@ -21,6 +21,8 @@ import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
 
 type UserWithRole = User & { roleName: string | null };
+
+const columnHelper = createColumnHelper<UserWithRole>();
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,7 +49,7 @@ export default function UsersPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleCreateUser = async (data: UserFormData) => {
+  const handleCreateUser = async (data: NewUserPayload) => {
     const response = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -110,7 +112,6 @@ export default function UsersPage() {
   const closeView = () => { setIsViewModalOpen(false); setSelectedUser(null); };
   const closeDelete = () => { setIsDeleteModalOpen(false); setSelectedUser(null); };
 
-  const columnHelper = createColumnHelper<UserWithRole>();
 
   const columns = useMemo(
     () => [

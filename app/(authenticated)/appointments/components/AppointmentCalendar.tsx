@@ -3,11 +3,12 @@
 import { useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, Event } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
+import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "./AppointmentCalendar.css";
 
 const locales = {
-  "en-US": require("date-fns/locale/en-US"),
+  "en-US": enUS,
 };
 
 const localizer = dateFnsLocalizer({
@@ -50,7 +51,6 @@ interface CalendarEvent extends Event {
 export default function AppointmentCalendar({
   appointments,
   onDateSelect,
-  selectedDate,
 }: AppointmentCalendarProps) {
   // State to track current date being displayed
   const [currentDate, setCurrentDate] = useState(new Date());

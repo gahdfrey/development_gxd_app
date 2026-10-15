@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { appointments, patients, users, roles } from "@/lib/db/schema";
-import { eq, and, or, isNotNull, asc, desc, ilike, gte, lte } from "drizzle-orm";
+import { eq, and, or, isNotNull, asc, desc, ilike, gte, lte, type SQL } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 
 export async function GET(request: Request) {
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status");
     const orderDate = searchParams.get("orderDate");
 
-    const conditions: any[] = [
+    const conditions: (SQL | undefined)[] = [
       isNotNull(appointments.id),
       eq(appointments.organisationId, orgId),
     ];

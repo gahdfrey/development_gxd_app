@@ -5,7 +5,6 @@ import { eq, and } from "drizzle-orm";
 
 async function fixDoctorId() {
   try {
-    const today = new Date().toISOString().split("T")[0]; // Get today's date
     const yesterdayDate = "2026-01-11"; // The date we created appointments for
 
     // Update all appointments from yesterday (2026-01-11) that have doctorId = 6 to doctorId = 11

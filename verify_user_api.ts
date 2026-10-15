@@ -1,6 +1,4 @@
 
-import { db } from './lib/db';
-import { users } from './lib/db/schema';
 
 async function verifyUserApi() {
     console.log('Verifying User API...');
@@ -25,7 +23,7 @@ async function verifyUserApi() {
         } else {
             console.error('API check failed:', res.status, res.statusText);
         }
-    } catch (e) {
+    } catch {
         console.warn('Could not connect to API. Is the server running?');
     }
     process.exit(0);

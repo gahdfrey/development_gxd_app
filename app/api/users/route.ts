@@ -19,7 +19,12 @@ export async function GET(request: Request) {
     const inOrg = eq(users.organisationId, orgId);
     const notDeleted = isNull(users.deletedAt);
 
-    let query = db
+    const searchTerm = search && search.trim() !== "" ? `%${search.trim()}%` : null;
+    const matchesSearch = searchTerm
+      ? or(ilike(users.firstname, searchTerm), ilike(users.lastname, searchTerm), ilike(users.email, searchTerm))
+      : undefined;
+
+    const allUsers = await db
       .select({
         id: users.id,
         username: users.username,
@@ -38,20 +43,9 @@ export async function GET(request: Request) {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .leftJoin(departments, eq(users.departmentId, departments.id));
-
-    if (search && search.trim() !== "") {
-      const searchTerm = `%${search.trim()}%`;
-      query = query.where(and(inOrg, notPatient, notDeleted, or(
-        ilike(users.firstname, searchTerm),
-        ilike(users.lastname, searchTerm),
-        ilike(users.email, searchTerm),
-      ))) as any;
-    } else {
-      query = query.where(and(inOrg, notPatient, notDeleted)) as any;
-    }
-
-    const allUsers = await query.orderBy(desc(users.createdAt));
+      .leftJoin(departments, eq(users.departmentId, departments.id))
+      .where(and(inOrg, notPatient, notDeleted, matchesSearch))
+      .orderBy(desc(users.createdAt));
     return NextResponse.json(allUsers);
   } catch (error) {
     console.error("Error fetching users:", error);

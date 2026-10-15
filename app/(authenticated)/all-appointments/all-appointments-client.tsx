@@ -1,7 +1,6 @@
 "use client";
 
 import {useMemo, useState, type ComponentType} from "react";
-import {Session} from "next-auth";
 import useSWR from "swr";
 import {fetcher} from "@/lib/fetcher";
 import PermissionDenied from "@/app/components/ui/PermissionDenied";
@@ -10,7 +9,6 @@ import {createColumnHelper} from "@tanstack/react-table";
 import {CalendarIcon, CheckCircleIcon, XCircleIcon, ExclamationCircleIcon} from "@heroicons/react/24/outline";
 import {usePatientFilters} from "@/lib/hooks/usePatientFilters";
 
-import Link from "next/link";
 import StatusAppointmentsModal from "./StatusAppointmentsModal";
 
 export interface AllAppointment {
@@ -24,10 +22,6 @@ export interface AllAppointment {
     appointmentTime: string;
     notes?: string;
     createdAt: string;
-}
-
-interface AllAppointmentsClientProps {
-    session: Session;
 }
 
 interface StatusConfig {
@@ -45,7 +39,10 @@ const STATUS_COLORS = {
     "no-show": "bg-yellow-100 text-yellow-800 border-yellow-300"
 };
 
-export default function AllAppointmentsClient({session} : AllAppointmentsClientProps) {
+
+const columnHelper = createColumnHelper<AllAppointment>();
+
+export default function AllAppointmentsClient() {
     const {filterState, setFilters, resetFilters, queryString} = usePatientFilters();
 
     const [selectedStatus, setSelectedStatus] = useState < string | null > (null);
@@ -62,7 +59,6 @@ export default function AllAppointmentsClient({session} : AllAppointmentsClientP
         isLoading
     } = useSWR < AllAppointment[] > (apiUrl, fetcher);
 
-    const columnHelper = createColumnHelper < AllAppointment > ();
 
     const columns = useMemo(() => [
         columnHelper.accessor("patientName", {
