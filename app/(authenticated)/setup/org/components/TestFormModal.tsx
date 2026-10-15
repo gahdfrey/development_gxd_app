@@ -36,6 +36,8 @@ export default function TestFormModal({
   const [testName, setTestName] = useState("");
   const [price, setPrice] = useState("");
   const [taxCode, setTaxCode] = useState<TaxCode>(DEFAULT_TAX_CODE);
+  const [refDiscountType, setRefDiscountType] = useState<"" | "amount" | "percent">("");
+  const [refDiscountValue, setRefDiscountValue] = useState("");
   const [selectedDept, setSelectedDept] =
     useState<SearchableSelectOption | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +50,8 @@ export default function TestFormModal({
         setTestName(editing.name);
         setPrice(String(editing.price));
         setTaxCode(editing.taxCode ?? DEFAULT_TAX_CODE);
+        setRefDiscountType(editing.refDiscountType ?? "");
+        setRefDiscountValue(editing.refDiscountValue != null ? String(editing.refDiscountValue) : "");
         setSelectedDept(
           deptOptions.find((o) => o.id === editing.departmentId) ?? null,
         );
@@ -55,6 +59,8 @@ export default function TestFormModal({
         setTestName("");
         setPrice("");
         setTaxCode(DEFAULT_TAX_CODE);
+        setRefDiscountType("");
+        setRefDiscountValue("");
         setSelectedDept(null);
       }
       setErrorMessage("");
@@ -93,6 +99,8 @@ export default function TestFormModal({
           price: parseInt(price),
           departmentId: selectedDept.id,
           taxCode,
+          refDiscountType: refDiscountType || null,
+          refDiscountValue: refDiscountType ? parseFloat(refDiscountValue) : null,
         }),
       });
 
@@ -192,6 +200,38 @@ export default function TestFormModal({
             ))}
           </select>
           <p className="mt-1 text-xs text-gray-500">Medical services are zero-rated under the Nigeria Tax Act 2025.</p>
+        </div>
+
+        <div>
+          <label htmlFor="test-ref-discount" className="block text-sm font-medium text-gray-700 mb-1">
+            Referral discount
+          </label>
+          <div className="flex gap-2">
+            <select
+              aria-label="Referral discount type"
+              value={refDiscountType}
+              onChange={(e) => setRefDiscountType(e.target.value as "" | "amount" | "percent")}
+              className="w-44 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">None</option>
+              <option value="amount">Amount (₦)</option>
+              <option value="percent">Percentage (%)</option>
+            </select>
+            <input
+              id="test-ref-discount"
+              type="number"
+              min={0}
+              max={refDiscountType === "percent" ? 100 : undefined}
+              step="any"
+              value={refDiscountValue}
+              onChange={(e) => setRefDiscountValue(e.target.value)}
+              required={refDiscountType !== ""}
+              disabled={refDiscountType === ""}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+              placeholder={refDiscountType === "percent" ? "e.g. 10" : refDiscountType === "amount" ? "e.g. 1000" : "No referral discount"}
+            />
+          </div>
+          <p className="mt-1 text-xs text-gray-500">What a referrer earns each time they refer a patient for this test.</p>
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

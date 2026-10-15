@@ -16,6 +16,7 @@ import {
 import FormSection from "./form/FormSection";
 import PatientDetailsFields from "./PatientDetailsFields";
 import NextOfKinFields from "./NextOfKinFields";
+import ReferralFields, { EMPTY_REFERRAL, type ReferralState } from "./ReferralFields";
 import type { PatientFormData } from "./patientForm";
 
 interface DuplicateMatch {
@@ -47,6 +48,8 @@ export default function CreatePatientModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[] | null>(null);
   const [pendingData, setPendingData] = useState<PatientFormData | null>(null);
+  const [referral, setReferral] = useState<ReferralState>(EMPTY_REFERRAL);
+  const [referralError, setReferralError] = useState("");
   const { showToast } = useToast();
 
   const {
@@ -103,13 +106,33 @@ export default function CreatePatientModal({
       }
     }
 
+    setReferralError("");
+    if (referral.referred) {
+      if (!referral.referrer) {
+        setReferralError("Select who referred the patient");
+        setIsSubmitting(false);
+        return;
+      }
+      if (referral.testIds.length === 0) {
+        setReferralError("Add at least one test the patient was referred for");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const response = await fetch("/api/patients", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ...data, allowDuplicate }),
+        body: JSON.stringify({
+          ...data,
+          allowDuplicate,
+          referral: referral.referred && referral.referrer
+            ? { referrerId: referral.referrer.id, testIds: referral.testIds }
+            : undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -138,6 +161,7 @@ export default function CreatePatientModal({
 
       // Close modal immediately and clean up
       reset();
+      setReferral(EMPTY_REFERRAL);
       onClose();
       onSuccess?.();
     } catch (error) {
@@ -155,6 +179,8 @@ export default function CreatePatientModal({
   const handleClose = () => {
     if (!isSubmitting) {
       reset();
+      setReferral(EMPTY_REFERRAL);
+      setReferralError("");
       setErrorMessage("");
       setDuplicateMatches(null);
       setPendingData(null);
@@ -240,6 +266,9 @@ export default function CreatePatientModal({
             >
               <NextOfKinFields register={register} errors={errors} />
             </FormSection>
+
+            {/* Referral: who sent the patient in, and for which tests */}
+            <ReferralFields value={referral} onChange={setReferral} error={referralError} />
 
             {/* Duplicate warning (NDHA: one patient, one health record) */}
             {duplicateMatches && duplicateMatches.length > 0 && (

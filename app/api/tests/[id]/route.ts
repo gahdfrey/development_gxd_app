@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isTaxCode } from "@/lib/billing/tax";
+import { parseRefDiscount } from "@/lib/referrals";
 import { db } from "@/lib/db";
 import { labTests } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -60,6 +61,10 @@ export async function PUT(
     if (taxCode !== undefined && !isTaxCode(taxCode)) {
       return NextResponse.json({ error: "Invalid tax code" }, { status: 400 });
     }
+    const refDiscount = parseRefDiscount(body.refDiscountType, body.refDiscountValue);
+    if (refDiscount.error) {
+      return NextResponse.json({ error: refDiscount.error }, { status: 400 });
+    }
 
     if (!name || name.trim() === "") {
       return NextResponse.json({ error: "Test name is required" }, { status: 400 });
@@ -81,6 +86,7 @@ export async function PUT(
         price: parsedPrice,
         departmentId: parseInt(departmentId),
         ...(taxCode !== undefined && { taxCode }),
+        ...(body.refDiscountType !== undefined && refDiscount.data),
         updatedAt: new Date(),
       })
       .where(and(eq(labTests.id, id), eq(labTests.organisationId, orgId), isNull(labTests.deletedAt)))
@@ -97,7 +103,7 @@ export async function PUT(
       action: "update",
       entityType: "lab_test",
       entityId: id,
-      details: { name: updated.name, price: updated.price, departmentId: updated.departmentId, taxCode: updated.taxCode },
+      details: { name: updated.name, price: updated.price, departmentId: updated.departmentId, taxCode: updated.taxCode, refDiscountType: updated.refDiscountType, refDiscountValue: updated.refDiscountValue },
     });
 
     return NextResponse.json(updated, { status: 200 });

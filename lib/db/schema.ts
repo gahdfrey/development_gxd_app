@@ -186,6 +186,9 @@ export const patients = pgTable("patients", {
   messagingOptOutAt: timestamp("messaging_opt_out_at", { withTimezone: true }),
   mergedIntoId: integer("merged_into_id"),
   mergedAt: timestamp("merged_at", { withTimezone: true }),
+  // The referrer who sent this patient in (Setup → Referrers); the referred
+  // tests and what the referrer earns on them live in patient_referrals.
+  referrerId: integer("referrer_id").references(() => referrers.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -243,6 +246,10 @@ export const labTests = pgTable("lab_tests", {
   // VAT treatment (lib/billing/tax.ts): "zero_rated" | "standard" | "exempt".
   taxCode: text("tax_code").notNull().default("zero_rated"),
   departmentId: integer("department_id").notNull().references(() => departments.id),
+  // What a referrer earns when they refer a patient for this test:
+  // "amount" (₦ off the price) or "percent" (% of the price). NULL = none.
+  refDiscountType: text("ref_discount_type"),
+  refDiscountValue: real("ref_discount_value"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -1760,3 +1767,56 @@ export const vaccinationDoses = pgTable("vaccination_doses", {
 }));
 
 export type VaccinationDose = typeof vaccinationDoses.$inferSelect;
+
+// ─── Referrers ────────────────────────────────────────────────────────────────
+// People or facilities that refer patients in for tests, and are paid a
+// discount per referred test (lab_tests.refDiscountType/Value). code is the
+// referrer's unique ID ("REF-00012"), assigned from the row id on insert.
+export const referrers = pgTable("referrers", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  code: text("code"),
+  name: text("name").notNull(),
+  accountName: text("account_name").notNull(),
+  accountNumber: text("account_number").notNull(),
+  bank: text("bank").notNull(),
+  whatsappNumber: text("whatsapp_number").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => ({
+  orgIdx: index("referrers_org_idx").on(t.organisationId),
+  codeUnique: uniqueIndex("referrers_code_idx").on(t.code),
+}));
+
+export type Referrer = typeof referrers.$inferSelect;
+export type NewReferrer = typeof referrers.$inferInsert;
+
+// ─── Patient Referrals ────────────────────────────────────────────────────────
+// One row per test a referred patient came in for. The test's price and the
+// referrer's discount are snapshotted at registration, so later price or
+// discount changes never alter what is already owed to a referrer.
+// requestId is the lab/imaging request raised for the test.
+export const patientReferrals = pgTable("patient_referrals", {
+  id: serial("id").primaryKey(),
+  organisationId: integer("organisation_id").notNull().references(() => organisations.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  referrerId: integer("referrer_id").notNull().references(() => referrers.id),
+  testId: integer("test_id").notNull().references(() => labTests.id),
+  departmentId: integer("department_id").notNull().references(() => departments.id),
+  requestId: integer("request_id").references(() => requests.id),
+  testName: text("test_name").notNull(),
+  amount: integer("amount").notNull(),
+  discountType: text("discount_type"), // "amount" | "percent" | null
+  discountValue: real("discount_value"),
+  discountAmount: integer("discount_amount").notNull().default(0),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => ({
+  referrerIdx: index("patient_referrals_referrer_idx").on(t.referrerId),
+  patientIdx: index("patient_referrals_patient_idx").on(t.patientId),
+}));
+
+export type PatientReferral = typeof patientReferrals.$inferSelect;
+export type NewPatientReferral = typeof patientReferrals.$inferInsert;

@@ -9,8 +9,9 @@ import DrugClassesTab from "./components/DrugClassesTab";
 import MessagingTab from "./components/MessagingTab";
 import ServiceItemsTab from "./components/ServiceItemsTab";
 import VaccinesTab from "./components/VaccinesTab";
+import ReferrersTab from "./components/ReferrersTab";
 
-type ActiveTab = "department" | "test" | "product" | "services" | "vaccines" | "drug-classes" | "billing" | "messaging";
+type ActiveTab = "department" | "test" | "product" | "services" | "vaccines" | "drug-classes" | "billing" | "messaging" | "referrers";
 
 const tabs: { key: ActiveTab; label: string }[] = [
   { key: "department", label: "Department" },
@@ -21,6 +22,7 @@ const tabs: { key: ActiveTab; label: string }[] = [
   { key: "drug-classes", label: "Drug Families" },
   { key: "billing", label: "Billing Plans" },
   { key: "messaging", label: "Messaging" },
+  { key: "referrers", label: "Referrers" },
 ];
 
 export default function OrgSetupPage() {
@@ -62,6 +64,7 @@ export default function OrgSetupPage() {
       {activeTab === "drug-classes" && <DrugClassesTab />}
       {activeTab === "billing" && <BillingPlansTab />}
       {activeTab === "messaging" && <MessagingTab />}
+      {activeTab === "referrers" && <ReferrersTab />}
     </div>
   );
 }
