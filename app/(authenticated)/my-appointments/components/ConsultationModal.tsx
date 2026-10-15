@@ -113,7 +113,7 @@ export default function ConsultationModal({
         body: JSON.stringify({
           appointmentId: appointment.id,
           patientId: appointment.patient.id,
-          doctorId: (session.user as any).id,
+          doctorId: session.user.id,
           doctorNotes,
           diagnoses,
           durationMinutes,

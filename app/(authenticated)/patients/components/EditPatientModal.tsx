@@ -15,26 +15,7 @@ import {
 import FormSection from "./form/FormSection";
 import PatientDetailsFields from "./PatientDetailsFields";
 import NextOfKinFields from "./NextOfKinFields";
-
-interface PatientFormData {
-  firstname: string;
-  lastname: string;
-  gender: string;
-  dob: string;
-  maidenName: string;
-  nin: string;
-  countryCode: string;
-  phone: string;
-  insuranceType: string;
-  hmoId?: string;
-  policyNumber?: string;
-  nextOfKinFirstname: string;
-  nextOfKinLastname: string;
-  nextOfKinRelationship: string;
-  nextOfKinAddress: string;
-  nextOfKinPhone: string;
-  nextOfKinEmail: string;
-}
+import type { PatientFormData } from "./patientForm";
 
 interface Patient {
   id: number;

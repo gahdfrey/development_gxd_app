@@ -57,6 +57,8 @@ interface DoctorAppointmentsTableProps {
   session: Session | null;
 }
 
+const columnHelper = createColumnHelper<Appointment>();
+
 export default function DoctorAppointmentsTable({
   appointments,
   session,
@@ -124,7 +126,6 @@ export default function DoctorAppointmentsTable({
     }
   };
 
-  const columnHelper = createColumnHelper<Appointment>();
 
   const columns = useMemo(
     () => [
@@ -327,7 +328,7 @@ export default function DoctorAppointmentsTable({
         },
       }),
     ],
-    [updatingId],
+    [updatingId, activeConsultation],
   );
 
   if (appointments.length === 0) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { drugGenerics, products } from "@/lib/db/schema";
-import { asc, ilike, eq, and, isNull, sql } from "drizzle-orm";
+import { asc, ilike, eq, and, isNull, sql, type SQL } from "drizzle-orm";
 import { requireAuth, requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // offered active constituents pharmacy can't actually dispense yet.
     const withStockOnly = searchParams.get("withStock") === "true";
 
-    const conditions: any[] = [eq(drugGenerics.organisationId, orgId), isNull(drugGenerics.deletedAt)];
+    const conditions: (SQL | undefined)[] = [eq(drugGenerics.organisationId, orgId), isNull(drugGenerics.deletedAt)];
     if (search) conditions.push(ilike(drugGenerics.name, `%${search}%`));
 
     const rows = await db

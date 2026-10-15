@@ -8,10 +8,11 @@ import {
 import { UseFormRegister, FieldErrors } from "react-hook-form";
 import FormInput from "./form/FormInput";
 import FormSelect from "./form/FormSelect";
+import type { PatientFormData } from "./patientForm";
 
 interface NextOfKinFieldsProps {
-  register: UseFormRegister<any>;
-  errors: FieldErrors<any>;
+  register: UseFormRegister<PatientFormData>;
+  errors: FieldErrors<PatientFormData>;
 }
 
 export default function NextOfKinFields({

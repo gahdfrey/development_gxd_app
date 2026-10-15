@@ -47,27 +47,27 @@ export async function PATCH(
     const body = await request.json();
     const { name, description, permissions } = body;
 
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Partial<typeof roles.$inferInsert> = { updatedAt: new Date() };
     if (name) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (permissions) updateData.permissions = permissions;
 
     if (permissions) {
-      for (const module of APP_MODULES) {
-        if (!permissions[module.key]) {
-          if (permissions[module.key] === undefined) {
+      for (const appModule of APP_MODULES) {
+        if (!permissions[appModule.key]) {
+          if (permissions[appModule.key] === undefined) {
             return NextResponse.json(
-              { error: `Missing permissions for module: ${module.key}` },
+              { error: `Missing permissions for module: ${appModule.key}` },
               { status: 400 }
             );
           }
         }
 
-        if (permissions[module.key]) {
+        if (permissions[appModule.key]) {
           for (const perm of APP_PERMISSIONS) {
-            if (typeof permissions[module.key][perm.key] !== "boolean") {
+            if (typeof permissions[appModule.key][perm.key] !== "boolean") {
               return NextResponse.json(
-                { error: `Invalid permission value for ${module.key}.${perm.key}` },
+                { error: `Invalid permission value for ${appModule.key}.${perm.key}` },
                 { status: 400 }
               );
             }
@@ -158,7 +158,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: "Role deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deleting role:", error);
     return NextResponse.json({ error: "Failed to delete role" }, { status: 500 });
   }

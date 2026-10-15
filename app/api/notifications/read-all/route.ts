@@ -12,7 +12,7 @@ export async function PATCH() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt(session.user.id);
 
     await db
       .update(notifications)

@@ -84,8 +84,7 @@ export default function LoginForm() {
 
         router.refresh();
       }
-    } catch (error) {
-      // console.error('Login error:', error);
+    } catch {
       showToast(
         "Network error. Please check your connection and try again.",
         "error"

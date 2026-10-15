@@ -12,24 +12,11 @@ import { HMO } from "@/lib/db/schema";
 import { COUNTRY_CODES } from "@/lib/constants/countryCodes";
 import FormInput from "./form/FormInput";
 import FormSelect from "./form/FormSelect";
-
-interface PatientFormData {
-  firstname: string;
-  lastname: string;
-  gender: string;
-  dob: string;
-  maidenName: string;
-  email: string;
-  countryCode: string;
-  phone: string;
-  insuranceType: string;
-  hmoId?: string;
-  policyNumber?: string;
-}
+import type { PatientFormData } from "./patientForm";
 
 interface PatientDetailsFieldsProps {
-  register: UseFormRegister<any>;
-  errors: FieldErrors<any>;
+  register: UseFormRegister<PatientFormData>;
+  errors: FieldErrors<PatientFormData>;
   hmos?: HMO[];
   insuranceType: string;
 }

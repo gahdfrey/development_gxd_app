@@ -190,7 +190,7 @@ export default function AdmitPatientModal({ isOpen, onClose, onSuccess }: AdmitP
               onChange={(e) => handleLinkAppointment(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Don't link — admit directly</option>
+              <option value="">Don&apos;t link — admit directly</option>
               {eligibleAppointments.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.appointmentDate} {a.appointmentTime} — Dr. {a.doctor?.firstname} {a.doctor?.lastname}

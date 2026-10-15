@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const patientId = (session.user as any).patientId;
+    const patientId = session.user.patientId;
     if (!patientId || typeof patientId !== "number") {
       return NextResponse.json(
         { error: "No patient profile linked to this account" },
@@ -129,9 +129,7 @@ export async function GET(_req: NextRequest) {
 
     // 4. All results for those requests
     const requestIds = requestRows.map((r) => r.id);
-    let resultRows: any[] = [];
-    if (requestIds.length > 0) {
-      resultRows = await db
+    const resultRows = requestIds.length === 0 ? [] : await db
         .select({
           id: requestResults.id,
           requestId: requestResults.requestId,
@@ -147,7 +145,6 @@ export async function GET(_req: NextRequest) {
         .from(requestResults)
         .leftJoin(users, eq(requestResults.uploadedBy, users.id))
         .where(inArray(requestResults.requestId, requestIds));
-    }
 
     // 5. All prescriptions for this patient (all statuses shown in patient portal)
     const dispensedProduct = alias(products, "dispensed_product");

@@ -21,12 +21,11 @@ export function usePatientFilters() {
     return () => clearTimeout(timer);
   }, [filterState.search]);
 
-  const queryString = useMemo(() => {
-    return getFilters(
-      { ...filterState, search: debouncedSearch },
-      { withDate: true },
-    );
-  }, [filterState.startDate, filterState.endDate, debouncedSearch]);
+  const { startDate, endDate } = filterState;
+  const queryString = useMemo(
+    () => getFilters({ startDate, endDate, search: debouncedSearch }, { withDate: true }),
+    [startDate, endDate, debouncedSearch],
+  );
 
   const setFilters = (updates: Partial<FilterState>) => {
     setFilterState((prev) => ({ ...prev, ...updates }));

@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
+import { FieldError, UseFormRegisterReturn } from "react-hook-form";
 
 interface FormInputProps {
   id: string;
@@ -7,8 +7,8 @@ interface FormInputProps {
   icon: ReactNode;
   type?: string;
   placeholder?: string;
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>> | undefined;
-  register: any;
+  error?: Pick<FieldError, "message">;
+  register: UseFormRegisterReturn;
   iconColor?: string;
   optional?: boolean;
 }

@@ -45,6 +45,8 @@ interface RequestsTableProps {
   onUploadSuccess?: () => void;
 }
 
+const columnHelper = createColumnHelper<RequestRow>();
+
 export default function RequestsTable({
   data,
   showPaymentToggle = false,
@@ -54,7 +56,6 @@ export default function RequestsTable({
   showUploadResult = false,
   onUploadSuccess,
 }: RequestsTableProps) {
-  const columnHelper = createColumnHelper<RequestRow>();
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [enterModalOpen, setEnterModalOpen] = useState(false);

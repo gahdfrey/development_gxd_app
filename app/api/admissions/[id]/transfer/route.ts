@@ -30,7 +30,7 @@ export async function POST(
       return NextResponse.json({ error: "Invalid destination ward or bed" }, { status: 400 });
     }
 
-    let result: any;
+    let result: unknown;
     try {
       result = await db.transaction(async (tx) => {
         const [admission] = await tx
@@ -76,13 +76,14 @@ export async function POST(
 
         return updatedAdmission;
       });
-    } catch (txError: any) {
-      if (txError.message === "NOT_FOUND") return NextResponse.json({ error: "Admission not found" }, { status: 404 });
-      if (txError.message === "NOT_ADMITTED") return NextResponse.json({ error: "This patient is not currently admitted" }, { status: 409 });
-      if (txError.message === "SAME_BED") return NextResponse.json({ error: "Patient is already in this bed" }, { status: 400 });
-      if (txError.message === "BED_NOT_FOUND") return NextResponse.json({ error: "Destination bed not found" }, { status: 404 });
-      if (txError.message === "BED_WARD_MISMATCH") return NextResponse.json({ error: "Destination bed does not belong to the selected ward" }, { status: 400 });
-      if (txError.message === "BED_UNAVAILABLE") return NextResponse.json({ error: "Destination bed is not available. Please choose a different bed." }, { status: 409 });
+    } catch (txError) {
+      const failure = txError instanceof Error ? txError.message : "";
+      if (failure === "NOT_FOUND") return NextResponse.json({ error: "Admission not found" }, { status: 404 });
+      if (failure === "NOT_ADMITTED") return NextResponse.json({ error: "This patient is not currently admitted" }, { status: 409 });
+      if (failure === "SAME_BED") return NextResponse.json({ error: "Patient is already in this bed" }, { status: 400 });
+      if (failure === "BED_NOT_FOUND") return NextResponse.json({ error: "Destination bed not found" }, { status: 404 });
+      if (failure === "BED_WARD_MISMATCH") return NextResponse.json({ error: "Destination bed does not belong to the selected ward" }, { status: 400 });
+      if (failure === "BED_UNAVAILABLE") return NextResponse.json({ error: "Destination bed is not available. Please choose a different bed." }, { status: 409 });
       throw txError;
     }
 

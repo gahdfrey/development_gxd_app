@@ -14,7 +14,6 @@ if (!connectionString) {
  *   but it doesn't hurt.
  */
 declare global {
-  // eslint-disable-next-line no-var
   var _pgPool: postgres.Sql | undefined;
 }
 

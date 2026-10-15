@@ -229,7 +229,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: "Patient deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deleting patient:", error);
     return NextResponse.json({ error: "Failed to delete patient" }, { status: 500 });
   }

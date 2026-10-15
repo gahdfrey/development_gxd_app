@@ -11,6 +11,8 @@ import TestFormModal from "./TestFormModal";
 import TestParametersModal from "./TestParametersModal";
 import type { TestRow } from "./types";
 
+const columnHelper = createColumnHelper<TestRow>();
+
 export default function TestTab() {
   const { data: tests, error, mutate } = useSWR<TestRow[]>(
     "/api/tests",
@@ -71,7 +73,6 @@ export default function TestTab() {
     }
   };
 
-  const columnHelper = createColumnHelper<TestRow>();
 
   const columns = useMemo(
     () => [

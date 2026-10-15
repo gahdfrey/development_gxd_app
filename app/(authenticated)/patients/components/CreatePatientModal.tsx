@@ -16,6 +16,7 @@ import {
 import FormSection from "./form/FormSection";
 import PatientDetailsFields from "./PatientDetailsFields";
 import NextOfKinFields from "./NextOfKinFields";
+import type { PatientFormData } from "./patientForm";
 
 interface DuplicateMatch {
   id: number;
@@ -28,28 +29,6 @@ interface DuplicateMatch {
   score?: number;
   level?: "definite" | "likely" | "possible" | "unlikely";
   reasons?: string[];
-}
-
-interface PatientFormData {
-  firstname: string;
-  lastname: string;
-  gender: string;
-  dob: string;
-  maidenName: string;
-  nin: string;
-  email: string;
-  countryCode: string;
-  phone: string;
-  insuranceType: string;
-  hmoId?: string;
-  policyNumber?: string;
-  nextOfKinFirstname: string;
-  nextOfKinLastname: string;
-  nextOfKinRelationship: string;
-  nextOfKinAddress: string;
-  nextOfKinPhone: string;
-  nextOfKinEmail: string;
-  consentGiven: boolean;
 }
 
 interface CreatePatientModalProps {

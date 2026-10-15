@@ -69,7 +69,7 @@ export default function ProductsPage() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustProductId, setAdjustProductId] = useState<number | null>(null);
 
-  const products = data ?? [];
+  const products = useMemo(() => data ?? [], [data]);
 
   // ─── Derived analytics ───────────────────────────────────────────────────
   const stats = useMemo(() => {

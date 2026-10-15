@@ -5,7 +5,7 @@
  * @param permissions - User's permission object from the API
  * @returns The first accessible route path
  */
-export function getDefaultRoute(permissions: any): string {
+export function getDefaultRoute(permissions: Record<string, unknown> | null | undefined): string {
   // If no permissions object, default to dashboard
   if (!permissions || typeof permissions !== "object") {
     return "/dashboard";
@@ -31,7 +31,7 @@ export function getDefaultRoute(permissions: any): string {
 
   // Find first route user has view permission for
   for (const route of routes) {
-    const modulePermissions = permissions[route.module];
+    const modulePermissions = permissions[route.module] as { view?: unknown } | undefined;
 
     // Check if user has view permission for this module
     if (modulePermissions?.view === true) {

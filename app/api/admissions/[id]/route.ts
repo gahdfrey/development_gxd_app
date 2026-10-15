@@ -84,7 +84,7 @@ export async function PATCH(
     // bill is complete.
     await syncBedDayCharges(db, orgId, id, actorId);
 
-    let result: any;
+    let result: unknown;
     let dischargeBalance = 0;
     try {
       result = await db.transaction(async (tx) => {
@@ -130,11 +130,12 @@ export async function PATCH(
 
         return updated;
       });
-    } catch (txError: any) {
-      if (txError.message === "NOT_FOUND") return NextResponse.json({ error: "Admission not found" }, { status: 404 });
-      if (txError.message === "NOT_ADMITTED") return NextResponse.json({ error: "This patient has already been discharged" }, { status: 409 });
-      if (txError.message === "NO_BED") return NextResponse.json({ error: "This admission has no bed assigned" }, { status: 409 });
-      if (txError.message === "BALANCE_OUTSTANDING") {
+    } catch (txError) {
+      const failure = txError instanceof Error ? txError.message : "";
+      if (failure === "NOT_FOUND") return NextResponse.json({ error: "Admission not found" }, { status: 404 });
+      if (failure === "NOT_ADMITTED") return NextResponse.json({ error: "This patient has already been discharged" }, { status: 409 });
+      if (failure === "NO_BED") return NextResponse.json({ error: "This admission has no bed assigned" }, { status: 409 });
+      if (failure === "BALANCE_OUTSTANDING") {
         return NextResponse.json(
           {
             error: `This patient still owes ₦${dischargeBalance.toLocaleString()}. Settle the bill, or record why they may leave with a balance.`,

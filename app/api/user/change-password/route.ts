@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = parseInt((session.user as any).id);
+    const userId = parseInt(session.user.id);
     if (isNaN(userId)) {
       return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }

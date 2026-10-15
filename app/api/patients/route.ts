@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients, users, roles, patientConsents, wallets, admissions, wards, beds } from "@/lib/db/schema";
-import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql } from "drizzle-orm";
+import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql, type SQL } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    const conditions: any[] = [
+    const conditions: (SQL | undefined)[] = [
       eq(patients.organisationId, orgId),
       isNull(patients.deletedAt),
     ];
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       ));
     }
 
-    let query = db.select({
+    const query = db.select({
       id: patients.id,
       mrn: patients.mrn,
       nin: patients.nin,
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       insuranceType: patients.insuranceType,
       createdAt: patients.createdAt,
       updatedAt: patients.updatedAt,
-    }).from(patients).where(and(...conditions)) as any;
+    }).from(patients).where(and(...conditions)).$dynamic();
 
     const allPatients =
       orderBy === "asc"

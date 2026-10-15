@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Next.js serves the pages and the API routes (app/api/*) from one dev
+      // server, so this single task starts both, on http://localhost:3000.
+      "label": "Start App (frontend + API)",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "next",
+        "pattern": { "regexp": "^x^" },
+        "background": {
+          "activatesForEachLine": false,
+          "beginsPattern": "next dev|Starting",
+          "endsPattern": "Ready in|ready started server|Local:"
+        }
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "npm run lint",
+      "problemMatcher": ["$eslint-stylish"],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "TypeCheck",
+      "type": "shell",
+      "command": "npx tsc --noEmit -p .",
+      "problemMatcher": ["$tsc"],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      // Runs both even if the first fails, and fails if either does.
+      "label": "Lint & TypeCheck",
+      "type": "shell",
+      "command": "npx tsc --noEmit -p .; tsc_status=$?; npm run lint; lint_status=$?; [ $tsc_status -eq 0 ] && [ $lint_status -eq 0 ]",
+      "problemMatcher": ["$tsc", "$eslint-stylish"],
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    }
+  ]
+}

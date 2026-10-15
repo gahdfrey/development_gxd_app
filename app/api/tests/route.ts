@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(newTest, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating test:", error);
     if (getPgErrorCode(error) === "23503") return NextResponse.json({ error: "Selected department does not exist" }, { status: 400 });
     return NextResponse.json({ error: "Failed to create test" }, { status: 500 });

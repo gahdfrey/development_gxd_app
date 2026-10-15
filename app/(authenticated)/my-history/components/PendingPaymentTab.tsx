@@ -249,7 +249,7 @@ export default function PendingPaymentTab({
           <CheckCircleIcon className="h-6 w-6 text-emerald-500" />
         </span>
         <p className="text-gray-500 text-sm">
-          You're all caught up — nothing pending payment right now.
+          You&apos;re all caught up — nothing pending payment right now.
         </p>
       </div>
     );

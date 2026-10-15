@@ -14,6 +14,8 @@ export const userSchema = z.object({
 });
 
 export type UserFormData = z.infer<typeof userSchema>;
+/** What the create-user form sends: the role picked as a numeric id. */
+export type NewUserPayload = Omit<UserFormData, "roleId"> & { roleId: number | null };
 
 // Nigerian professional regulatory councils for health workers
 // (NDHA / Nigeria Health Worker Registry alignment)

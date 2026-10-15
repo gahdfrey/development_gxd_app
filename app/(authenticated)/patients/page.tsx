@@ -36,6 +36,9 @@ interface Patient {
     } | null;
 }
 
+
+const columnHelper = createColumnHelper<Patient>();
+
 export default function PatientsPage() {
     const {filterState, setFilters, resetFilters, queryString} = usePatientFilters();
 
@@ -46,7 +49,6 @@ export default function PatientsPage() {
     } = useSWR < Patient[] > (`/api/patients${queryString}`, fetcher);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState < Patient | null > (null);
     const [selectedPatientId, setSelectedPatientId] = useState < number | null > (null,);
@@ -76,8 +78,6 @@ export default function PatientsPage() {
         setSelectedPatient(null);
         showToast("Patient deleted successfully", "success");
     };
-
-    const columnHelper = createColumnHelper < Patient > ();
 
     const columns = useMemo(() => [
         columnHelper.accessor((row) => `${row.firstname} ${row.lastname}`, {
@@ -151,7 +151,6 @@ export default function PatientsPage() {
                         <button onClick={
                                 () => {
                                     setSelectedPatientId(props.row.original.id);
-                                    setIsViewModalOpen(true);
                                 }
                             }
                             className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
@@ -322,7 +321,6 @@ export default function PatientsPage() {
                 <ViewPatientModal patientId={selectedPatientId}
                     onClose={
                         () => {
-                            setIsViewModalOpen(false);
                             setSelectedPatientId(null);
                         }
                     }/>

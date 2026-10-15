@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(newBed, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating bed:", error);
     if (getPgErrorCode(error) === "23505") return NextResponse.json({ error: "A bed with this number already exists in this ward" }, { status: 409 });
     return NextResponse.json({ error: "Failed to create bed" }, { status: 500 });

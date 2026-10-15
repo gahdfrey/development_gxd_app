@@ -101,7 +101,7 @@ export async function PUT(
     });
 
     return NextResponse.json(updated, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating test:", error);
 
     if (getPgErrorCode(error) === "23503") {

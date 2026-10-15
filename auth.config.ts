@@ -9,13 +9,13 @@ export const authConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.username = (user as any).username;
-        token.firstname = (user as any).firstname;
-        token.lastname = (user as any).lastname;
-        token.role = (user as any).role;
-        token.patientId = (user as any).patientId ?? null;
-        token.organisationId = (user as any).organisationId;
-        token.isPlatformAdmin = (user as any).isPlatformAdmin ?? false;
+        token.username = user.username;
+        token.firstname = user.firstname;
+        token.lastname = user.lastname;
+        token.role = user.role;
+        token.patientId = user.patientId ?? null;
+        token.organisationId = user.organisationId;
+        token.isPlatformAdmin = user.isPlatformAdmin ?? false;
       }
       return token;
     },
@@ -61,7 +61,7 @@ export const authConfig = {
         isLoggedIn &&
         (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")
       ) {
-        const role = ((auth?.user as any)?.role ?? "").toLowerCase();
+        const role = (auth?.user?.role ?? "").toLowerCase();
         let landingPage = "/dashboard";
         if (role.includes("patient")) landingPage = "/my-history";
         else if (role.includes("lab")) landingPage = "/laboratory";

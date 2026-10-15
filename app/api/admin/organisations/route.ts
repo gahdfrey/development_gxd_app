@@ -8,7 +8,7 @@ import { getPgErrorCode } from "@/lib/db/pg-error";
 export async function GET(_request: NextRequest) {
   try {
     const session = await auth();
-    if (!(session?.user as any)?.isPlatformAdmin) {
+    if (!session?.user?.isPlatformAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!(session?.user as any)?.isPlatformAdmin) {
+    if (!session?.user?.isPlatformAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json(org, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating organisation:", error);
     if (getPgErrorCode(error) === "23505") {
       return NextResponse.json({ error: "An organisation with this slug already exists" }, { status: 409 });

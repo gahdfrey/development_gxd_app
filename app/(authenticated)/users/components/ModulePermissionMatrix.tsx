@@ -127,7 +127,7 @@ export default function ModulePermissionMatrix({
         </div>
       </div>
       <p className="mt-2 text-xs text-gray-500">
-        By default, all modules have "View" permission enabled. Uncheck to
+        By default, all modules have &quot;View&quot; permission enabled. Uncheck to
         restrict access.
       </p>
     </div>

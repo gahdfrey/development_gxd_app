@@ -82,7 +82,7 @@ export async function PUT(
     });
 
     return NextResponse.json(updated, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating department:", error);
 
     if (getPgErrorCode(error) === "23505") {
@@ -155,7 +155,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: "Department deleted successfully" }, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error deleting department:", error);
     return NextResponse.json({ error: "Failed to delete department" }, { status: 500 });
   }

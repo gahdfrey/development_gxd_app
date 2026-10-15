@@ -1,11 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import {
-  APP_MODULES,
-  APP_PERMISSIONS,
-  getDefaultPermissions,
-} from "@/lib/constants";
+import { useForm, useWatch } from "react-hook-form";
+import { getDefaultPermissions } from "@/lib/constants";
 import ModulePermissionMatrix from "../../users/components/ModulePermissionMatrix";
 import { RoleFormData } from "./schema";
 
@@ -22,7 +18,7 @@ export default function CreateRoleForm({
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<RoleFormData>({
     defaultValues: {
@@ -32,7 +28,7 @@ export default function CreateRoleForm({
     },
   });
 
-  const permissions = watch("permissions");
+  const permissions = useWatch({ control, name: "permissions" });
 
   const onFormSubmit = async (data: RoleFormData) => {
     await onSubmit(data);

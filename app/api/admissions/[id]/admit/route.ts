@@ -75,12 +75,13 @@ export async function POST(
 
         await tx.update(beds).set({ status: "occupied", updatedAt: new Date() }).where(eq(beds.id, parsedBedId));
       });
-    } catch (txError: any) {
-      if (txError.message === "NOT_FOUND") return NextResponse.json({ error: "Admission request not found" }, { status: 404 });
-      if (txError.message === "NOT_REQUESTED") return NextResponse.json({ error: "This request has already been actioned" }, { status: 409 });
-      if (txError.message === "BED_NOT_FOUND") return NextResponse.json({ error: "Bed not found" }, { status: 404 });
-      if (txError.message === "BED_WARD_MISMATCH") return NextResponse.json({ error: "Bed does not belong to the selected ward" }, { status: 400 });
-      if (txError.message === "BED_UNAVAILABLE") return NextResponse.json({ error: "This bed is not available. Please choose a different bed." }, { status: 409 });
+    } catch (txError) {
+      const failure = txError instanceof Error ? txError.message : "";
+      if (failure === "NOT_FOUND") return NextResponse.json({ error: "Admission request not found" }, { status: 404 });
+      if (failure === "NOT_REQUESTED") return NextResponse.json({ error: "This request has already been actioned" }, { status: 409 });
+      if (failure === "BED_NOT_FOUND") return NextResponse.json({ error: "Bed not found" }, { status: 404 });
+      if (failure === "BED_WARD_MISMATCH") return NextResponse.json({ error: "Bed does not belong to the selected ward" }, { status: 400 });
+      if (failure === "BED_UNAVAILABLE") return NextResponse.json({ error: "This bed is not available. Please choose a different bed." }, { status: 409 });
       throw txError;
     }
 

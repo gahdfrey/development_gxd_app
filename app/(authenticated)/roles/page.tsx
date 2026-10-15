@@ -18,6 +18,8 @@ import PermissionDenied from "@/app/components/ui/PermissionDenied";
 import { Role } from "@/lib/db/schema";
 import { RoleFormData } from "./components/schema";
 
+const columnHelper = createColumnHelper<Role>();
+
 export default function RolesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -109,7 +111,6 @@ export default function RolesPage() {
     showToast("Role deleted successfully", "success");
   };
 
-  const columnHelper = createColumnHelper<Role>();
 
   const columns = useMemo(
     () => [
