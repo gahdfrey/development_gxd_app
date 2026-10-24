@@ -17,9 +17,9 @@ npm run lint             # eslint
 Database (Drizzle ORM + PostgreSQL):
 
 ```bash
-npm run db:push          # push schema.ts changes directly to the DB (dev)
-npm run db:generate      # generate SQL migration files from schema.ts
-npm run db:migrate       # apply generated migrations
+npm run db:generate      # write a SQL migration in drizzle/ from schema.ts changes
+npm run db:migrate       # apply pending drizzle/ migrations to DATABASE_URL
+npm run db:push          # sync schema.ts straight to DATABASE_URL, no migration file (throwaway experiments only)
 npm run db:studio        # open Drizzle Studio at https://local.drizzle.studio
 npm run db:seed          # seed base data
 npm run db:recreate      # drop and recreate schema from scratch
@@ -27,7 +27,13 @@ npm run db:recreate      # drop and recreate schema from scratch
 
 There is no configured test runner (no `test` script, no test framework installed) — do not assume Jest/Vitest exist unless you add them.
 
-One-off data migrations live as standalone scripts in `lib/db/` (e.g. `add-payments.ts`, `add-admission-module.ts`, `add-result-viewed.ts`) and are wired into `package.json` as `db:migrate-*` scripts. When adding a schema change that needs backfilling or can't be expressed as a plain `db:push`, follow this pattern: write a new `lib/db/add-<feature>.ts` script and a matching `db:migrate-<feature>` npm script rather than editing an old migration script.
+**Schema changes deploy automatically.** `npm run build` runs `scripts/migrate.mjs` before `next build`, applying pending `drizzle/` migrations. On Vercel this happens only for **production** builds: Preview shares the production database, so a branch must never migrate it. A failed migration fails the build and the previous deployment keeps serving. Workflow:
+1. Edit `lib/db/schema.ts`, then run `npm run db:generate` to write `drizzle/NNNN_*.sql`. Review it and commit it with the code.
+2. Run `npm run db:migrate` locally. `.env` points at the Neon `dev` branch, never production. Then test.
+3. Merge to `main`. The production build applies the migration, then deploys the code.
+- For data backfills or SQL Drizzle can't express (e.g. `CREATE INDEX CONCURRENTLY` can't run inside the migrator's transaction; plain `CREATE INDEX` is fine), use `npm run db:generate -- --custom --name <feature>` and write the SQL by hand.
+- Additive changes are safe in one deploy. For drops and renames, first deploy code that no longer uses the column, then drop it in a later migration.
+- Never edit a migration that's already merged; add a new one. `drizzle/0000_baseline.sql` is the squashed history as of 2026-10-24. The older `lib/db/add-*.ts` / `db:migrate-*` scripts predate it and are already reflected in it; don't add new ones.
 
 ## Architecture
 

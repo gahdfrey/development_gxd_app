@@ -5,6 +5,7 @@ import Link from "next/link";
 import {createColumnHelper} from "@tanstack/react-table";
 import useSWR, {mutate} from "swr";
 import {fetcher} from "@/lib/fetcher";
+import type {Paginated} from "@/lib/pagination";
 import {usePatientFilters} from "@/lib/hooks/usePatientFilters";
 import Table from "@/app/components/ui/Table";
 import Modal from "@/app/components/ui/Modal";
@@ -38,15 +39,20 @@ interface Patient {
 
 
 const columnHelper = createColumnHelper<Patient>();
+const PAGE_SIZE = 10;
 
 export default function PatientsPage() {
     const {filterState, setFilters, resetFilters, queryString} = usePatientFilters();
 
-    const {
-        data: patients = [],
-        error,
-        isLoading
-    } = useSWR < Patient[] > (`/api/patients${queryString}`, fetcher);
+    // The page index belongs to one set of filters; changing a filter starts
+    // again from the first page.
+    const [pageState, setPageState] = useState({query: queryString, index: 0});
+    const pageIndex = pageState.query === queryString ? pageState.index : 0;
+    const pagedUrl = `/api/patients${queryString ? `${queryString}&` : "?"}page=${pageIndex + 1}&pageSize=${PAGE_SIZE}`;
+
+    const {data, error, isLoading} = useSWR < Paginated < Patient >> (pagedUrl, fetcher, {keepPreviousData: true});
+    const patients = data?.data ?? [];
+    const pageCount = data ? Math.ceil(data.total / data.pageSize) : 0;
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -291,7 +297,12 @@ export default function PatientsPage() {
                 </div>
             ) : (
                 <Table data={patients}
-                    columns={columns}/>
+                    columns={columns}
+                    serverPagination={{
+                        pageIndex,
+                        pageCount,
+                        onPageChange: (index) => setPageState({query: queryString, index})
+                    }}/>
             )
         }
 

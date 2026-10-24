@@ -192,7 +192,11 @@ export const patients = pgTable("patients", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (t) => ({
+  // Scale indexes (lib/db/add-scale-indexes.ts): tenant-scoped lists filter by
+  // organisation and sort by date, so lead with organisationId.
+  orgCreatedIdx: index("patients_org_created_idx").on(t.organisationId, t.createdAt),
+}));
 
 export type Patient = typeof patients.$inferSelect;
 export type NewPatient = typeof patients.$inferInsert;
@@ -214,6 +218,8 @@ export const appointments = pgTable("appointments", {
   // Supports "this patient's appointments" lookups (e.g. the Admission
   // module's completed-appointment picker) without scanning the whole table.
   patientIdx: index("appointments_patient_idx").on(t.patientId),
+  orgDateIdx: index("appointments_org_date_idx").on(t.organisationId, t.appointmentDate),
+  doctorDateIdx: index("appointments_doctor_date_idx").on(t.doctorId, t.appointmentDate),
 }));
 
 export type Appointment = typeof appointments.$inferSelect;
@@ -232,7 +238,10 @@ export const visits = pgTable("visits", {
   endTime: timestamp("end_time", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  orgCreatedIdx: index("visits_org_created_idx").on(t.organisationId, t.createdAt),
+  patientIdx: index("visits_patient_idx").on(t.patientId),
+}));
 
 export type Visit = typeof visits.$inferSelect;
 export type NewVisit = typeof visits.$inferInsert;
@@ -272,7 +281,10 @@ export const requests = pgTable("requests", {
   paymentStatus: text("payment_status").notNull().default("not_paid"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  orgCreatedIdx: index("requests_org_created_idx").on(t.organisationId, t.createdAt),
+  patientIdx: index("requests_patient_idx").on(t.patientId),
+}));
 
 export type Request = typeof requests.$inferSelect;
 export type NewRequest = typeof requests.$inferInsert;
@@ -291,7 +303,9 @@ export const requestResults = pgTable("request_results", {
   // New/Viewed badges). Only set by the patient viewing it, never by staff.
   viewedAt: timestamp("viewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  requestIdx: index("request_results_request_idx").on(t.requestId),
+}));
 
 export type RequestResult = typeof requestResults.$inferSelect;
 export type NewRequestResult = typeof requestResults.$inferInsert;
@@ -307,7 +321,9 @@ export const notifications = pgTable("notifications", {
   message: text("message"),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  userReadIdx: index("notifications_user_read_idx").on(t.userId, t.isRead),
+}));
 
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
@@ -324,7 +340,9 @@ export const inventoryItems = pgTable("inventory_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (t) => ({
+  orgIdx: index("inventory_items_org_idx").on(t.organisationId),
+}));
 
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type NewInventoryItem = typeof inventoryItems.$inferInsert;
@@ -402,7 +420,9 @@ export const supplyOrders = pgTable("supply_orders", {
   cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  orgCreatedIdx: index("supply_orders_org_created_idx").on(t.organisationId, t.createdAt),
+}));
 
 export type SupplyOrder = typeof supplyOrders.$inferSelect;
 export type NewSupplyOrder = typeof supplyOrders.$inferInsert;
@@ -467,6 +487,8 @@ export const prescriptions = pgTable("prescriptions", {
 }, (t) => ({
   genericIdx: index("prescriptions_generic_idx").on(t.genericId),
   admissionIdx: index("prescriptions_admission_idx").on(t.admissionId),
+  orgCreatedIdx: index("prescriptions_org_created_idx").on(t.organisationId, t.createdAt),
+  patientIdx: index("prescriptions_patient_idx").on(t.patientId),
 }));
 
 export type Prescription = typeof prescriptions.$inferSelect;
@@ -486,7 +508,12 @@ export const auditLogs = pgTable("audit_logs", {
   entityId: text("entity_id"),
   details: json("details"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  orgCreatedIdx: index("audit_logs_org_created_idx").on(t.organisationId, t.createdAt),
+  // The failed-login lockout check in auth.ts runs on every sign-in.
+  loginAttemptsIdx: index("audit_logs_login_attempts_idx").on(t.userEmail, t.action, t.createdAt),
+  entityIdx: index("audit_logs_entity_idx").on(t.entityType, t.entityId),
+}));
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
@@ -508,7 +535,9 @@ export const patientConsents = pgTable("patient_consents", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  patientIdx: index("patient_consents_patient_idx").on(t.patientId),
+}));
 
 export type PatientConsent = typeof patientConsents.$inferSelect;
 export type NewPatientConsent = typeof patientConsents.$inferInsert;
@@ -534,7 +563,7 @@ export type Icd11Code = typeof icd11Codes.$inferSelect;
 export const visitDiagnoses = pgTable("visit_diagnoses", {
   id: serial("id").primaryKey(),
   organisationId: integer("organisation_id").notNull().references(() => organisations.id),
-  visitId: integer("visit_id").notNull().references(() => visits.id),
+  visitId: integer("visit_id").notNull().references(() => visits.id, { onDelete: "cascade" }),
   patientId: integer("patient_id").notNull().references(() => patients.id),
   icdCode: text("icd_code").references(() => icd11Codes.code),
   icdTitle: text("icd_title"),
@@ -542,7 +571,9 @@ export const visitDiagnoses = pgTable("visit_diagnoses", {
   diagnosisType: text("diagnosis_type").notNull().default("primary"),
   recordedBy: integer("recorded_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  patientIdx: index("visit_diagnoses_patient_idx").on(t.patientId),
+}));
 
 export type VisitDiagnosis = typeof visitDiagnoses.$inferSelect;
 export type NewVisitDiagnosis = typeof visitDiagnoses.$inferInsert;
@@ -564,7 +595,9 @@ export const dataRequests = pgTable("data_requests", {
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  orgCreatedIdx: index("data_requests_org_created_idx").on(t.organisationId, t.createdAt),
+}));
 
 export type DataRequest = typeof dataRequests.$inferSelect;
 export type NewDataRequest = typeof dataRequests.$inferInsert;
@@ -645,7 +678,10 @@ export const admissions = pgTable("admissions", {
   declinedAt: timestamp("declined_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  orgStatusIdx: index("admissions_org_status_idx").on(t.organisationId, t.status),
+  patientIdx: index("admissions_patient_idx").on(t.patientId),
+}));
 
 export type Admission = typeof admissions.$inferSelect;
 export type NewAdmission = typeof admissions.$inferInsert;
@@ -707,7 +743,10 @@ export const payments = pgTable("payments", {
   posReference: text("pos_reference"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  orgCreatedIdx: index("payments_org_created_idx").on(t.organisationId, t.createdAt),
+  patientIdx: index("payments_patient_idx").on(t.patientId),
+}));
 
 export type Payment = typeof payments.$inferSelect;
 
@@ -1679,6 +1718,7 @@ export const patientCharges = pgTable("patient_charges", {
     // Includes voided rows, so a bed day voided as charged-in-error is never
     // regenerated by the next bill sync.
     .where(sql`source_type = 'bed_day'`),
+  orgCreatedIdx: index("patient_charges_org_created_idx").on(t.organisationId, t.createdAt),
 }));
 
 export type PatientCharge = typeof patientCharges.$inferSelect;
