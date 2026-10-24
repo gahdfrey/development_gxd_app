@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { patients, users, roles, patientConsents, wallets, admissions, wards, beds, referrers, labTests, requests, patientReferrals } from "@/lib/db/schema";
+import { patients, users, patientConsents, wallets, admissions, wards, beds, referrers, labTests, requests, patientReferrals } from "@/lib/db/schema";
 import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql, count, type SQL } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { applyRegistrationInsurance, hmoBelongsToOrg } from "@/lib/billing/coverage";
 import { findMatches } from "@/lib/mpi/candidates";
-import bcrypt from "bcryptjs";
 import { raiseAuthorizationsForOrders } from "@/lib/billing/authorizations";
 import { referralDiscount } from "@/lib/referrals";
+import { createPatientPortalAccount } from "@/lib/patientPortal";
 import { getPageParams, paginated } from "@/lib/pagination";
 
 export async function GET(request: Request) {
@@ -425,26 +425,8 @@ export async function POST(request: Request) {
 
     if (email?.trim()) {
       try {
-        const baseUsername = `${firstname.toLowerCase().trim()}.${lastname.toLowerCase().trim()}`;
-        const [patientRole, existingUsername, hashedPassword] = await Promise.all([
-          db.select({ id: roles.id }).from(roles)
-            .where(and(ilike(roles.name, "patient"), eq(roles.organisationId, orgId)))
-            .limit(1).then(r => r[0]),
-          db.select({ id: users.id }).from(users)
-            .where(and(eq(users.username, baseUsername), eq(users.organisationId, orgId)))
-            .limit(1).then(r => r[0]),
-          bcrypt.hash("Password1", 10),
-        ]);
-
-        const username = existingUsername ? `${baseUsername}${newPatient.id}` : baseUsername;
-
-        await db.insert(users).values({
-          organisationId: orgId,
-          firstname, lastname, username,
-          email: email.trim(),
-          password: hashedPassword,
-          roleId: patientRole?.id ?? null,
-          patientId: newPatient.id,
+        await createPatientPortalAccount(db, {
+          orgId, patientId: newPatient.id, firstname, lastname, email: email.trim(),
         });
       } catch (portalErr) {
         console.warn("Could not create patient portal account:", portalErr);

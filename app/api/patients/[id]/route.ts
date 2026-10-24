@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { patients } from "@/lib/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { patients, users } from "@/lib/db/schema";
+import { eq, and, isNull, ne, or } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { applyRegistrationInsurance, hmoBelongsToOrg } from "@/lib/billing/coverage";
+import { createPatientPortalAccount } from "@/lib/patientPortal";
 
 export async function GET(
   request: Request,
@@ -72,6 +73,7 @@ export async function PUT(
       gender,
       dob,
       maidenName,
+      email,
       nin,
       countryCode,
       phone,
@@ -99,6 +101,28 @@ export async function PUT(
       }
       if (!(await hmoBelongsToOrg(db, orgId, parseInt(hmoId)))) {
         return NextResponse.json({ error: "Selected HMO was not found" }, { status: 400 });
+      }
+    }
+
+    // The email is also the patient-portal login, so it follows the same rules
+    // as at registration. Omitting it (older callers) leaves it unchanged.
+    const cleanEmail = typeof email === "string" ? email.trim() : undefined;
+    if (cleanEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+      }
+      // users.email is unique across all facilities, deactivated accounts
+      // included; only this patient's own portal login may already hold it.
+      const [emailOwner] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.email, cleanEmail), or(isNull(users.patientId), ne(users.patientId, id))))
+        .limit(1);
+      if (emailOwner) {
+        return NextResponse.json(
+          { error: "This email is already registered to another account. Use a different email." },
+          { status: 409 },
+        );
       }
     }
 
@@ -143,6 +167,7 @@ export async function PUT(
           gender,
           dob,
           maidenName: maidenName || null,
+          ...(cleanEmail !== undefined && { email: cleanEmail || null }),
           nin: cleanNin,
           countryCode,
           phone,
@@ -168,12 +193,36 @@ export async function PUT(
           hmoId: insuranceType === "hmo" && hmoId ? parseInt(hmoId) : null,
           policyNumber: insuranceType === "hmo" ? policyNumber?.trim() || null : null,
         });
+        // Keep the portal login on the same email as the patient record.
+        if (cleanEmail) {
+          await tx
+            .update(users)
+            .set({ email: cleanEmail, updatedAt: new Date() })
+            .where(and(eq(users.patientId, id), eq(users.organisationId, orgId)));
+        }
       }
       return rows;
     });
 
     if (updatedPatient.length === 0) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+
+    // Patients registered without an email get their portal login once one is
+    // added, the same as at registration.
+    if (cleanEmail) {
+      const [portalUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.patientId, id), eq(users.organisationId, orgId)))
+        .limit(1);
+      if (!portalUser) {
+        try {
+          await createPatientPortalAccount(db, { orgId, patientId: id, firstname, lastname, email: cleanEmail });
+        } catch (portalErr) {
+          console.warn("Could not create patient portal account:", portalErr);
+        }
+      }
     }
 
     void logAudit({
