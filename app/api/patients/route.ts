@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients, users, roles, patientConsents, wallets, admissions, wards, beds, referrers, labTests, requests, patientReferrals } from "@/lib/db/schema";
-import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql, type SQL } from "drizzle-orm";
+import { desc, asc, or, ilike, and, gte, lte, eq, isNull, inArray, sql, count, type SQL } from "drizzle-orm";
 import { getOrgId } from "@/lib/org";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
@@ -10,6 +10,7 @@ import { findMatches } from "@/lib/mpi/candidates";
 import bcrypt from "bcryptjs";
 import { raiseAuthorizationsForOrders } from "@/lib/billing/authorizations";
 import { referralDiscount } from "@/lib/referrals";
+import { getPageParams, paginated } from "@/lib/pagination";
 
 export async function GET(request: Request) {
   try {
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
     const search = searchParams.get("search");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const pageParams = getPageParams(searchParams);
 
     const conditions: (SQL | undefined)[] = [
       eq(patients.organisationId, orgId),
@@ -61,12 +63,18 @@ export async function GET(request: Request) {
       updatedAt: patients.updatedAt,
     }).from(patients).where(and(...conditions)).$dynamic();
 
-    const allPatients =
+    const ordered =
       orderBy === "asc"
-        ? await query.orderBy(asc(patients.firstname))
+        ? query.orderBy(asc(patients.firstname), asc(patients.id))
         : orderBy === "desc"
-          ? await query.orderBy(desc(patients.firstname))
-          : await query.orderBy(desc(patients.createdAt));
+          ? query.orderBy(desc(patients.firstname), desc(patients.id))
+          : query.orderBy(desc(patients.createdAt), desc(patients.id));
+    const [allPatients, total] = await Promise.all([
+      pageParams ? ordered.limit(pageParams.pageSize).offset(pageParams.offset) : ordered,
+      pageParams
+        ? db.select({ total: count() }).from(patients).where(and(...conditions)).then((r) => r[0].total)
+        : null,
+    ]);
 
     // Attach each patient's current (status "admitted") admission so the
     // patients table can flag in-patients — e.g. so the front desk can tell a
@@ -92,17 +100,16 @@ export async function GET(request: Request) {
       : [];
     const admissionByPatient = new Map(activeAdmissions.map((a) => [a.patientId, a]));
 
-    return NextResponse.json(
-      allPatients.map((p: { id: number }) => {
-        const a = admissionByPatient.get(p.id);
-        return {
-          ...p,
-          currentAdmission: a
-            ? { id: a.id, admittedAt: a.admittedAt, wardName: a.wardName, bedNumber: a.bedNumber }
-            : null,
-        };
-      }),
-    );
+    const rows = allPatients.map((p: { id: number }) => {
+      const a = admissionByPatient.get(p.id);
+      return {
+        ...p,
+        currentAdmission: a
+          ? { id: a.id, admittedAt: a.admittedAt, wardName: a.wardName, bedNumber: a.bedNumber }
+          : null,
+      };
+    });
+    return NextResponse.json(pageParams ? paginated(rows, total ?? 0, pageParams) : rows);
   } catch (error) {
     console.error("Error fetching patients:", error);
     return NextResponse.json({ error: "Failed to fetch patients" }, { status: 500 });

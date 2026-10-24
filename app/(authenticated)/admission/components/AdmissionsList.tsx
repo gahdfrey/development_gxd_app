@@ -25,6 +25,7 @@ interface WardObs {
 }
 import { refreshAdmissions } from "./refresh";
 import type { AdmissionRecord } from "./types";
+import type { Paginated } from "@/lib/pagination";
 
 const STATUS_FILTERS = [
   { key: "admitted", label: "Currently Admitted" },
@@ -47,6 +48,7 @@ const TYPE_BADGE: Record<string, string> = {
 };
 
 const columnHelper = createColumnHelper<AdmissionRecord>();
+const PAGE_SIZE = 10;
 
 export default function AdmissionsList() {
   const [statusFilter, setStatusFilter] = useState("admitted");
@@ -55,8 +57,14 @@ export default function AdmissionsList() {
   const [discharging, setDischarging] = useState<AdmissionRecord | null>(null);
   const [viewingId, setViewingId] = useState<number | null>(null);
 
-  const query = statusFilter ? `/api/admissions?status=${statusFilter}` : "/api/admissions";
-  const { data: admissions, error } = useSWR<AdmissionRecord[]>(query, fetcher);
+  // The page index belongs to one status filter; switching filters starts
+  // again from the first page.
+  const [pageState, setPageState] = useState({ status: statusFilter, index: 0 });
+  const pageIndex = pageState.status === statusFilter ? pageState.index : 0;
+  const query = `/api/admissions?${statusFilter ? `status=${statusFilter}&` : ""}page=${pageIndex + 1}&pageSize=${PAGE_SIZE}`;
+  const { data, error } = useSWR<Paginated<AdmissionRecord>>(query, fetcher, { keepPreviousData: true });
+  const admissions = data?.data;
+  const pageCount = data ? Math.ceil(data.total / data.pageSize) : 0;
   // Latest early-warning score per current admission (refreshed every 2 min).
   const { data: wardObs } = useSWR<WardObs[]>("/api/vitals/ward", fetcher, { refreshInterval: 120_000 });
   const obsByAdmission = useMemo(() => new Map((wardObs ?? []).map((o) => [o.admissionId, o])), [wardObs]);
@@ -270,7 +278,15 @@ export default function AdmissionsList() {
           </button>
         </div>
       ) : (
-        <Table data={admissions} columns={columns} />
+        <Table
+          data={admissions}
+          columns={columns}
+          serverPagination={{
+            pageIndex,
+            pageCount,
+            onPageChange: (index) => setPageState({ status: statusFilter, index }),
+          }}
+        />
       )}
 
       <AdmitPatientModal

@@ -21,6 +21,15 @@ interface TableProps<T> {
   searchable?: boolean;
   searchPlaceholder?: string;
   onSearchChange?: (search: string) => void;
+  /**
+   * Pass when the server pages the rows (lib/pagination.ts): `data` is then
+   * just the current page and the pager drives `onPageChange` instead.
+   */
+  serverPagination?: {
+    pageIndex: number;
+    pageCount: number;
+    onPageChange: (pageIndex: number) => void;
+  };
 }
 
 export default function Table<T>({
@@ -29,6 +38,7 @@ export default function Table<T>({
   searchable = false,
   searchPlaceholder = "Search...",
   onSearchChange,
+  serverPagination,
 }: TableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,12 +63,23 @@ export default function Table<T>({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 7 } },
+    // In server mode every row of `data` is shown; the server did the paging.
+    manualPagination: !!serverPagination,
   });
 
   // Back to the first page whenever the rows change (e.g. a new filter).
   useEffect(() => {
-    table.setPageIndex(0);
-  }, [data, table]);
+    if (!serverPagination) table.setPageIndex(0);
+  }, [data, table, serverPagination]);
+
+  const pageIndex = serverPagination?.pageIndex ?? table.getState().pagination.pageIndex;
+  const pageCount = serverPagination?.pageCount ?? table.getPageCount();
+  const canPrevious = serverPagination ? pageIndex > 0 : table.getCanPreviousPage();
+  const canNext = serverPagination ? pageIndex < pageCount - 1 : table.getCanNextPage();
+  const goPrevious = () =>
+    serverPagination ? serverPagination.onPageChange(pageIndex - 1) : table.previousPage();
+  const goNext = () =>
+    serverPagination ? serverPagination.onPageChange(pageIndex + 1) : table.nextPage();
 
   return (
     <div className="flex flex-col gap-4">
@@ -153,15 +174,15 @@ export default function Table<T>({
         <div className="flex items-center gap-2">
           <button
             className="p-2 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={goPrevious}
+            disabled={!canPrevious}
           >
             <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
           </button>
           <button
             className="p-2 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={goNext}
+            disabled={!canNext}
           >
             <ChevronRightIcon className="w-5 h-5 text-gray-600" />
           </button>
@@ -169,10 +190,10 @@ export default function Table<T>({
         <span className="text-sm text-gray-700">
           Page{" "}
           <span className="font-medium">
-            {table.getState().pagination.pageIndex + 1}
+            {pageIndex + 1}
           </span>
           {" of "}
-          <span className="font-medium">{table.getPageCount()}</span>
+          <span className="font-medium">{Math.max(pageCount, 1)}</span>
         </span>
       </div>
     </div>

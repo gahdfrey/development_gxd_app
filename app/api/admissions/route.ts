@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { admissions, beds } from "@/lib/db/schema";
-import { desc, eq, and, sql } from "drizzle-orm";
+import { desc, eq, and, sql, count } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 import { admissionQuery } from "@/lib/admissions";
 import { ADMISSION_SEVERITY_KEYS } from "@/lib/constants";
+import { getPageParams, paginated } from "@/lib/pagination";
 
 const VALID_ADMISSION_TYPES = ["elective", "emergency", "transfer-in"];
 
@@ -21,13 +22,23 @@ export async function GET(request: NextRequest) {
     const conditions = [eq(admissions.organisationId, orgId)];
     if (status) conditions.push(eq(admissions.status, status));
 
-    const allAdmissions = await admissionQuery()
+    const ordered = admissionQuery()
       .where(and(...conditions))
       // Requested rows have no admittedAt yet, so fall back to when they were
       // raised — otherwise they'd all sort together at one end of the list.
-      .orderBy(desc(sql`COALESCE(${admissions.admittedAt}, ${admissions.requestedAt}, ${admissions.createdAt})`));
+      .orderBy(
+        desc(sql`COALESCE(${admissions.admittedAt}, ${admissions.requestedAt}, ${admissions.createdAt})`),
+        desc(admissions.id),
+      );
 
-    return NextResponse.json(allAdmissions, { status: 200 });
+    const pageParams = getPageParams(searchParams);
+    if (!pageParams) return NextResponse.json(await ordered, { status: 200 });
+
+    const [rows, [{ total }]] = await Promise.all([
+      ordered.limit(pageParams.pageSize).offset(pageParams.offset),
+      db.select({ total: count() }).from(admissions).where(and(...conditions)),
+    ]);
+    return NextResponse.json(paginated(rows, total, pageParams), { status: 200 });
   } catch (error) {
     console.error("Error fetching admissions:", error);
     return NextResponse.json({ error: "Failed to fetch admissions" }, { status: 500 });
