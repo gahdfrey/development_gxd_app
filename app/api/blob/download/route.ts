@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { requestResults, requests } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/authz";
 
 /**
  * GET /api/blob/download?url=<encoded_blob_url>&dl=1 (optional dl param forces download)
@@ -9,13 +12,14 @@ import { auth } from "@/auth";
  *  - PDFs render inside <iframe> elements
  *  - Download links trigger a file save (when ?dl=1 is passed)
  *
- * Only authenticated users can access this route.
+ * Only serves files recorded as request results, and only to staff of the
+ * owning facility or the patient the result belongs to. The URL is never
+ * fetched otherwise, so the Blob token can't be sent to an arbitrary host.
  */
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authz = await requireAuth();
+  if (authz.error) return authz.error;
+  const { orgId, patientId, isPlatformAdmin } = authz.ctx;
 
   const blobUrl = request.nextUrl.searchParams.get("url");
   if (!blobUrl) {
@@ -24,6 +28,38 @@ export async function GET(request: NextRequest) {
 
   // Optional: ?dl=1 forces Content-Disposition: attachment (browser download)
   const forceDownload = request.nextUrl.searchParams.get("dl") === "1";
+
+  let host: string;
+  try {
+    const parsed = new URL(blobUrl);
+    if (parsed.protocol !== "https:") throw new Error("not https");
+    host = parsed.hostname;
+  } catch {
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
+  }
+  if (!host.endsWith(".blob.vercel-storage.com")) {
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
+  }
+
+  const [file] = await db
+    .select({
+      fileName: requestResults.fileName,
+      organisationId: requests.organisationId,
+      patientId: requests.patientId,
+    })
+    .from(requestResults)
+    .innerJoin(requests, eq(requestResults.requestId, requests.id))
+    .where(eq(requestResults.filePath, blobUrl))
+    .limit(1);
+
+  // Same 404 whether the file doesn't exist or belongs to someone else.
+  const allowed =
+    file &&
+    (isPlatformAdmin || file.organisationId === orgId) &&
+    (patientId === null || file.patientId === patientId);
+  if (!allowed) {
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
+  }
 
   try {
     // Fetch the private blob directly using the read/write token
@@ -50,17 +86,14 @@ export async function GET(request: NextRequest) {
     };
 
     if (forceDownload) {
-      const fileName = decodeURIComponent(blobUrl.split("/").pop() ?? "file");
-      headers["Content-Disposition"] = `attachment; filename="${fileName}"`;
+      const asciiName = file.fileName.replace(/[^\w.\- ]/g, "_");
+      headers["Content-Disposition"] =
+        `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(file.fileName)}`;
     }
 
     return new NextResponse(buffer, { headers });
   } catch (error) {
     console.error("[blob/download] Failed to proxy blob:", error);
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Could not retrieve file", detail: message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Could not retrieve file" }, { status: 500 });
   }
 }
