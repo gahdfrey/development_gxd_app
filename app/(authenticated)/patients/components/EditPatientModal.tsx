@@ -24,6 +24,7 @@ interface Patient {
   gender: string;
   dob: string;
   maidenName: string;
+  email?: string | null;
   nin?: string | null;
   mrn?: string | null;
   countryCode: string;
@@ -77,6 +78,7 @@ export default function EditPatientModal({
       gender: "",
       dob: "",
       maidenName: "",
+      email: "",
       nin: "",
       countryCode: "+234",
       phone: "",
@@ -103,6 +105,7 @@ export default function EditPatientModal({
         gender: patient.gender,
         dob: patient.dob.split("T")[0],
         maidenName: patient.maidenName,
+        email: patient.email || "",
         nin: patient.nin || "",
         countryCode: patient.countryCode,
         phone: patient.phone,
