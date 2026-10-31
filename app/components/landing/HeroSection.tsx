@@ -40,7 +40,7 @@ function DashboardMockup() {
                     <div className="flex-1 flex justify-center">
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 bg-white border border-slate-200 rounded-md px-3 py-1">
                             <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                            app.carevault.health
+                            carevault.com.ng
                         </div>
                     </div>
                 </div>

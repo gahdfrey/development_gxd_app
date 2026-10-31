@@ -25,9 +25,9 @@ const faqs = [
 ];
 
 const contactDetails = [
-    { icon: Mail, label: "Email", value: "hello@carevault.health" },
-    { icon: Phone, label: "Phone", value: "+234 905 669 9774" },
-    { icon: MapPin, label: "Office", value: "8b Dipo Awolesi Street, Magodo" },
+    { icon: Mail, label: "Email", value: "info@carevault.com.ng", href: "mailto:info@carevault.com.ng" },
+    { icon: Phone, label: "Phone", value: "+234 905 669 9774", href: "tel:+2349056699774" },
+    { icon: MapPin, label: "Office", value: "8b Dipo Awolesi Street, Magodo", href: null },
 ];
 
 const inputClasses =
@@ -253,14 +253,26 @@ export default function ContactSection() {
                             </div>
                         </div>
 
-                        <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="grid sm:grid-cols-2 gap-4">
                             {contactDetails.map((item) => (
-                                <div key={item.label} className="rounded-xl border border-slate-200/80 bg-white p-5">
+                                <div
+                                    key={item.label}
+                                    className={`rounded-xl border border-slate-200/80 bg-white p-5 ${item.label === "Email" ? "sm:col-span-2" : ""}`}
+                                >
                                     <item.icon className="h-5 w-5 text-blue-600 mb-3" strokeWidth={1.75} />
                                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                                         {item.label}
                                     </p>
-                                    <p className="mt-1 text-sm font-semibold text-slate-800">{item.value}</p>
+                                    {item.href ? (
+                                        <a
+                                            href={item.href}
+                                            className="mt-1 block text-sm font-semibold text-slate-800 hover:text-blue-600 transition-colors"
+                                        >
+                                            {item.value}
+                                        </a>
+                                    ) : (
+                                        <p className="mt-1 text-sm font-semibold text-slate-800">{item.value}</p>
+                                    )}
                                 </div>
                             ))}
                         </div>

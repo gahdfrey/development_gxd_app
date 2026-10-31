@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
  * Sends the enquiry by email to the configured recipient via SMTP.
  */
 
-const RECIPIENT = process.env.CONTACT_RECIPIENT_EMAIL || "gessien3@gmail.com";
+const RECIPIENT = process.env.CONTACT_RECIPIENT_EMAIL || "info@carevault.com.ng";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ContactBody {
