@@ -1,9 +1,9 @@
-// Builds the CareVault logo set (SVG + PNG + ICO) from the hub mark geometry and the
+// Builds the CareVault logo set (SVG + PNG + ICO) from the Keyhole C mark geometry and the
 // outlined Geist wordmark. Usage: node build.mjs <glyphs.json> <outDir>
 import { createRequire } from "module";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { fullMark, smallMark } from "./mark.mjs";
+import { fullMark, reversedMark } from "./mark.mjs";
 
 const appRequire = createRequire("/Users/tiito/Desktop/development_gxd_app/package.json");
 const sharp = appRequire("sharp");
@@ -17,10 +17,13 @@ mkdirSync(join(outDir, "png"), { recursive: true });
 const BLUE = "#2563EB", BLUE_400 = "#60A5FA", INK = "#0F172A", GREY = "#64748B";
 const r = (n) => Number(n.toFixed(2));
 
-// Visual bounds of each mark on its 64 grid.
+// Visual bounds of each mark on its 64 grid (measured). The mouth leaves the right edge short
+// of the circle, so centring on these bounds nudges the mark right, which balances it optically.
+// "rev" is the light-on-dark drawing with a slightly opened counter.
 const MARKS = {
-  full: { d: fullMark(), x0: 6, y0: 6, x1: 57.5, y1: 58 },
-  small: { d: smallMark(), x0: 5.5, y0: 5.5, x1: 58, y1: 58.5 },
+  full: { d: fullMark(), x0: 6, y0: 6, x1: 56.25, y1: 58 },
+  // Same box as "full" so every colourway of a lockup shares one layout.
+  rev: { d: reversedMark(), x0: 6, y0: 6, x1: 56.25, y1: 58 },
 };
 
 const place = (d, k, tx, ty) => new SVGPathData(d).scale(k, k).translate(tx, ty).round(100).encode();
@@ -51,29 +54,28 @@ function svgDoc(vb, body, title) {
 }
 const path = (d, fill) => `<path fill="${fill}" d="${d}"/>`;
 
-// Colourways: [mark, "Care", "Vault"]
+// Colourways: [mark, "Care", "Vault", mark drawing]
 const WAYS = {
-  "": [BLUE, INK, BLUE],               // full colour on light backgrounds
-  "-reversed": ["#FFFFFF", "#FFFFFF", BLUE_400], // on dark (#020617)
-  "-white": ["#FFFFFF", "#FFFFFF", "#FFFFFF"],  // on brand blue or photos
-  "-black": ["#000000", "#000000", "#000000"],  // one-colour print
+  "": [BLUE, INK, BLUE, "full"],                         // full colour on light backgrounds
+  "-reversed": ["#FFFFFF", "#FFFFFF", BLUE_400, "rev"],  // on dark (#020617)
+  "-white": ["#FFFFFF", "#FFFFFF", "#FFFFFF", "rev"],    // on brand blue or photos
+  "-black": ["#000000", "#000000", "#000000", "full"],   // one-colour print
 };
 
 const files = {};
 const save = (name, svg) => { files[name] = svg; writeFileSync(join(outDir, "svg", name), svg); };
 
 // --- Symbol ---------------------------------------------------------------
-for (const [kind, base] of [["full", "carevault-mark"], ["small", "carevault-mark-small"]]) {
-  for (const [suffix, [mc]] of Object.entries(WAYS)) {
-    if (suffix === "-reversed") continue; // the mark has no separate reversed colourway
-    save(`${base}${suffix}.svg`, svgDoc([0, 0, 64, 64], path(MARKS[kind].d, mc), "CareVault"));
-  }
+// One drawing works at every size, so there is no separate small mark.
+for (const [suffix, [mc, , , kind]] of Object.entries(WAYS)) {
+  if (suffix === "-reversed") continue; // on dark, use the white mark
+  save(`carevault-mark${suffix}.svg`, svgDoc([0, 0, 64, 64], path(MARKS[kind].d, mc), "CareVault"));
 }
 
 // --- Horizontal lockup ----------------------------------------------------
 // Mark 52 tall; wordmark cap height 24 (0.46 of the mark), centred on the mark's centre line.
-function horizontal(mc, cc, vc) {
-  const mark = markAt("full", 0, 0, 52);
+function horizontal(mc, cc, vc, kind) {
+  const mark = markAt(kind, 0, 0, 52);
   const cap = 24;
   const text = textAt("wordmark", mark.w + 13, 26 + cap / 2, cap);
   const W = text.right;
@@ -88,13 +90,13 @@ for (const [suffix, c] of Object.entries(WAYS)) {
 }
 
 // --- Stacked lockup -------------------------------------------------------
-function stacked(mc, cc, vc) {
+function stacked(mc, cc, vc, kind) {
   const cap = 20;
   const probe = textAt("wordmark", 0, 0, cap);
   const W = probe.right - probe.left;
-  const mark = markAt("full", 0, 0, 64);
+  const mark = markAt(kind, 0, 0, 64);
   const mx = (W - mark.w) / 2;
-  const m = markAt("full", mx, 0, 64);
+  const m = markAt(kind, mx, 0, 64);
   const baseline = 64 + 16 - probe.top; // 16 units between mark and the tallest letter
   const text = textAt("wordmark", -probe.left, baseline, cap);
   return {
@@ -116,11 +118,11 @@ for (const [suffix, [, cc, vc]] of Object.entries(WAYS)) {
 }
 
 // --- "Powered by CareVault" co-brand lockup ---------------------------------
-for (const [suffix, [mc, cc, vc], pc] of [["", WAYS[""], GREY], ["-reversed", WAYS["-reversed"], "#94A3B8"]]) {
+for (const [suffix, [mc, cc, vc, kind], pc] of [["", WAYS[""], GREY], ["-reversed", WAYS["-reversed"], "#94A3B8"]]) {
   const capW = 12, capP = 9;
   const baseline = 14 + capW / 2;
   const p = textAt("powered", 0, baseline, capP);
-  const mark = markAt("small", p.right + 9, 4, 20);
+  const mark = markAt(kind, p.right + 9, 4, 20);
   const w = textAt("wordmark", p.right + 9 + mark.w + 6, baseline, capW);
   const top = Math.min(4, w.top), bottom = Math.max(24, w.bottom);
   save(`carevault-powered-by${suffix}.svg`, svgDoc([0, top, w.right, bottom - top],
@@ -128,7 +130,7 @@ for (const [suffix, [mc, cc, vc], pc] of [["", WAYS[""], GREY], ["-reversed", WA
 }
 
 // --- App icon and favicon SVGs --------------------------------------------
-function tile(size, radius, markFrac, kind = "full") {
+function tile(size, radius, markFrac, kind = "rev") {
   const m = MARKS[kind];
   const h = size * markFrac;
   const k = h / (m.y1 - m.y0);
@@ -140,7 +142,7 @@ function tile(size, radius, markFrac, kind = "full") {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${bg}${path(mk.d, "#FFFFFF")}</svg>`;
 }
 save("carevault-app-icon.svg", tile(512, 112, 0.56));
-save("favicon.svg", svgDoc([5, 5, 54, 54], path(MARKS.small.d, BLUE), "CareVault"));
+save("favicon.svg", svgDoc([5, 5, 54, 54], path(MARKS.full.d, BLUE), "CareVault"));
 
 // --- Rasters --------------------------------------------------------------
 const png = (svg, w, h, file) => sharp(Buffer.from(svg), { density: 72 * Math.max(1, (w || 0) / 64) })
