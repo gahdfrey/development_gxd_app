@@ -8,6 +8,7 @@ import type { Session } from "next-auth";
 import NotificationBell from "./NotificationBell";
 import Modal from "@/app/components/ui/Modal";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { Logo } from "@/app/components/ui/Logo";
 
 interface NavigationBarProps {
   session: Session | null;
@@ -253,8 +254,7 @@ export default function NavigationBar({ session }: NavigationBarProps) {
               </span>
             </div> */}
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold tracking-tight text-blue-600">Care<span className="text-black">Vault</span>
-              </h2>
+              <Logo className="h-7 w-auto" />
             </div>
           </div>
 

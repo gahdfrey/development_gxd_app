@@ -1,4 +1,5 @@
-import { HeartPulse, Linkedin, Mail, Twitter } from "lucide-react";
+import { Linkedin, Mail, Twitter } from "lucide-react";
+import { Logo } from "@/app/components/ui/Logo";
 
 const columns = [
     {
@@ -27,14 +28,7 @@ export default function LandingFooter() {
             <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-16 pb-8">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-12 mb-16">
                     <div className="col-span-2">
-                        <div className="flex items-center gap-2.5 mb-5">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-                                <HeartPulse className="h-[18px] w-[18px]" strokeWidth={2.25} />
-                            </span>
-                            <span className="text-[17px] font-bold tracking-tight text-slate-900">
-                                Care<span className="text-blue-600">Vault</span>
-                            </span>
-                        </div>
+                        <Logo className="h-8 w-auto mb-5" />
                         <p className="max-w-xs text-[15px] leading-relaxed text-slate-500 mb-6">
                             Redefining healthcare technology with intelligent clinical workflows and
                             unparalleled security since 2018.

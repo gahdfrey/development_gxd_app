@@ -8,6 +8,7 @@ import * as z from "zod";
 import { useToast } from "@/app/contexts/ToastContext";
 import { signIn } from "next-auth/react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { Logo } from "@/app/components/ui/Logo";
 
 const loginSchema = z.object({
   email: z
@@ -97,6 +98,7 @@ export default function LoginForm() {
   return (
     <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-200">
       <div className="text-center mb-6">
+        <Logo className="h-9 w-auto mx-auto mb-6" />
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
           Welcome Back
         </h1>

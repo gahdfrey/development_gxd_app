@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- C · The hub: four department segments form a C around the record, with a key-like spoke out through the opening -->
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#0F172A" stroke-width="7" stroke-dasharray="19.9 4.89 19.9 4.89 19.9 4.89 19.9 31.39" transform="rotate(45 32 32)"/>
+  <circle cx="32" cy="32" r="7" fill="#0F172A"/>
+  <path d="M32 32 H49" stroke="#0F172A" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="52" cy="32" r="4" fill="#0F172A"/>
+</svg>

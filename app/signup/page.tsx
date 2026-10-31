@@ -2,8 +2,8 @@ import SignUpForm from '../components/SignUpForm';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Create Account - GXD App',
-    description: 'Join GXD today! Create your free account and start exploring amazing features.',
+    title: 'Create Account - CareVault',
+    description: 'Set up your organisation on CareVault, the EHR built for the way clinicians think.',
 };
 
 export default function SignUpPage() {

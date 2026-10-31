@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- D · Record shield: a shield with a folded page corner and a cross cut through it -->
+  <path fill="#2563EB" fill-rule="evenodd" d="M17 10 H40 V20 H50 V33 C50 45 42 52 32 56 C22 52 14 45 14 33 V13 Q14 10 17 10 Z M28 25 H36 V32 H43 V40 H36 V47 H28 V40 H21 V32 H28 Z"/>
+  <path fill="#2563EB" d="M42 10 L50 18 H42 Z"/>
+</svg>
