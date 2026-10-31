@@ -67,7 +67,7 @@ function EcosystemDiagram() {
                 <div className="relative">
                     <div className="absolute -inset-5 rounded-full bg-blue-500/15 blur-xl" aria-hidden />
                     <div className="relative flex flex-col items-center gap-1.5 rounded-2xl bg-blue-600 px-6 py-5 shadow-xl shadow-blue-600/30 ring-1 ring-blue-500">
-                        <LogoMark className="h-9 w-9 text-white" />
+                        <LogoMark reversed className="h-9 w-9 text-white" />
                         <span className="text-sm font-bold text-white">CareVault</span>
                     </div>
                 </div>
