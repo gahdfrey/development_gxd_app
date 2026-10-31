@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { HeartPulse, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { Logo } from "@/app/components/ui/Logo";
 
 const navLinks = [
     { label: "Features", href: "#features" },
@@ -32,13 +33,8 @@ export default function Navbar() {
             }`}
         >
             <div className="max-w-7xl mx-auto px-6 lg:px-8 flex h-16 items-center justify-between">
-                <Link href="/" className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/25">
-                        <HeartPulse className="h-[18px] w-[18px]" strokeWidth={2.25} />
-                    </span>
-                    <span className="text-[17px] font-bold tracking-tight text-slate-900">
-                        Care<span className="text-blue-600">Vault</span>
-                    </span>
+                <Link href="/" className="flex items-center">
+                    <Logo className="h-8 w-auto" />
                 </Link>
 
                 <nav className="hidden md:flex items-center gap-1">

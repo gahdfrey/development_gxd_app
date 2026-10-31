@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { ToastProvider } from '@/app/contexts/ToastContext';
 
 export const metadata: Metadata = {
-    title: 'Sign In - GXD App',
-    description: 'Sign in to your GXD account to access your dashboard and personalized features.',
+    title: 'Sign In - CareVault',
+    description: 'Sign in to your CareVault account to access your dashboard and personalized features.',
 };
 
 export default function LoginPage() {
