@@ -1,9 +1,9 @@
-// Builds the CareVault logo set (SVG + PNG + ICO) from the Keyhole C mark geometry and the
+// Builds the CareVault logo set (SVG + PNG + ICO) from the Hub II mark geometry and the
 // outlined Geist wordmark. Usage: node build.mjs <glyphs.json> <outDir>
 import { createRequire } from "module";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { fullMark, reversedMark } from "./mark.mjs";
+import { fullMark, reversedMark, smallMark, smallReversedMark } from "./mark.mjs";
 
 const appRequire = createRequire("/Users/tiito/Desktop/development_gxd_app/package.json");
 const sharp = appRequire("sharp");
@@ -17,14 +17,17 @@ mkdirSync(join(outDir, "png"), { recursive: true });
 const BLUE = "#2563EB", BLUE_400 = "#60A5FA", INK = "#0F172A", GREY = "#64748B";
 const r = (n) => Number(n.toFixed(2));
 
-// Visual bounds of each mark on its 64 grid (measured). The mouth leaves the right edge short
-// of the circle, so centring on these bounds nudges the mark right, which balances it optically.
-// "rev" is the light-on-dark drawing with a slightly opened counter.
+// Visual bounds of each mark on its 64 grid (measured; the node fills the right edge, so all four
+// share one box). "rev" drawings are the slightly lighter light-on-dark versions; "small" drawings
+// drop the segment gaps for use under 24 px.
+const box = { x0: 6, y0: 6, x1: 58, y1: 58 };
 const MARKS = {
-  full: { d: fullMark(), x0: 6, y0: 6, x1: 56.25, y1: 58 },
-  // Same box as "full" so every colourway of a lockup shares one layout.
-  rev: { d: reversedMark(), x0: 6, y0: 6, x1: 56.25, y1: 58 },
+  full: { d: fullMark(), ...box },
+  rev: { d: reversedMark(), ...box },
+  small: { d: smallMark(), ...box },
+  smallRev: { d: smallReversedMark(), ...box },
 };
+const SMALL = { full: "small", rev: "smallRev" };
 
 const place = (d, k, tx, ty) => new SVGPathData(d).scale(k, k).translate(tx, ty).round(100).encode();
 
@@ -66,10 +69,10 @@ const files = {};
 const save = (name, svg) => { files[name] = svg; writeFileSync(join(outDir, "svg", name), svg); };
 
 // --- Symbol ---------------------------------------------------------------
-// One drawing works at every size, so there is no separate small mark.
 for (const [suffix, [mc, , , kind]] of Object.entries(WAYS)) {
   if (suffix === "-reversed") continue; // on dark, use the white mark
   save(`carevault-mark${suffix}.svg`, svgDoc([0, 0, 64, 64], path(MARKS[kind].d, mc), "CareVault"));
+  save(`carevault-mark-small${suffix}.svg`, svgDoc([0, 0, 64, 64], path(MARKS[SMALL[kind]].d, mc), "CareVault"));
 }
 
 // --- Horizontal lockup ----------------------------------------------------
@@ -122,7 +125,7 @@ for (const [suffix, [mc, cc, vc, kind], pc] of [["", WAYS[""], GREY], ["-reverse
   const capW = 12, capP = 9;
   const baseline = 14 + capW / 2;
   const p = textAt("powered", 0, baseline, capP);
-  const mark = markAt(kind, p.right + 9, 4, 20);
+  const mark = markAt(SMALL[kind], p.right + 9, 4, 20);
   const w = textAt("wordmark", p.right + 9 + mark.w + 6, baseline, capW);
   const top = Math.min(4, w.top), bottom = Math.max(24, w.bottom);
   save(`carevault-powered-by${suffix}.svg`, svgDoc([0, top, w.right, bottom - top],
@@ -142,7 +145,7 @@ function tile(size, radius, markFrac, kind = "rev") {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${bg}${path(mk.d, "#FFFFFF")}</svg>`;
 }
 save("carevault-app-icon.svg", tile(512, 112, 0.56));
-save("favicon.svg", svgDoc([5, 5, 54, 54], path(MARKS.full.d, BLUE), "CareVault"));
+save("favicon.svg", svgDoc([5, 5, 54, 54], path(MARKS.small.d, BLUE), "CareVault"));
 
 // --- Rasters --------------------------------------------------------------
 const png = (svg, w, h, file) => sharp(Buffer.from(svg), { density: 72 * Math.max(1, (w || 0) / 64) })
