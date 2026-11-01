@@ -1,31 +1,28 @@
-# CareVault logo: the Keyhole C
+# CareVault logo: Hub II
 
-The CareVault logo is **Keyhole C**. It came out of round 3, which refined the round 2 "Hub" direction (see `../CAREVAULT_BRAND_BRIEF.md`, `../logo-concepts/` and `../logo-round3/`).
+The CareVault logo is **Hub II**. It came out of round 3, which refined the round 2 "Hub" direction (see `../CAREVAULT_BRAND_BRIEF.md`, `../logo-concepts/`, `../logo-round3/` and `../logo-round4/`).
 
 ## The idea
 
-- **The C is Care.** It is a single heavy, confident shape.
-- **The C's inner space is a keyhole: the Vault.** It has a round head at the centre and a slot that widens out through the C's opening.
-- **The dot in the keyhole's head is the patient record**, held at the centre of the vault.
-- **The slot is the only way in or out.** Access is deliberate and controlled, the way CareVault handles consent, permissions and audit trails.
+- **The ring is a C, for Care.** It is split into three mirrored segments: patients, clinicians and organisations.
+- **The solid centre is the patient record**, held safely at the heart of the vault.
+- **A spoke runs from the record out through the C's opening** to a node.
+- **The node sits on the ring's own centre line**, the same size as the ring's rounded ends, so it reads as the ring's missing piece. The record joins the wider health system without leaving the vault's structure.
 
 ## Construction
 
-Built on a 64-unit grid (`source/mark.mjs`):
+Every part comes from one module, **t = the ring's thickness (8 on a 64-unit grid)**, in `source/mark.mjs`:
 
 | Part | Value |
 |---|---|
-| Outer radius | 26 |
-| Keyhole-head radius | 13 (half the outer radius) |
-| Record dot radius | 5 (the head radius ÷ φ², where φ is the golden ratio) |
-| Slot width | 5 at the head, widening to 16 at the rim |
-| Jaw corners | rounded, 1.75 radius |
+| Ring | thickness t, outer radius 26, opening ±45° |
+| Record (centre dot) | diameter 2t |
+| Node and ring ends | circles of diameter t, on the ring's centre line |
+| Spoke and segment gaps | t/2 |
 
 **Optical corrections**
-- **Reversed artwork is drawn slightly lighter.** White on dark looks heavier (an effect called irradiation), so the white mark's keyhole is opened by about 0.4 units to compensate. The `-white` and `-reversed` files use this drawing.
-- **Centred by what you see, not by the circle.** The opening makes the mark's right edge stop short of the full circle, so placing it by its visible edges nudges it right and balances it.
-
-**One drawing works at every size**, from 16 px up. There is no separate small version.
+- **Reversed artwork is drawn slightly lighter.** White on dark looks heavier (an effect called irradiation), so the white drawings use t = 7.6. The `-white` and `-reversed` files use them.
+- **A separate small mark for under 24 px.** At small sizes the segment gaps blur, so `carevault-mark-small*.svg` (and the favicon) use one unbroken, slightly heavier ring (t = 9).
 
 ## Files
 
@@ -40,7 +37,8 @@ Everything is flat, solid colour. There are no gradients, and every letter is co
 | `carevault-logo-horizontal-black.svg` | One-colour print: lab results, receipts, stamps, fax |
 | `carevault-logo-stacked*.svg` | Square-ish spaces: login page, splash screen, signage |
 | `carevault-wordmark*.svg` | Where the mark already appears nearby |
-| `carevault-mark.svg` / `-white` / `-black` | The symbol alone, at any size |
+| `carevault-mark.svg` / `-white` / `-black` | The symbol alone, at **24 px and above** |
+| `carevault-mark-small.svg` / `-white` / `-black` | The symbol alone, **under 24 px** (no segment gaps) |
 | `carevault-powered-by.svg` / `-reversed` | Co-branding next to a client hospital's logo ("Powered by CareVault") |
 | `carevault-app-icon.svg` | App icon master (blue rounded tile, white mark) |
 | `favicon.svg` | Modern browser favicon |
@@ -60,7 +58,7 @@ Everything is flat, solid colour. There are no gradients, and every letter is co
 
 ### `source/`: how the artwork is generated
 - `mark.mjs`: the mark's geometry
-- `outline.py`: sets "CareVault" in Geist Bold with its kerning and converts it to outlines
+- `outline.py`: sets "CareVault" in Geist SemiBold with its kerning and converts it to outlines
 - `build.mjs`: assembles every lockup and export (`node build.mjs <glyphs.json> ..`)
 
 Change the geometry there, not by hand-editing the SVGs. If you change the mark, copy the new path data into `app/components/ui/Logo.tsx` and the icons into `app/` and `public/brand/`.
@@ -79,18 +77,19 @@ These are the colours the app already uses (Tailwind blue-600, slate-900, slate-
 
 ## Typography
 
-The wordmark is **Geist Bold** (the app's own typeface) at −0.02 em tracking, with kerning applied. Bold matches the weight of the heavy mark. "Care" is in Ink and "Vault" is in Blue, so the security half of the name carries the brand colour.
+The wordmark is **Geist SemiBold** (the app's own typeface) at −0.025 em tracking, with kerning applied. SemiBold matches the weight of the ring. "Care" is in Ink and "Vault" is in Blue, so the security half of the name carries the brand colour.
 
 ## Clear space and minimum size
 
-- **Clear space:** keep empty space around the logo at least equal to **the keyhole head's radius** on every side. That's a quarter of the mark's height.
+- **Clear space:** keep empty space around the logo at least equal to **the record (centre dot) diameter** on every side. That's about 30% of the mark's height.
 - **Minimum sizes**
 
 | Asset | Screen | Print |
 |---|---|---|
-| Horizontal logo | 100 px wide | 28 mm wide |
-| Stacked logo | 56 px wide | 18 mm wide |
-| Mark | 16 px | 5 mm |
+| Horizontal logo | 110 px wide | 30 mm wide |
+| Stacked logo | 64 px wide | 20 mm wide |
+| Mark | 24 px | 8 mm |
+| Small mark | 12 px | 4 mm |
 | Powered-by | 100 px wide | 28 mm wide |
 
 ## Don'ts
@@ -98,6 +97,7 @@ The wordmark is **Geist Bold** (the app's own typeface) at −0.02 em tracking, 
 - Don't add gradients, shadows, glows or outlines.
 - Don't recolour the mark (especially red), and don't put the blue mark on the blue background.
 - Don't stretch, rotate or rearrange the mark and wordmark, or change the spacing between them.
-- Don't close the slot or remove the record dot. Together they carry the idea.
+- Don't close the C's opening, or remove the spoke or node. Together they carry the idea.
+- Don't use the three-segment mark below 24 px. Use the small mark instead.
 - Don't use the blue-background drawing (`carevault-mark.svg`) reversed out on dark. Use `carevault-mark-white.svg`, which is optically corrected.
 - Don't retype the wordmark in a font. Use the files.

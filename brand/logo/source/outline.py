@@ -16,7 +16,7 @@ SIZE = 100
 
 # key: (text, weight, tracking in em, span boundaries)
 STRINGS = {
-    "wordmark": ("CareVault", 700, -0.02, [4]),
+    "wordmark": ("CareVault", 600, -0.025, [4]),
     "powered": ("Powered by", 500, 0.0, []),
     "tagline": ("The EHR built for the way clinicians think", 500, -0.01, []),
     "domain": ("carevault.com.ng", 500, 0.0, []),
