@@ -58,7 +58,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                         href="/login"
-                        className="inline-flex items-center bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
+                        className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
                     >
                         Get started
                     </Link>
