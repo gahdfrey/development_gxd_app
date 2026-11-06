@@ -22,7 +22,8 @@ Every part comes from one module, **t = the ring's thickness (8 on a 64-unit gri
 
 **Optical corrections**
 - **Reversed artwork is drawn slightly lighter.** White on dark looks heavier (an effect called irradiation), so the white drawings use t = 7.6. The `-white` and `-reversed` files use them.
-- **A separate small mark for under 24 px.** At small sizes the segment gaps blur, so `carevault-mark-small*.svg` (and the favicon) use one unbroken, slightly heavier ring (t = 9).
+- **A separate small mark for under 24 px.** At small sizes the segment gaps blur, so `carevault-mark-small*.svg` use one unbroken, slightly heavier ring (t = 9).
+- **The favicon is the exception.** It uses the full three-segment mark so the browser tab matches the logo on the page. At 16 px the gaps soften, which is accepted for that consistency.
 
 ## Files
 
@@ -98,6 +99,6 @@ The wordmark is **Geist SemiBold** (the app's own typeface) at −0.025 em track
 - Don't recolour the mark (especially red), and don't put the blue mark on the blue background.
 - Don't stretch, rotate or rearrange the mark and wordmark, or change the spacing between them.
 - Don't close the C's opening, or remove the spoke or node. Together they carry the idea.
-- Don't use the three-segment mark below 24 px. Use the small mark instead.
+- Don't use the three-segment mark below 24 px. Use the small mark instead. The favicon is the one exception.
 - Don't use the blue-background drawing (`carevault-mark.svg`) reversed out on dark. Use `carevault-mark-white.svg`, which is optically corrected.
 - Don't retype the wordmark in a font. Use the files.

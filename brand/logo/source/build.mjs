@@ -145,7 +145,8 @@ function tile(size, radius, markFrac, kind = "rev") {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${bg}${path(mk.d, "#FFFFFF")}</svg>`;
 }
 save("carevault-app-icon.svg", tile(512, 112, 0.56));
-save("favicon.svg", svgDoc([5, 5, 54, 54], path(MARKS.small.d, BLUE), "CareVault"));
+// The favicon uses the full three-segment mark so the browser tab matches the logo on the page.
+save("favicon.svg", svgDoc([5, 5, 54, 54], path(MARKS.full.d, BLUE), "CareVault"));
 
 // --- Rasters --------------------------------------------------------------
 const png = (svg, w, h, file) => sharp(Buffer.from(svg), { density: 72 * Math.max(1, (w || 0) / 64) })
