@@ -180,7 +180,7 @@ export default function DuplicatesPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       <div>
         <Link href="/patients" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
           <ArrowLeftIcon className="h-4 w-4" />
@@ -213,7 +213,7 @@ export default function DuplicatesPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
         ) : !pairs || pairs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-sm text-gray-500">
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-10 text-center text-sm text-gray-500">
             No likely duplicates found.
           </div>
         ) : (
@@ -247,7 +247,7 @@ export default function DuplicatesPage() {
 
       {tab === "history" &&
         (merges.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-sm text-gray-500">No merges yet.</div>
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-10 text-center text-sm text-gray-500">No merges yet.</div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <ul className="divide-y divide-gray-100">

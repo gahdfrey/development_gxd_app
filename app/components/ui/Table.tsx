@@ -84,7 +84,7 @@ export default function Table<T>({
   return (
     <div className="flex flex-col gap-4">
       {searchable && (
-        <div className="relative w-64">
+        <div className="relative w-full sm:w-64">
           <input
             type="text"
             placeholder={searchPlaceholder}
@@ -136,7 +136,7 @@ export default function Table<T>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export default function Table<T>({
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize"
+                    className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 capitalize"
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
@@ -170,7 +170,7 @@ export default function Table<T>({
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-2">
         <div className="flex items-center gap-2">
           <button
             className="p-2 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"

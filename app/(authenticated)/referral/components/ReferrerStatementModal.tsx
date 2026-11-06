@@ -98,7 +98,7 @@ export default function ReferrerStatementModal({ referrerId, initialRange, canDo
             </p>
 
             {data.lines.length === 0 ? (
-              <div className="rounded-lg border border-gray-200 p-8 text-center text-sm text-gray-500">
+              <div className="rounded-lg border border-gray-200 p-4 sm:p-8 text-center text-sm text-gray-500">
                 No referred patients in this period.
               </div>
             ) : (

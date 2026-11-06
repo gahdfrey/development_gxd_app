@@ -28,7 +28,7 @@ interface Props {
 export default function VaccinationRecord({ courses, onAction, onMissed, onCollect, patientName, onPay, billingOnly = false }: Props) {
   if (courses.length === 0) {
     return (
-      <div className="rounded-xl sm:rounded-2xl border border-gray-200 bg-white p-10 text-center">
+      <div className="rounded-xl sm:rounded-2xl border border-gray-200 bg-white p-5 sm:p-10 text-center">
         <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
           <CheckCircleIcon className="h-6 w-6 text-gray-400" />
         </span>

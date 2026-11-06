@@ -17,10 +17,11 @@ export default function MainContent({ children }: { children: React.ReactNode })
   // Patients have no sidebar — remove the sidebar offset entirely
   const isPatient = user?.userrole === 'Patient';
 
-  const sidebarWidth = isPatient ? 'pl-0' : isLocked ? 'pl-64' : 'pl-16';
+  // Phones: the sidebar is a slide-out drawer, so content uses the full width.
+  const sidebarWidth = isPatient ? 'md:pl-0' : isLocked ? 'md:pl-64' : 'md:pl-16';
 
   return (
-    <main className={`pt-24 ${sidebarWidth} transition-all duration-500 ease-out`}>
+    <main className={`pt-20 md:pt-24 pl-0 ${sidebarWidth} min-w-0 overflow-x-clip transition-all duration-500 ease-out`}>
       {/* Unacknowledged critical lab results addressed to this clinician. */}
       {!isPatient && <CriticalAlertsBar />}
       {children}

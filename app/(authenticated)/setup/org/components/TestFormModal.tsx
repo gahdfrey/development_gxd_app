@@ -211,7 +211,7 @@ export default function TestFormModal({
               aria-label="Referral discount type"
               value={refDiscountType}
               onChange={(e) => setRefDiscountType(e.target.value as "" | "amount" | "percent")}
-              className="w-44 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-32 sm:w-44 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">None</option>
               <option value="amount">Amount (₦)</option>

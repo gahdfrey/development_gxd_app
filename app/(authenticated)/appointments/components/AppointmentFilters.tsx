@@ -184,7 +184,7 @@ export default function AppointmentFilters({
     // <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
     <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
         <div className="flex-1 min-w-[200px]">
           <SearchableSelect
             options={sortedDoctors}

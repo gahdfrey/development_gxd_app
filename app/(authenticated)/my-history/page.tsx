@@ -271,7 +271,7 @@ function SensitiveDataModal({ onClose }: { onClose: () => void }) {
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
-        <div className="p-6 text-center space-y-4">
+        <div className="p-4 sm:p-6 text-center space-y-4">
           <div className="mx-auto w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
             <ShieldExclamationIcon className="h-8 w-8 text-amber-600" />
           </div>
@@ -1126,7 +1126,7 @@ export default function MyHistoryPage() {
                 <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">
                   Phone
                 </p>
-                <p className="text-xs sm:text-sm font-semibold text-gray-800 truncate mt-0.5">
+                <p className="text-xs sm:text-sm font-semibold text-gray-800 break-words sm:truncate mt-0.5">
                   {patient.countryCode} {patient.phone}
                 </p>
               </div>

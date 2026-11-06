@@ -153,7 +153,7 @@ export default function ReferrersTab() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : referrers.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center">
           <p className="text-gray-500 mb-4">No referrers yet. Create one or upload a CSV.</p>
           <button
             onClick={openCreate}
@@ -164,7 +164,7 @@ export default function ReferrersTab() {
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center text-gray-500">
           No referrers match &quot;{search}&quot;.
         </div>
       ) : (

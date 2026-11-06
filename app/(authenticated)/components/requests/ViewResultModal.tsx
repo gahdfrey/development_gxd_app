@@ -104,7 +104,7 @@ function ResultFile({ result }: { result: ResultEntry }) {
             style={{ height: "60vh", minHeight: "300px" }}
           />
         ) : (
-          <div className="text-center p-10 space-y-3">
+          <div className="text-center p-5 sm:p-10 space-y-3">
             <DocumentArrowDownIcon className="h-12 w-12 text-gray-300 mx-auto" />
             <p className="text-gray-500 text-sm">Preview not available for this file type.</p>
             <a
@@ -187,7 +187,7 @@ export default function ViewResultModal({ isOpen, onClose, row }: ViewResultModa
               <p className="text-sm font-medium">Could not load the result. Please try again.</p>
             </div>
           ) : results.length === 0 && values.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 text-sm">
+            <div className="text-center py-8 sm:py-12 text-gray-500 text-sm">
               No results found for this request.
             </div>
           ) : (

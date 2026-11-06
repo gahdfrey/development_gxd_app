@@ -154,7 +154,7 @@ export default function WardsBedsTab() {
         ) : beds.length === 0 ? (
           <p className="text-gray-500 text-sm bg-white rounded-lg shadow-sm p-4">No beds in this ward yet.</p>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>

@@ -140,7 +140,7 @@ export default function AppointmentCalendar({
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-6">
         <div className="mb-4">
           <h3 className="text-lg font-bold text-gray-800 mb-2">
             Appointment Calendar
@@ -189,7 +189,7 @@ export default function AppointmentCalendar({
           onClick={handleCloseModal}
         >
           <div
-            className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border border-white/20 transform transition-all duration-300 ease-out animate-in zoom-in-95"
+            className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl max-w-md w-full mx-4 p-4 sm:p-6 border border-white/20 transform transition-all duration-300 ease-out animate-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -249,7 +249,7 @@ export default function AppointmentCalendar({
               </div>
 
               {/* Date & Time */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-semibold text-gray-600">
                     Date

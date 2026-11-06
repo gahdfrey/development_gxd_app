@@ -203,7 +203,7 @@ export default function ConsultationModal({
                   </span>
                   In session
                 </span>
-                <span className="font-mono text-3xl font-bold tabular-nums text-white">
+                <span className="font-mono text-2xl sm:text-3xl font-bold tabular-nums text-white">
                   {formatTime(elapsedSeconds)}
                 </span>
               </div>
@@ -330,7 +330,7 @@ export default function ConsultationModal({
         title="DxGPT - AI Medical Assistant"
         size="large"
       >
-        <div className="h-[600px]">
+        <div className="h-[70vh] sm:h-[600px]">
           <iframe
             src="https://dxgpt.app/"
             className="w-full h-full border-0 rounded-lg"

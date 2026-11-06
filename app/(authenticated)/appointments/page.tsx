@@ -78,7 +78,7 @@ export default function AppointmentsPage() {
                 <CalendarDaysIcon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
                   Appointments
                 </h1>
                 <p className="text-gray-600 text-sm">
@@ -99,14 +99,14 @@ export default function AppointmentsPage() {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-8 sm:py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6">
             <p className="text-red-700 text-center">
               Failed to load appointments. Please try again.
             </p>

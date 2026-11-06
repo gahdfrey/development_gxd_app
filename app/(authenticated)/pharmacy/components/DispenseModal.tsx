@@ -106,14 +106,14 @@ export default function DispenseModal({ prescription, onClose, onConfirm }: Prop
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="px-6 py-5 border-b border-gray-100">
+        <div className="px-4 sm:px-6 py-5 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Confirm Dispensing</h2>
           <p className="text-sm text-gray-500 mt-0.5">
             {genericLabel} — {patientName}
           </p>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-4 sm:px-6 py-5 space-y-4">
           {error && (
             <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
           )}
@@ -168,7 +168,7 @@ export default function DispenseModal({ prescription, onClose, onConfirm }: Prop
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"

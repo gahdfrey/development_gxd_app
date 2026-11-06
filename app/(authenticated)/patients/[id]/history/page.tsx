@@ -859,7 +859,7 @@ export default function PatientHistoryPage({
                 <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">
                   Phone
                 </p>
-                <p className="text-xs sm:text-sm font-semibold text-gray-800 truncate mt-0.5">
+                <p className="text-xs sm:text-sm font-semibold text-gray-800 break-words sm:truncate mt-0.5">
                   {patient.countryCode} {patient.phone}
                 </p>
               </div>

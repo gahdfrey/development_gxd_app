@@ -103,9 +103,9 @@ export default function ProductsPage() {
     new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap gap-3 items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -153,54 +153,54 @@ export default function ProductsPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Units / Case</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-52">Stock Level</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakdown</th>
-                {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th> */}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reorder At</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prescribable</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Units / Case</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-52">Stock Level</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Breakdown</th>
+                {/* <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th> */}
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reorder At</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prescribable</th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="px-3 sm:px-6 py-8 sm:py-12 text-center text-sm text-gray-500">
                     {search ? "No products match your search." : "No products yet. Add them in Setup → Organisation → Products."}
                   </td>
                 </tr>
               ) : (
                 filtered.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-4">
                       <p className="text-sm font-semibold text-gray-900">{p.name}</p>
                       {p.description && (
                         <p className="text-xs text-gray-400 mt-0.5">{p.description}</p>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{p.unitsPerCase}/case</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-600">{p.unitsPerCase}/case</td>
+                    <td className="px-3 sm:px-6 py-4">
                       <p className="text-sm font-bold text-gray-900">{p.totalUnits.toLocaleString()} units</p>
                       <StockBar totalUnits={p.totalUnits} reorderLevel={p.reorderLevel} />
                     </td>
-                    <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
                       <span className="font-medium text-gray-700">{p.casesInStock}</span> cases ×{" "}
                       <span className="font-medium text-gray-700">{p.unitsPerCase}</span>
                       {p.looseUnitsInStock > 0 && (
                         <span className="text-gray-400"> + {p.looseUnitsInStock} loose</span>
                       )}
                     </td>
-                    {/* <td className="px-6 py-4">
+                    {/* <td className="px-3 sm:px-6 py-4">
                       <StockBadge totalUnits={p.totalUnits} reorderLevel={p.reorderLevel} />
                     </td> */}
-                    <td className="px-6 py-4 text-sm text-gray-500">{p.reorderLevel} units</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500">{p.reorderLevel} units</td>
+                    <td className="px-3 sm:px-6 py-4">
                       <button
                         onClick={() => togglePrescribable(p)}
                         title={p.isPrescribable ? "Click to remove from prescribable drugs" : "Click to mark as prescribable drug"}
@@ -209,8 +209,8 @@ export default function ProductsPage() {
                         <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${p.isPrescribable ? "translate-x-4" : "translate-x-0"}`} />
                       </button>
                     </td>
-                    <td className="px-6 py-4 text-xs text-gray-400">{formatDate(p.updatedAt)}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-3 sm:px-6 py-4 text-xs text-gray-400">{formatDate(p.updatedAt)}</td>
+                    <td className="px-3 sm:px-6 py-4 text-right">
                       <button
                         onClick={() => openAdjust(p.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"

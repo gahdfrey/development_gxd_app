@@ -202,7 +202,7 @@ export default function HMOSetupPage() {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
           Failed to load HMOs. Please try again.
         </div>
@@ -211,8 +211,8 @@ export default function HMOSetupPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">HMO Setup</h1>
           <p className="text-gray-600 text-sm mt-1">
@@ -233,7 +233,7 @@ export default function HMOSetupPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       ) : hmos.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center">
           <p className="text-gray-500 mb-4">
             No HMOs found. Create your first one!
           </p>

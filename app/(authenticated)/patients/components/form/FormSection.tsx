@@ -53,7 +53,7 @@ export default function FormSection({
         </div>
 
         <div
-          className={`space-y-5 ${colors.sectionBg} rounded-2xl p-6 border ${colors.borderColor}`}
+          className={`space-y-5 ${colors.sectionBg} rounded-2xl p-4 sm:p-6 border ${colors.borderColor}`}
         >
           {children}
         </div>

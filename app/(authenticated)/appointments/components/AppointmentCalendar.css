@@ -91,3 +91,24 @@
 .rbc-selected-cell {
   background-color: #dbeafe;
 }
+
+/* Phones: stack the toolbar and shrink event chips so a month fits a 375px screen. */
+@media (max-width: 639px) {
+  .rbc-toolbar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .rbc-toolbar .rbc-toolbar-label {
+    order: -1;
+    font-size: 1rem;
+  }
+  .rbc-header {
+    font-size: 0.6875rem;
+    padding: 0.25rem 0;
+  }
+  .rbc-event,
+  .rbc-show-more {
+    font-size: 0.625rem;
+    padding: 0 2px;
+  }
+}

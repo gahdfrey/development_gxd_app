@@ -222,7 +222,7 @@ export default function BillingPlansTab() {
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -277,7 +277,7 @@ export default function BillingPlansTab() {
             ))}
             {(!plans || plans.length === 0) && (
               <tr>
-                <td colSpan={6} className="px-5 py-8 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-5 py-6 sm:py-8 text-center text-sm text-gray-500">
                   No billing plans yet.
                 </td>
               </tr>

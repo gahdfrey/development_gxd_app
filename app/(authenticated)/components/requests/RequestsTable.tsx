@@ -271,7 +271,7 @@ export default function RequestsTable({
 
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-12 text-center">
         <p className="text-gray-500">No requests found.</p>
       </div>
     );

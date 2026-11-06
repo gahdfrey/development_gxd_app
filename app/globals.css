@@ -107,3 +107,21 @@ Glassmorphism effect utility
   }
 }
 
+
+/* Phones: iOS zooms into any form field under 16px when it is focused, which throws the
+   layout off in the home-screen app. Keep fields at 16px on small screens. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Sideways-scrolling rows (tab bars on phones) without a visible scrollbar. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

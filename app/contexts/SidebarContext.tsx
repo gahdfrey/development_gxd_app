@@ -8,6 +8,9 @@ interface SidebarContextType {
     setIsExpanded: (value: boolean) => void;
     setIsLocked: (value: boolean) => void;
     toggleLock: () => void;
+    // Phones: the sidebar is a slide-out drawer, opened from the top bar's menu button.
+    isMobileOpen: boolean;
+    setMobileOpen: (value: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -15,6 +18,7 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 export function SidebarProvider({ children }: { children: ReactNode }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
+    const [isMobileOpen, setMobileOpen] = useState(false);
 
     const toggleLock = useCallback(() => {
         setIsLocked(prev => {
@@ -32,6 +36,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
                 setIsExpanded,
                 setIsLocked,
                 toggleLock,
+                isMobileOpen,
+                setMobileOpen,
             }}
         >
             {children}

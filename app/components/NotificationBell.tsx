@@ -88,7 +88,7 @@ export default function NotificationBell({ userRole }: NotificationBellProps) {
 
       {/* Dropdown — shown on hover */}
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+        <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full mt-1 sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
 
           {/* ── Top bar: title + "Show all" link ── */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">

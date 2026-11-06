@@ -263,7 +263,7 @@ export default function FinancePage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
@@ -388,7 +388,7 @@ export default function FinancePage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             </div>
           ) : filteredPrescriptions.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-8 text-center">
               <p className="text-gray-500 text-sm">
                 No drug prescriptions found.
               </p>
@@ -502,7 +502,7 @@ export default function FinancePage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             </div>
           ) : !paymentsData || paymentsData.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-8 text-center">
               <p className="text-gray-500 text-sm">No payments recorded yet.</p>
             </div>
           ) : (

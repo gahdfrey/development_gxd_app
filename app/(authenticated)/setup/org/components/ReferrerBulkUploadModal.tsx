@@ -98,7 +98,7 @@ export default function ReferrerBulkUploadModal({ isOpen, onClose, onSuccess }: 
         </div>
 
         {!result && (
-          <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 text-center cursor-pointer hover:border-blue-400 hover:bg-gray-50">
+          <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-6 sm:py-8 text-center cursor-pointer hover:border-blue-400 hover:bg-gray-50">
             <ArrowUpTrayIcon className="h-8 w-8 text-gray-400" />
             <span className="text-sm font-medium text-gray-700">{fileName || "Choose a CSV file"}</span>
             <span className="text-xs text-gray-500">{rows.length > 0 ? `${rows.length} referrer(s) found` : "Click to browse"}</span>

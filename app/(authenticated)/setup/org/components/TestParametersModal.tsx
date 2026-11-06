@@ -163,7 +163,7 @@ export default function TestParametersModal({ test, onClose }: { test: TestRow |
         <div className="flex flex-wrap items-end gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3">
           <label className="block text-xs font-medium text-gray-700">
             Start from a template
-            <select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)} className={`mt-1 ${input} min-w-[260px]`}>
+            <select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)} className={`mt-1 ${input} w-full sm:w-auto sm:min-w-[260px]`}>
               <option value="">Choose…</option>
               {(templates?.templates ?? []).map((t) => (
                 <option key={t.key} value={t.key}>

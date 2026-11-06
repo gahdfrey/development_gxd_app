@@ -90,20 +90,20 @@ export default function AdminOrganisationsPage() {
     setUserError(null);
   }
 
-  if (isLoading) return <div className="p-8 text-gray-500">Loading...</div>;
+  if (isLoading) return <div className="p-4 sm:p-8 text-gray-500">Loading...</div>;
 
   if (!Array.isArray(orgs)) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <p className="text-red-500 font-medium">Access denied. Platform admin only.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 w-full">
+    <div className="p-4 sm:p-6 w-full">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Organisations</h1>
           <p className="text-sm text-gray-500 mt-1">Manage hospitals on this platform</p>
@@ -126,12 +126,12 @@ export default function AdminOrganisationsPage() {
 
       {/* ── Create Org Form ─────────────────────────────────────────────────── */}
       {showOrgForm && (
-        <form onSubmit={handleCreateOrg} className="bg-white border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
+        <form onSubmit={handleCreateOrg} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 mb-6 space-y-4">
           <h2 className="font-semibold text-gray-800">Create Organisation</h2>
           {orgError && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{orgError}</div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
               <input
@@ -192,7 +192,7 @@ export default function AdminOrganisationsPage() {
       )}
 
       {/* ── Organisations Table ──────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto mb-6">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -229,7 +229,7 @@ export default function AdminOrganisationsPage() {
               </tr>
             )) : (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">No organisations yet</td>
+                <td colSpan={7} className="px-4 py-6 sm:py-10 text-center text-gray-400">No organisations yet</td>
               </tr>
             )}
           </tbody>
@@ -238,7 +238,7 @@ export default function AdminOrganisationsPage() {
 
       {/* ── Create Admin User Form ───────────────────────────────────────────── */}
       {activeAdminOrg !== null && (
-        <form onSubmit={handleCreateUser} className="bg-white border border-green-200 rounded-xl p-6 space-y-4">
+        <form onSubmit={handleCreateUser} className="bg-white border border-green-200 rounded-xl p-4 sm:p-6 space-y-4">
           <div>
             <h2 className="font-semibold text-gray-800">
               Add User to{" "}
@@ -253,7 +253,7 @@ export default function AdminOrganisationsPage() {
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{userError}</div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
               <input

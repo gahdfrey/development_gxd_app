@@ -38,7 +38,7 @@ export function ChartCard({
 
 function Empty({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center justify-center py-10 text-center">
+    <div className="flex items-center justify-center py-6 sm:py-10 text-center">
       <p className="text-sm text-gray-400">{children}</p>
     </div>
   );

@@ -135,7 +135,7 @@ export default function ShiftsTab() {
           <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       ) : shifts.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">No shifts in this period.</p>
+        <p className="rounded-xl border border-dashed border-gray-300 px-4 py-6 sm:py-8 text-center text-sm text-gray-500">No shifts in this period.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full text-sm">

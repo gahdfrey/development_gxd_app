@@ -109,7 +109,7 @@ function ViewOrderModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
+        <div className="px-4 sm:px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -159,7 +159,7 @@ function ViewOrderModal({
           </div>
         </div>
 
-        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+        <div className="px-4 sm:px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">
@@ -285,7 +285,7 @@ function ViewOrderModal({
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end shrink-0">
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -321,7 +321,7 @@ function CancelModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="px-6 py-5 border-b border-gray-100">
+        <div className="px-4 sm:px-6 py-5 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">
             Cancel Order #{order.id}
           </h2>
@@ -332,7 +332,7 @@ function CancelModal({
             </span>
           </p>
         </div>
-        <div className="px-6 py-5 space-y-3">
+        <div className="px-4 sm:px-6 py-5 space-y-3">
           {error && (
             <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
               {error}
@@ -352,7 +352,7 @@ function CancelModal({
             />
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"

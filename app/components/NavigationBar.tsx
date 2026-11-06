@@ -228,7 +228,12 @@ function ChangePasswordModal({
 export default function NavigationBar({ session }: NavigationBarProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const { isLocked, toggleLock } = useSidebar();
+  const { isLocked, toggleLock, isMobileOpen, setMobileOpen } = useSidebar();
+  // The menu button locks the sidebar open on desktop, and opens the slide-out drawer on phones.
+  const handleMenuToggle = () => {
+    if (window.matchMedia("(min-width: 768px)").matches) toggleLock();
+    else setMobileOpen(!isMobileOpen);
+  };
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/login" });
@@ -242,9 +247,9 @@ export default function NavigationBar({ session }: NavigationBarProps) {
   return (
     <>
       <header className="fixed inset-x-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-200 py-1 shadow-sm h-16 transition-colors duration-300">
-        <div className="flex items-center justify-between px-6 h-full">
-          <div className="flex items-center gap-4">
-            <NavigationToggle isExpanded={isLocked} onToggle={toggleLock} />
+        <div className="flex items-center justify-between px-3 sm:px-6 h-full">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <NavigationToggle isExpanded={isLocked || isMobileOpen} onToggle={handleMenuToggle} />
             {/* <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
                 G
@@ -254,18 +259,18 @@ export default function NavigationBar({ session }: NavigationBarProps) {
               </span>
             </div> */}
             <div className="flex items-center gap-2">
-              <Logo className="h-7 w-auto" />
+              <Logo className="h-6 sm:h-7 w-auto" />
             </div>
           </div>
 
           {/* <div className="flex items-center gap-4">Client Logo</div> */}
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 sm:gap-4">
             <NotificationBell userRole={session?.user?.role} />
             <div className="relative">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-gray-100 transition-all duration-200 border border-transparent hover:border-gray-200"
+                className="flex items-center gap-1.5 sm:gap-3 px-1.5 sm:px-2 py-1.5 rounded-xl hover:bg-gray-100 transition-all duration-200 border border-transparent hover:border-gray-200"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white">
                   {session?.user?.firstname && session?.user?.lastname
@@ -301,7 +306,7 @@ export default function NavigationBar({ session }: NavigationBarProps) {
 
               {/* Dropdown Menu */}
               {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white border border-gray-200 shadow-xl overflow-hidden animate-fade-in z-50">
+                <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] rounded-xl bg-white border border-gray-200 shadow-xl overflow-hidden animate-fade-in z-50">
                   {/* Profile header */}
                   <div className="p-4 border-b border-gray-200 bg-gray-50">
                     <p className="text-sm font-semibold text-gray-900">
