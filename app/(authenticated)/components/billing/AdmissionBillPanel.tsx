@@ -232,9 +232,9 @@ export default function AdmissionBillPanel({ admissionId, canManage = true }: { 
 
       {adding && (
         <div className="flex flex-wrap items-end gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
-          <label className="text-xs font-medium text-gray-600">
+          <label className="w-full sm:w-auto text-xs font-medium text-gray-600">
             Service
-            <select value={svcId} onChange={(e) => setSvcId(e.target.value)} className="mt-1 block min-w-[240px] rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm">
+            <select value={svcId} onChange={(e) => setSvcId(e.target.value)} className="mt-1 block w-full sm:w-auto sm:min-w-[240px] rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm">
               <option value="">Select…</option>
               {services.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} — {naira(s.price)}</option>

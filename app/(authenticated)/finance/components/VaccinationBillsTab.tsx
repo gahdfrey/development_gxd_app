@@ -148,7 +148,7 @@ export default function VaccinationBillsTab({ onChanged }: { onChanged?: () => v
           <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+        <p className="rounded-xl border border-dashed border-gray-300 px-4 py-6 sm:py-8 text-center text-sm text-gray-500">
           {search ? "No vaccinations match your search." : filter === "unpaid" ? "No unpaid vaccinations." : "No vaccination bills yet."}
         </p>
       ) : (

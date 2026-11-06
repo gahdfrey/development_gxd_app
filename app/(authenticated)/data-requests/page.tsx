@@ -191,7 +191,7 @@ export default function DataRequestsPage() {
       {resolving && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className="px-6 py-4 border-b border-gray-100">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">
                 Handle data request
               </h2>
@@ -200,7 +200,7 @@ export default function DataRequestsPage() {
                 {TYPE_LABEL[resolving.type] ?? resolving.type}
               </p>
             </div>
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-4 sm:px-6 py-5 space-y-4">
               {error && (
                 <p className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                   <ExclamationCircleIcon className="h-4.5 w-4.5 shrink-0" />
@@ -238,7 +238,7 @@ export default function DataRequestsPage() {
                 className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
               />
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
               <button
                 onClick={() => setResolving(null)}
                 disabled={saving}

@@ -112,7 +112,7 @@ export default function ReferralFields({ value, onChange, error }: ReferralField
           </div>
 
           {selectedTests.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-gray-200">
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">

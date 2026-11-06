@@ -260,7 +260,7 @@ export default function ClaimsTab() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : !data || data.batches.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 text-center">
           <p className="text-gray-700 font-medium">No claims yet</p>
           <p className="text-gray-500 text-sm mt-1">
             Start one per HMO each month — it collects the month&apos;s settled HMO charges and checks them before you submit.
@@ -668,7 +668,7 @@ function ClaimDetailView({ batchId, onBack }: { batchId: number; onBack: () => v
       </div>
 
       {claim.lines.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-sm text-gray-500">This claim has no lines.</div>
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 text-center text-sm text-gray-500">This claim has no lines.</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

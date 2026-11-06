@@ -77,7 +77,7 @@ export default function StatusAppointmentsModal({isOpen, onClose, status} : Stat
                     <Table data={appointments}
                         columns={columns}/>
                 ) : (
-                    <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
+                    <div className="text-center py-8 sm:py-12 text-gray-500 bg-gray-50 rounded-lg">
                         No {status}
                         appointments found.
                     </div>

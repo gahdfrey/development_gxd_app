@@ -130,13 +130,13 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">
             {initial ? "Edit Product" : "Add Product"}
           </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 space-y-4 overflow-y-auto">
           {error && (
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
@@ -172,7 +172,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               <p className="text-xs text-gray-500 -mt-1">
                 Links this brand to its active constituent so clinicians can pick any available brand of the same drug, and pharmacy can substitute correctly when one brand runs out.
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Manufacturer</label>
                   <input
@@ -303,7 +303,7 @@ export default function ProductFormModal({ open, initial, onClose, onSave }: Pro
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cases in Stock</label>
                 <input

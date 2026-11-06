@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/app/contexts/SidebarContext";
@@ -9,7 +9,9 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 
 export default function SideMenu() {
-  const { isExpanded, isLocked, setIsExpanded } = useSidebar();
+  const { isExpanded: isDesktopExpanded, isLocked, setIsExpanded, isMobileOpen, setMobileOpen } = useSidebar();
+  // On phones the open drawer always shows labels; on desktop it follows hover/lock.
+  const isExpanded = isDesktopExpanded || isMobileOpen;
   const pathname = usePathname();
   const [isSetupOpen, setIsSetupOpen] = useState(false);
 
@@ -47,17 +49,25 @@ export default function SideMenu() {
     [user],
   );
 
+  // Touch screens fire mouseenter on tap, so hover-to-expand is for mouse users only.
+  const canHover = () => window.matchMedia("(hover: hover) and (min-width: 768px)").matches;
+
   const handleMouseEnter = useCallback(() => {
-    if (!isLocked) {
+    if (!isLocked && canHover()) {
       setIsExpanded(true);
     }
   }, [isLocked, setIsExpanded]);
 
   const handleMouseLeave = useCallback(() => {
-    if (!isLocked) {
+    if (!isLocked && canHover()) {
       setIsExpanded(false);
     }
   }, [isLocked, setIsExpanded]);
+
+  // Close the phone drawer after navigating.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname, setMobileOpen]);
 
   const isActive = useCallback(
     (href: string) => {
@@ -70,12 +80,20 @@ export default function SideMenu() {
   if (user?.userrole === "Patient") return null;
 
   return (
+    <>
+    {isMobileOpen && (
+      <div
+        className="fixed inset-0 top-16 z-40 bg-black/30 md:hidden"
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
+    )}
     <aside
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`fixed left-0 top-24 bottom-0 z-40 bg-white/80 backdrop-blur-md rounded-r-lg border-gray-200 transition-all duration-400 ease-out shadow-lg  ${
-        isExpanded ? "w-50" : "w-16"
-      }`}
+      className={`fixed left-0 top-16 md:top-24 bottom-0 z-40 w-64 bg-white md:bg-white/80 backdrop-blur-md rounded-r-lg border-gray-200 transition-all duration-400 ease-out shadow-lg ${
+        isMobileOpen ? "translate-x-0" : "-translate-x-full"
+      } md:translate-x-0 ${isDesktopExpanded ? "md:w-50" : "md:w-16"}`}
     >
       <div className="flex flex-col h-full py-4 px-2 overflow-hidden">
         {/* Menu Items */}
@@ -1012,5 +1030,6 @@ export default function SideMenu() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

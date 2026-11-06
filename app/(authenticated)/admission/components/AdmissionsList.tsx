@@ -267,7 +267,7 @@ export default function AdmissionsList() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : admissions.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center">
           <p className="text-gray-500 mb-4">No admissions found for this filter.</p>
           <button
             onClick={() => setIsAdmitModalOpen(true)}

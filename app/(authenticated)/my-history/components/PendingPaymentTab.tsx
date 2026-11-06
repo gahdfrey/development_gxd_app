@@ -341,7 +341,7 @@ export default function PendingPaymentTab({
       </div>
 
       <div className="sticky bottom-0 space-y-3 rounded-xl border border-gray-200 bg-white px-4 sm:px-5 py-3 sm:py-4 shadow-sm">
-        <div className={`grid gap-2 ${anyCovered ? "grid-cols-4" : "grid-cols-3"}`}>
+        <div className={`grid gap-2 ${anyCovered ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
           {([
             { key: "gateway" as const, label: "Card", icon: CreditCardIcon },
             {

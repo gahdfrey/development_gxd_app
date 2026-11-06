@@ -162,8 +162,8 @@ export default function TestTab() {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="relative flex-1 min-w-48 max-w-sm">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           <input
             type="text"
@@ -187,7 +187,7 @@ export default function TestTab() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : tests.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center">
           <p className="text-gray-500 mb-4">
             No tests yet. Create your first one!
           </p>
@@ -200,7 +200,7 @@ export default function TestTab() {
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center text-gray-500">
           No tests match &quot;{search}&quot;.
         </div>
       ) : (

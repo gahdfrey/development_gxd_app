@@ -251,7 +251,7 @@ export default function ReferralPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : rows.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center text-gray-500">
           {tab === "patients"
             ? "No referred patients yet. Tick “Referred by” when registering a patient."
             : "No referrers yet. Add them in Setup → Organisation → Referrers."}

@@ -258,7 +258,7 @@ export default function HmoBillingTab() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : rows.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-8 text-center">
           <p className="text-gray-500 text-sm">
             No HMO charges for this period. Charges appear here when an HMO patient&apos;s covered item is settled.
           </p>

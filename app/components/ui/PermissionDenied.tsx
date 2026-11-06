@@ -8,9 +8,9 @@ export default function PermissionDenied({
   moduleName = "this module",
 }: PermissionDeniedProps) {
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="max-w-2xl mx-auto mt-20">
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-12 text-center">
           <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
             <svg
               className="w-10 h-10 text-red-600"

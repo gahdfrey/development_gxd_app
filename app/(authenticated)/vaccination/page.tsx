@@ -128,7 +128,7 @@ export default function VaccinationPage() {
           <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       ) : courses.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-12 text-center">
           <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
             <ShieldCheckIcon className="h-6 w-6 text-blue-600" />
           </span>

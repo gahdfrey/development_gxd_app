@@ -333,7 +333,7 @@ export default function DoctorAppointmentsTable({
 
   if (appointments.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 sm:p-12">
         <div className="text-center">
           <p className="text-gray-500 text-lg">No appointments scheduled</p>
         </div>

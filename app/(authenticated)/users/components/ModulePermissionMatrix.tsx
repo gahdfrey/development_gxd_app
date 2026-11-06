@@ -81,13 +81,13 @@ export default function ModulePermissionMatrix({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Module
                 </th>
                 {APP_PERMISSIONS.map((perm) => (
                   <th
                     key={perm.key}
-                    className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                    className="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider"
                   >
                     {perm.label}
                   </th>
@@ -100,13 +100,13 @@ export default function ModulePermissionMatrix({
                   key={module.key}
                   className="hover:bg-gray-50 transition-colors"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {module.label}
                   </td>
                   {APP_PERMISSIONS.map((perm) => (
                     <td
                       key={perm.key}
-                      className="px-6 py-4 whitespace-nowrap text-center"
+                      className="px-4 sm:px-6 py-4 whitespace-nowrap text-center"
                     >
                       <input
                         type="checkbox"

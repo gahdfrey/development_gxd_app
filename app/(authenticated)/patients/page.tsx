@@ -195,15 +195,15 @@ export default function PatientsPage() {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+            <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
             </div>
 
             {/* Search and Filter Controls */}
             <div className="mb-6 flex flex-col sm:flex-row gap-3">
                 {/* Date Range Filters */}
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                             From Date

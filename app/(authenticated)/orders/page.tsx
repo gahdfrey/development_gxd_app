@@ -108,7 +108,7 @@ function ViewOrderModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
+        <div className="px-4 sm:px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -154,7 +154,7 @@ function ViewOrderModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
+        <div className="px-4 sm:px-6 py-5 space-y-5 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-0.5">
@@ -251,7 +251,7 @@ function ViewOrderModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end shrink-0">
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -404,7 +404,7 @@ export default function OrdersPage() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-gray-900 truncate">{pageTitle}</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -467,7 +467,7 @@ export default function OrdersPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : displayOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-12 text-center">
           <p className="text-sm font-medium text-gray-600">No orders found</p>
           <p className="text-xs text-gray-400 mt-1">
             {tab !== "all" ? `No ${(TAB_LABELS[tab] ?? tab).toLowerCase()} orders` : "No orders match these filters"}

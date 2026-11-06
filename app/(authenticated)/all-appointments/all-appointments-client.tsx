@@ -127,9 +127,9 @@ export default function AllAppointmentsClient() {
     }
 
     return (
-        <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-linear-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-lg">
                         <CalendarIcon className="h-6 w-6 text-white"/>
@@ -140,9 +140,9 @@ export default function AllAppointmentsClient() {
                         </h1>
                     </div>
                 </div>
-                <div className="bg-linear-to-br from-slate-50 to-gray-100 rounded-xl p-6 border border-gray-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+                <div className="bg-linear-to-br from-slate-50 to-gray-100 rounded-xl p-4 sm:p-6 border border-gray-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
                     <div className="text-right space-y-1">
-                        <p className="text-4xl font-bold bg-linear-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                        <p className="text-2xl sm:text-4xl font-bold bg-linear-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                             {
                             appointments.length
                         } </p>
@@ -154,7 +154,7 @@ export default function AllAppointmentsClient() {
             </div>
 
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                 {
                 (() => { // Define known status configurations
                     const statusConfig: Record<string, StatusConfig> = {
@@ -218,14 +218,14 @@ export default function AllAppointmentsClient() {
                                 onClick={
                                     () => setSelectedStatus(status)
                                 }
-                                className="relative overflow-hidden bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group cursor-pointer">
+                                className="relative overflow-hidden bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group cursor-pointer">
                                 <div className="relative z-10 flex justify-between items-start">
                                     <div>
                                         <p className="text-sm font-medium text-gray-500 mb-1">
                                             {
                                             config.label
                                         } </p>
-                                        <h3 className="text-3xl font-bold text-gray-900">
+                                        <h3 className="text-2xl sm:text-3xl font-bold text-gray-900">
                                             {count} </h3>
                                     </div>
                                     <div className={
@@ -254,7 +254,7 @@ export default function AllAppointmentsClient() {
             {/* Search and Filter Controls */}
             <div className="flex flex-col sm:flex-row gap-3">
                 {/* Date Range Filters */}
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                             From Date
@@ -334,8 +334,8 @@ export default function AllAppointmentsClient() {
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
                 </div>
             ) : error ? (
-                <div className="p-6">
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+                <div className="p-4 sm:p-6">
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6 text-center">
                         <p className="text-red-700 font-medium">
                             {
                             error.message || "Failed to load appointments"

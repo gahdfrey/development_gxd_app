@@ -61,13 +61,13 @@ export default function MyAppointmentsClient({
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-linear-to-br from-green-500 to-emerald-600 rounded-2xl">
                 <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
                   My Appointments
                 </h1>
                 <p className="text-gray-600 text-sm">
@@ -79,7 +79,7 @@ export default function MyAppointmentsClient({
             {/* Search and Filter Controls */}
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Date Range Filters */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     From Date
@@ -169,7 +169,7 @@ export default function MyAppointmentsClient({
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -265,7 +265,7 @@ export default function MyAppointmentsClient({
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-8 sm:py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
           </div>
         )}
@@ -283,7 +283,7 @@ export default function MyAppointmentsClient({
             error.message?.includes("Forbidden") ||
             error.message?.includes("permission")
           ) && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6">
               <p className="text-red-700 text-center">
                 Failed to load appointments. Please try again.
               </p>

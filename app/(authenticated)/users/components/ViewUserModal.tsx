@@ -26,7 +26,7 @@ export default function ViewUserModal({ isOpen, userId, onClose }: ViewUserModal
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
             ) : !userData ? (
-                <div className="text-center py-8">
+                <div className="text-center py-6 sm:py-8">
                     <p className="text-gray-600">User not found</p>
                 </div>
             ) : (

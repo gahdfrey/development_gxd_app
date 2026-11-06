@@ -311,7 +311,7 @@ export default function AuthorizationsTab() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : rows.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 text-center">
           <p className="text-gray-500 text-sm">
             {status === "pending"
               ? "No pending authorizations. Requests appear here automatically when a doctor orders a service the HMO's price list marks “needs authorization”."

@@ -64,7 +64,7 @@ export default function AppointmentList({
 
   if (sortedAppointments.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-6">
         <div className="text-center">
           <p className="text-sm text-gray-500">
             {selectedDate

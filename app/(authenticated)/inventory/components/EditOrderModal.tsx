@@ -213,7 +213,7 @@ export default function EditOrderModal({ order, onClose, onSuccess }: Props) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]">
 
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
+        <div className="px-4 sm:px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Edit Order #{order.id}</h2>
@@ -231,7 +231,7 @@ export default function EditOrderModal({ order, onClose, onSuccess }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1 relative z-10">
+          <div className="px-4 sm:px-6 py-5 space-y-5 overflow-y-auto flex-1 relative z-10">
 
             {/* Error banners */}
             {serverError && (
@@ -343,7 +343,7 @@ export default function EditOrderModal({ order, onClose, onSuccess }: Props) {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0 bg-gray-50 rounded-b-2xl">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0 bg-gray-50 rounded-b-2xl">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
               Cancel
             </button>

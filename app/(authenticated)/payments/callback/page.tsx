@@ -35,8 +35,8 @@ export default function PaymentCallbackPage() {
   }, [reference]);
 
   return (
-    <div className="p-6 max-w-md mx-auto">
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-4">
+    <div className="p-4 sm:p-6 max-w-md mx-auto">
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 text-center space-y-4">
         {status === "checking" && (
           <>
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />

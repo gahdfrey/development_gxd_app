@@ -174,7 +174,7 @@ export default function AdmissionRequestsList() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : sorted.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-8 text-center">
           <p className="text-gray-500">
             No admission requests waiting. Requests raised by doctors after a
             consultation show up here.
