@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import Reveal from "./Reveal";
 
 export default function CTASection() {
@@ -23,16 +22,6 @@ export default function CTASection() {
                                 clinical workflow and patient care.
                             </p>
                             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-                                <button
-                                    type="button"
-                                    disabled
-                                    aria-disabled="true"
-                                    title="Access is by invitation only"
-                                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white/60 px-7 py-3.5 text-[15px] font-semibold text-slate-500 shadow-lg cursor-not-allowed select-none"
-                                >
-                                    Start your free trial
-                                    <ArrowRight className="h-4 w-4" />
-                                </button>
                                 <a
                                     href="#contact"
                                     className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl border border-white/20 bg-white/5 px-7 py-3.5 text-[15px] font-semibold text-white hover:bg-white/10 transition-colors"
@@ -40,9 +29,6 @@ export default function CTASection() {
                                     Schedule a demo
                                 </a>
                             </div>
-                            <p className="mt-8 text-sm text-slate-500">
-                                Free 30-day trial · No credit card required · Cancel anytime
-                            </p>
                         </div>
                     </div>
                 </Reveal>

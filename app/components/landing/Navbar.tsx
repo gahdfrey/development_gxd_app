@@ -50,24 +50,18 @@ export default function Navbar() {
                 </nav>
 
                 <div className="flex items-center gap-2.5">
-                    <button
-                        type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Access is by invitation only"
-                        className="hidden sm:inline-flex text-sm font-semibold px-4 py-2 text-slate-400 rounded-lg cursor-not-allowed select-none"
+                    <Link
+                        href="/login"
+                        className="hidden sm:inline-flex text-sm font-semibold px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                     >
                         Log in
-                    </button>
-                    <button
-                        type="button"
-                        disabled
-                        aria-disabled="true"
-                        title="Access is by invitation only"
-                        className="inline-flex items-center bg-slate-900/40 text-white/80 text-sm font-semibold px-4 py-2 rounded-lg shadow-sm cursor-not-allowed select-none"
+                    </Link>
+                    <Link
+                        href="/login"
+                        className="inline-flex items-center bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
                     >
                         Get started
-                    </button>
+                    </Link>
                     <button
                         type="button"
                         aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -92,15 +86,13 @@ export default function Navbar() {
                                 {link.label}
                             </a>
                         ))}
-                        <button
-                            type="button"
-                            disabled
-                            aria-disabled="true"
-                            title="Access is by invitation only"
-                            className="sm:hidden text-left px-3 py-2.5 text-[15px] font-medium text-slate-400 rounded-lg cursor-not-allowed select-none"
+                        <Link
+                            href="/login"
+                            onClick={() => setMobileOpen(false)}
+                            className="sm:hidden text-left px-3 py-2.5 text-[15px] font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                         >
                             Log in
-                        </button>
+                        </Link>
                     </nav>
                 </div>
             )}

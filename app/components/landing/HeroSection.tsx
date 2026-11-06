@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import {
-    ArrowRight,
     Bell,
     CalendarDays,
     CheckCircle2,
@@ -202,16 +201,6 @@ export default function HeroSection() {
                         </motion.p>
 
                         <motion.div {...fadeUp(0.24)} className="mt-9 flex flex-wrap items-center gap-3.5">
-                            <button
-                                type="button"
-                                disabled
-                                aria-disabled="true"
-                                title="Access is by invitation only"
-                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600/50 px-6 py-3.5 text-[15px] font-semibold text-white/90 shadow-lg shadow-blue-600/15 cursor-not-allowed select-none"
-                            >
-                                Start free trial
-                                <ArrowRight className="h-4 w-4" />
-                            </button>
                             <a
                                 href="#contact"
                                 className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-[15px] font-semibold text-slate-800 hover:border-slate-400 hover:bg-slate-50 transition-colors"
@@ -221,7 +210,7 @@ export default function HeroSection() {
                         </motion.div>
 
                         <motion.div {...fadeUp(0.32)} className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
-                            {["Free 30-day trial", "No credit card required", "Guided migration"].map((item) => (
+                            {["Guided migration"].map((item) => (
                                 <span key={item} className="inline-flex items-center gap-1.5">
                                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                                     {item}
