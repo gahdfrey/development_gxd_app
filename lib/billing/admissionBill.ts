@@ -17,7 +17,8 @@ import {
 import { and, asc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
 import { priceBillItems, itemKey, type BillItemRef, type PricedItem } from "@/lib/billing/pricing";
 import { settleHmoItems } from "@/lib/billing/settle";
-import { debitWallet } from "@/lib/wallet";
+import { creditWallet, debitWallet } from "@/lib/wallet";
+import type { DeskPaymentInput } from "@/lib/billing/shifts";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Executor = typeof db | Tx;
@@ -299,6 +300,83 @@ export async function payBillFromWallet(tx: Tx, { orgId, admissionId, userId }: 
   if (idsOf("prescription").length) await tx.update(prescriptions).set({ paymentStatus: "paid", updatedAt: now }).where(inArray(prescriptions.id, idsOf("prescription")));
   await settleHmoItems(tx, orgId, open.map((l) => l.priced!).filter(Boolean), { actorId: userId });
   return { paymentId: payment.id, amount: total, lines: open.length, patientId: bill.admission.patientId } as const;
+}
+
+/**
+ * Money handed over at the finance desk towards an admission bill (cash, POS
+ * or transfer), recorded in the cashier's shift as one payment for the full
+ * amount. It pays off open lines oldest-first, each line in full; whatever
+ * doesn't cover the next whole line goes into the patient's wallet as a
+ * deposit, where "Settle from wallet" or the next payment can use it.
+ */
+export async function recordAdmissionBillPayment(
+  tx: Tx,
+  {
+    orgId,
+    admissionId,
+    userId,
+    amount,
+    desk,
+    walletId,
+  }: { orgId: number; admissionId: number; userId: number; amount: number; desk: DeskPaymentInput & { shiftId: number }; walletId: number },
+) {
+  const bill = await getAdmissionBill(tx, orgId, admissionId);
+  if (!bill) return { error: "Admission not found", status: 404 } as const;
+  const patientId = bill.admission.patientId;
+
+  const settled: BillLine[] = [];
+  let remaining = amount;
+  for (const l of bill.lines) {
+    if (l.paymentStatus !== "not_paid" || !l.priced || l.priced.price == null) continue;
+    if (l.priced.patientAmount > remaining) break;
+    settled.push(l);
+    remaining -= l.priced.patientAmount;
+  }
+  const applied = amount - remaining;
+
+  const [payment] = await tx
+    .insert(payments)
+    .values({
+      organisationId: orgId,
+      patientId,
+      amount,
+      status: "success",
+      method: "desk",
+      purpose: "bill",
+      initiatedBy: "staff",
+      confirmedBy: userId,
+      gatewayReference: `cv_admpay_${admissionId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      shiftId: desk.shiftId,
+      channel: desk.channel,
+      posReference: desk.posReference,
+    })
+    .returning({ id: payments.id });
+
+  const paidLines = settled.filter((l) => (l.priced?.patientAmount ?? 0) > 0);
+  if (paidLines.length) {
+    await tx.insert(paymentItems).values(paidLines.map((l) => ({ paymentId: payment.id, itemType: l.itemType, itemId: l.itemId, amount: l.priced!.patientAmount })));
+  }
+  const now = new Date();
+  const idsOf = (t: BillLine["itemType"]) => settled.filter((l) => l.itemType === t).map((l) => l.itemId);
+  if (idsOf("charge").length) await tx.update(patientCharges).set({ paymentStatus: "paid", updatedAt: now }).where(inArray(patientCharges.id, idsOf("charge")));
+  if (idsOf("request").length) await tx.update(requests).set({ paymentStatus: "paid", updatedAt: now }).where(inArray(requests.id, idsOf("request")));
+  if (idsOf("prescription").length) await tx.update(prescriptions).set({ paymentStatus: "paid", updatedAt: now }).where(inArray(prescriptions.id, idsOf("prescription")));
+  if (settled.length) await settleHmoItems(tx, orgId, settled.map((l) => l.priced!), { actorId: userId });
+
+  if (remaining > 0) {
+    await creditWallet(tx, {
+      walletId,
+      patientId,
+      organisationId: orgId,
+      amount: remaining,
+      source: "topup",
+      referenceType: "payment",
+      referenceId: payment.id,
+      description: `Deposit from admission bill payment #${admissionId}`,
+    });
+  }
+
+  return { paymentId: payment.id, patientId, amount, applied, toWallet: remaining, lines: settled.length } as const;
 }
 
 /**

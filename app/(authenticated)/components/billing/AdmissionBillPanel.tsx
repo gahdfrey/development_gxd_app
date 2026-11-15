@@ -5,11 +5,12 @@ import useSWR, { mutate as globalMutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
 import Modal from "@/app/components/ui/Modal";
 import { useToast } from "@/app/contexts/ToastContext";
-import { PlusIcon, PrinterIcon, WalletIcon } from "@heroicons/react/24/outline";
+import { BanknotesIcon, PlusIcon, PrinterIcon, WalletIcon } from "@heroicons/react/24/outline";
 import BillingCell from "../../finance/components/BillingCell";
 import SettleBillModal, { type DeskPayment } from "../../finance/components/SettleBillModal";
 import { CURRENT_SHIFT_KEY } from "../../finance/components/MyShift";
 import { naira, type BillingSummary, type SettleTarget } from "../../finance/components/billing";
+import type { BillPaymentTarget } from "../../finance/components/RecordBillPaymentModal";
 
 interface Line {
   itemType: "request" | "prescription" | "charge";
@@ -75,7 +76,16 @@ function escapeHtml(s: string) {
  * its HMO / patient split and payment status. Finance can settle lines,
  * waive or void charges, settle everything from the wallet, and print it.
  */
-export default function AdmissionBillPanel({ admissionId, canManage = true }: { admissionId: number; canManage?: boolean }) {
+export default function AdmissionBillPanel({
+  admissionId,
+  canManage = true,
+  onRecordPayment,
+}: {
+  admissionId: number;
+  canManage?: boolean;
+  /** Shows a "Record payment" button that hands the bill to the desk-payment form. */
+  onRecordPayment?: (target: BillPaymentTarget) => void;
+}) {
   const { showToast } = useToast();
   const key = `/api/admissions/${admissionId}/bill`;
   const { data: bill, isLoading, mutate } = useSWR<Bill>(key, fetcher);
@@ -218,6 +228,22 @@ export default function AdmissionBillPanel({ admissionId, canManage = true }: { 
             <PrinterIcon className="h-4 w-4" /> Print bill
           </button>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {canManage && onRecordPayment && totals.outstanding > 0 && (
+          <button
+            onClick={() =>
+              onRecordPayment({
+                admissionId,
+                patientName: `${bill.admission.patientFirstname ?? ""} ${bill.admission.patientLastname ?? ""}`.trim(),
+                outstanding: totals.outstanding,
+                walletBalance: bill.walletBalance,
+              })
+            }
+            className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+          >
+            <BanknotesIcon className="h-4 w-4" /> Record payment
+          </button>
+        )}
         {canManage && totals.openLines > 0 && (
           <button
             onClick={() => setWalletConfirm(true)}
@@ -228,6 +254,7 @@ export default function AdmissionBillPanel({ admissionId, canManage = true }: { 
             <WalletIcon className="h-4 w-4" /> Settle from wallet ({naira(bill.walletBalance)})
           </button>
         )}
+        </div>
       </div>
 
       {adding && (
@@ -294,15 +321,15 @@ export default function AdmissionBillPanel({ admissionId, canManage = true }: { 
                             billing: l.priced,
                           })
                         }
-                        className="font-medium text-blue-600 hover:underline"
+                        className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 font-medium text-blue-700 hover:bg-blue-100"
                       >
                         Mark paid
                       </button>
                     )}
                     {canManage && l.itemType === "charge" && l.paymentStatus === "not_paid" && (
                       <>
-                        <button onClick={() => chargeAction(l, "waive")} className="ml-3 font-medium text-gray-600 hover:underline">Waive</button>
-                        <button onClick={() => chargeAction(l, "void")} className="ml-3 font-medium text-red-600 hover:underline">Remove</button>
+                        <button onClick={() => chargeAction(l, "waive")} className="ml-2 rounded-md border border-gray-300 bg-white px-2.5 py-1 font-medium text-gray-700 hover:bg-gray-50">Waive</button>
+                        <button onClick={() => chargeAction(l, "void")} className="ml-2 rounded-md border border-red-200 bg-white px-2.5 py-1 font-medium text-red-700 hover:bg-red-50">Remove</button>
                       </>
                     )}
                   </td>

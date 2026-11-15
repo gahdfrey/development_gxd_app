@@ -26,6 +26,12 @@ PAYSTACK_SECRET_KEY=sk_test_your-paystack-secret-key
 # Used to build the callback URL patients are returned to after checkout.
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
+# Lab/radiology result files (app/api/requests/[id]/result, app/api/blob/download)
+# are stored in a private Vercel Blob store. Create the store in Vercel →
+# Storage, connect it to the project, then run `vercel env pull .env.local`
+# to get this token locally. Uploads fail without it.
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_your-token
+
 # Instructions:
 # 1. Copy this file's contents to .env.local
 # 2. Generate NEXTAUTH_SECRET: openssl rand -base64 32

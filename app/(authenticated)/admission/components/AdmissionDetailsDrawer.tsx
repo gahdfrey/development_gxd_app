@@ -8,7 +8,6 @@ import SeverityBadge from "@/app/components/ui/SeverityBadge";
 import type { AdmissionDetail } from "./types";
 import ObservationsPanel from "../../components/clinical/ObservationsPanel";
 import MedicationChartPanel from "../../components/clinical/MedicationChartPanel";
-import AdmissionBillPanel from "../../components/billing/AdmissionBillPanel";
 import ClinicalBanner from "../../components/clinical/ClinicalBanner";
 
 interface AdmissionDetailsDrawerProps {
@@ -112,13 +111,6 @@ export default function AdmissionDetailsDrawer({ admissionId, isOpen, onClose }:
             <div>
               <span className="block text-gray-500 text-sm mb-2">Medication chart</span>
               <MedicationChartPanel admissionId={admission.id} patientId={admission.patient.id} />
-            </div>
-          )}
-
-          {(admission.status === "admitted" || admission.status === "discharged") && (
-            <div>
-              <span className="block text-gray-500 text-sm mb-2">Bill</span>
-              <AdmissionBillPanel admissionId={admission.id} />
             </div>
           )}
 

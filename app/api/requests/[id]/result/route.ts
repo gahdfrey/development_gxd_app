@@ -85,15 +85,10 @@ export async function POST(
     const safeOriginal = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const blobName = `results/${requestId}-${Date.now()}-${safeOriginal}`;
 
-    console.log("[upload] BLOB_READ_WRITE_TOKEN present:", !!process.env.BLOB_READ_WRITE_TOKEN);
-    console.log("[upload] uploading blob:", blobName, "type:", file.type, "size:", file.size);
-
     const blob = await put(blobName, file, {
       access: "private",
       contentType: file.type,
     });
-
-    console.log("[upload] blob upload successful:", blob.url);
 
     const relativePath = blob.url;
 
