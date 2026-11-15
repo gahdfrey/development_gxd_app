@@ -5,6 +5,8 @@ import { and, desc, eq, gt, or } from "drizzle-orm";
 import { requirePermission } from "@/lib/authz";
 import { getAdmissionBill, syncBedDayCharges } from "@/lib/billing/admissionBill";
 
+const BATCH = 3;
+
 // GET /api/admissions/bills — running bills for everyone currently admitted,
 // plus discharged patients who left with a balance (finance follow-up).
 export async function GET() {
@@ -21,12 +23,16 @@ export async function GET() {
       .orderBy(desc(admissions.admittedAt))
       .limit(200);
 
-    const out = [];
-    for (const r of rows) {
+    // Each bill takes several round trips to the database, so build them a
+    // few at a time instead of one after another (the pool has 10 connections
+    // and each bill runs up to 4 queries at once).
+    const build = async (r: (typeof rows)[number]) => {
       if (r.status === "admitted") await syncBedDayCharges(db, orgId, r.id, userId);
       const bill = await getAdmissionBill(db, orgId, r.id);
-      if (!bill) continue;
-      out.push({
+      if (!bill) return null;
+      // Discharged patients stay listed only while they still owe.
+      if (r.status === "discharged" && bill.totals.outstanding <= 0) return null;
+      return {
         admissionId: r.id,
         status: r.status,
         wardName: r.wardName,
@@ -41,7 +47,12 @@ export async function GET() {
         totals: bill.totals,
         walletBalance: bill.walletBalance,
         hmoName: bill.lines.find((l) => l.priced?.hmoName)?.priced?.hmoName ?? null,
-      });
+      };
+    };
+    const out = [];
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const built = await Promise.all(rows.slice(i, i + BATCH).map(build));
+      for (const b of built) if (b) out.push(b);
     }
     return NextResponse.json(out);
   } catch (error) {
