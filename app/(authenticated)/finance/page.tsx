@@ -22,7 +22,9 @@ import {
   BanknotesIcon,
 } from "@heroicons/react/24/outline";
 import BillingCell from "./components/BillingCell";
-import SettleBillModal, { type DeskPayment } from "./components/SettleBillModal";
+import SettleBillModal, {
+  type DeskPayment,
+} from "./components/SettleBillModal";
 import ShiftsTab from "./components/ShiftsTab";
 import { MyShiftCard, CURRENT_SHIFT_KEY } from "./components/MyShift";
 import { DESK_CHANNELS } from "@/lib/billing/deskChannels";
@@ -30,7 +32,9 @@ import HmoBillingTab from "./components/HmoBillingTab";
 import AuthorizationsTab from "./components/AuthorizationsTab";
 import ClaimsTab from "./components/ClaimsTab";
 import AdmissionBillsTab from "./components/AdmissionBillsTab";
-import VaccinationBillsTab, { VACCINATION_BILLS_KEY } from "./components/VaccinationBillsTab";
+import VaccinationBillsTab, {
+  VACCINATION_BILLS_KEY,
+} from "./components/VaccinationBillsTab";
 import type { BillingSummary, SettleTarget } from "./components/billing";
 
 interface PrescriptionRow {
@@ -162,7 +166,10 @@ export default function FinancePage() {
   const [settleTarget, setSettleTarget] = useState<SettleTarget | null>(null);
   const [isSettling, setIsSettling] = useState(false);
 
-  const handleSettle = async (authorizationCode: string, payment: DeskPayment) => {
+  const handleSettle = async (
+    authorizationCode: string,
+    payment: DeskPayment,
+  ) => {
     if (!settleTarget) return;
     const { itemType, itemId } = settleTarget;
     setIsSettling(true);
@@ -174,13 +181,21 @@ export default function FinancePage() {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentStatus: "paid", authorizationCode, ...payment }),
+          body: JSON.stringify({
+            paymentStatus: "paid",
+            authorizationCode,
+            ...payment,
+          }),
         },
       );
       if (res.ok) {
         // Show the row as paid straight away, then re-fetch in the background.
-        const markPaid = <T extends { id: number; paymentStatus: string }>(rows: T[] | undefined) =>
-          rows?.map((r) => (r.id === itemId ? { ...r, paymentStatus: "paid" } : r));
+        const markPaid = <T extends { id: number; paymentStatus: string }>(
+          rows: T[] | undefined,
+        ) =>
+          rows?.map((r) =>
+            r.id === itemId ? { ...r, paymentStatus: "paid" } : r,
+          );
         if (itemType === "request") mutatReqs(markPaid, { revalidate: true });
         else mutatePrescrip(markPaid, { revalidate: true });
         globalMutate(CURRENT_SHIFT_KEY);
@@ -242,14 +257,17 @@ export default function FinancePage() {
     (p) => p.status === "pending",
   ).length;
   // Same SWR key as the Authorizations tab's default view, so it's shared.
-  const { data: pendingAuths } = useSWR<unknown[]>("/api/hmo-authorizations?status=pending", fetcher, {
-    refreshInterval: 60_000,
-  });
-  // Same key as the tab's default (unpaid) view, so it's one request.
-  const { data: vaccinationBills, mutate: mutateVaccinationBills } = useSWR<{ unpaidCourses: number }>(
-    `${VACCINATION_BILLS_KEY}?status=unpaid`,
+  const { data: pendingAuths } = useSWR<unknown[]>(
+    "/api/hmo-authorizations?status=pending",
     fetcher,
+    {
+      refreshInterval: 60_000,
+    },
   );
+  // Same key as the tab's default (unpaid) view, so it's one request.
+  const { data: vaccinationBills, mutate: mutateVaccinationBills } = useSWR<{
+    unpaidCourses: number;
+  }>(`${VACCINATION_BILLS_KEY}?status=unpaid`, fetcher);
   const counts: Record<TabKey, number> = {
     lab: unpaidLabCount,
     prescriptions: unpaidPrescrCount,
@@ -304,7 +322,7 @@ export default function FinancePage() {
                 {t.label}
                 {count > 0 && (
                   <span
-                    className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-semibold ${
+                    className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold ${
                       isActive
                         ? "bg-blue-100 text-blue-700"
                         : "bg-gray-100 text-gray-600"
@@ -358,7 +376,8 @@ export default function FinancePage() {
                   itemId: row.id,
                   label: row.testName ?? "Lab test",
                   patientId: row.patientId,
-                  patientName: `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.trim(),
+                  patientName:
+                    `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.trim(),
                   basePrice: row.testPrice,
                   billing: row.billing ?? null,
                 })
@@ -443,7 +462,10 @@ export default function FinancePage() {
                             <span className="line-clamp-2">{row.dosage}</span>
                           </td> */}
                           <td className="px-5 py-4 text-sm whitespace-nowrap">
-                            <BillingCell basePrice={row.productPrice} billing={row.billing} />
+                            <BillingCell
+                              basePrice={row.productPrice}
+                              billing={row.billing}
+                            />
                           </td>
                           <td className="px-5 py-4 whitespace-nowrap">
                             <span
@@ -471,7 +493,8 @@ export default function FinancePage() {
                                     itemId: row.id,
                                     label: row.productName ?? "Medication",
                                     patientId: row.patientId,
-                  patientName: `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.trim(),
+                                    patientName:
+                                      `${row.patientFirstname ?? ""} ${row.patientLastname ?? ""}`.trim(),
                                     basePrice: row.productPrice,
                                     billing: row.billing ?? null,
                                   })
@@ -548,7 +571,8 @@ export default function FinancePage() {
                           </td>
                           <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
                             {METHOD_LABEL[row.method] ?? row.method}
-                            {row.channel && ` · ${DESK_CHANNELS[row.channel as keyof typeof DESK_CHANNELS] ?? row.channel}`}
+                            {row.channel &&
+                              ` · ${DESK_CHANNELS[row.channel as keyof typeof DESK_CHANNELS] ?? row.channel}`}
                           </td>
                           <td className="px-5 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                             ₦{row.amount.toLocaleString()}
@@ -651,7 +675,11 @@ export default function FinancePage() {
       {activeTab === "hmo" && <HmoBillingTab />}
 
       <SettleBillModal
-        key={settleTarget ? `${settleTarget.itemType}:${settleTarget.itemId}` : "none"}
+        key={
+          settleTarget
+            ? `${settleTarget.itemType}:${settleTarget.itemId}`
+            : "none"
+        }
         target={settleTarget}
         isSubmitting={isSettling}
         onClose={() => setSettleTarget(null)}
