@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requestResults, requests } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 /**
  * GET /api/blob/download?url=<encoded_blob_url>&dl=1 (optional dl param forces download)
@@ -19,7 +20,7 @@ import { requireAuth } from "@/lib/authz";
 export async function GET(request: NextRequest) {
   const authz = await requireAuth();
   if (authz.error) return authz.error;
-  const { orgId, patientId, isPlatformAdmin } = authz.ctx;
+  const { orgId, patientId, isPlatformAdmin, userId, userEmail } = authz.ctx;
 
   const blobUrl = request.nextUrl.searchParams.get("url");
   if (!blobUrl) {
@@ -43,6 +44,8 @@ export async function GET(request: NextRequest) {
 
   const [file] = await db
     .select({
+      resultId: requestResults.id,
+      requestId: requestResults.requestId,
       fileName: requestResults.fileName,
       organisationId: requests.organisationId,
       patientId: requests.patientId,
@@ -79,6 +82,18 @@ export async function GET(request: NextRequest) {
 
     // Buffer the entire response — more reliable than streaming for images/PDFs
     const buffer = await blobResponse.arrayBuffer();
+
+    // Every read of a patient's file is a PHI access, so it goes in the audit
+    // trail under the facility that owns the file.
+    void logAudit({
+      organisationId: file.organisationId,
+      userId,
+      userEmail,
+      action: forceDownload ? "download" : "view",
+      entityType: "request_result",
+      entityId: file.resultId,
+      details: { requestId: file.requestId, patientId: file.patientId, fileName: file.fileName },
+    });
 
     const headers: Record<string, string> = {
       "Content-Type": contentType,
